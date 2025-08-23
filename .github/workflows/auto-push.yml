@@ -1,0 +1,30 @@
+name: Codex Auto Commit
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:  # Elle çalıştırma seçeneği
+
+jobs:
+  auto-commit:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Reposu klonla
+      uses: actions/checkout@v3
+
+    - name: Git ayarları
+      run: |
+        git config --global user.name "codex-bot"
+        git config --global user.email "codex-bot@example.com"
+
+    - name: Dummy düzenleme (örnek)
+      run: |
+        echo "🔄 Otomatik güncellendi: $(date)" >> codex_log.txt
+
+    - name: Commit ve Push
+      run: |
+        git add .
+        git commit -m "🤖 Codex düzenlemeleri işlendi" || echo "Hiçbir değişiklik yok"
+        git push
