@@ -171,6 +171,6 @@ def stop():
 
 @APP.get("/api/status")
 def status():
-    # son ~50 log satiri dondur.
+    # son ~50 log satiri döndür.
     tail = STATE["log"][-50:]
     return {"running": STATE["running"], "progress": STATE.get("progress"), "logTail": tail}
