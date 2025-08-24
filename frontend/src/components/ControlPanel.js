@@ -8,11 +8,14 @@ const buildUrl = (p) => `${API_BASE}${p.startsWith("/") ? p : `/${p}`}`;
 function headers(){ return {"Content-Type":"application/json"}; }
 async function getJSON(p){ const r=await fetch(buildUrl(p),{headers:headers()}); const t=await r.text(); try{return {ok:r.ok,data:t?JSON.parse(t):{}}}catch{return {ok:r.ok,data:{}}} }
 async function postJSON(p,b){ const r=await fetch(buildUrl(p),{method:"POST",headers:headers(),body:JSON.stringify(b||{})}); const t=await r.text(); try{return {ok:r.ok,data:t?JSON.parse(t):{}}}catch{return {ok:r.ok,data:{}}} }
+ codex/refactor-api-calls-in-controlpanel.js
+
 
 import React from 'react';
 import SettingsForm from './SettingsForm';
 import StatusPanel from './StatusPanel';
 import LogViewer from './LogViewer';
+ main
  main
 
 export default function ControlPanel(){
