@@ -154,7 +154,7 @@ async def download_worker(cfg:Config):
             if max_d and (msg.date.replace(tzinfo=None) > max_d):
                 continue
 
-            # types filter (sadece foto/video/doc)
+            # types filter (sadece photos/videos/documents)
             kind = None
             if msg.photo and "photos" in cfg.types:
                 kind = "photos"
