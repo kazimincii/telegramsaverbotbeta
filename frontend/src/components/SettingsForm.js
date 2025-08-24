@@ -1,5 +1,6 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { AppContext } from '../context/AppContext';
+import { fetchDialogs } from '../services/api';
 
 codex/add-group-selection-list-feature-z3rqdr
 export default function SettingsForm(){
@@ -10,6 +11,22 @@ codex/add-group-selection-list-feature-047pqy
 
 export default function SettingsForm({ dialogs = [] }){
   const { cfg, setField, save } = useContext(AppContext);
+codex/add-group-selection-list-feature-08lv7i
+  const [dialogs, setDialogs] = useState([]);
+
+  useEffect(() => {
+    let alive = true;
+    fetchDialogs().then(r => {
+      if (!alive) return;
+      if (r.ok && Array.isArray(r.data)) setDialogs(r.data);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+
+main
 main
 main
   return (
@@ -25,6 +42,20 @@ main
         <div><label style={{fontSize:12,color:'#555'}}>Max Tarih</label><input type="date" value={cfg.max_date||""} onChange={e=>setField('max_date',e.target.value)} style={{width:'100%',padding:8,border:'1px solid #d0d0d0',borderRadius:10}}/></div>
       </div>
       <div style={{marginTop:12}}>
+codex/add-group-selection-list-feature-08lv7i
+        <label style={{fontSize:12,color:'#555'}}>Kanallar</label>
+        <div style={{display:'flex',flexDirection:'column',gap:4,maxHeight:200,overflowY:'auto',border:'1px solid #d0d0d0',padding:8,borderRadius:10}}>
+          {dialogs.map(d => (
+            <label key={d.id} style={{display:'flex',alignItems:'center',gap:6}}>
+              <input
+                type="checkbox"
+                checked={(cfg.chats || []).map(String).includes(String(d.id))}
+                onChange={e => {
+                  const set = new Set((cfg.chats || []).map(String));
+                  const id = String(d.id);
+                  if (e.target.checked) set.add(id); else set.delete(id);
+                  setField('chats', Array.from(set));
+
 codex/add-group-selection-list-feature-047pqy
         <label style={{fontSize:12,color:'#555',display:'block',marginBottom:4}}>Kanallar</label>
         <div style={{maxHeight:200,overflowY:'auto',border:'1px solid #d0d0d0',borderRadius:10,padding:8}}>
@@ -77,16 +108,20 @@ codex/add-group-selection-list-feature-z3rqdr
                   if (e.target.checked) s.add(d.name); else s.delete(d.name);
                   setField('chats', Array.from(s));
 main
+main
                 }}
               />
               <span>{d.name}</span>
             </label>
           ))}
+codex/add-group-selection-list-feature-08lv7i
+
 codex/add-group-selection-list-feature-047pqy
           {dialogs.length===0 && (
             <div style={{fontSize:12,color:'#999'}}>Kanal bulunamadı</div>
           )}
 
+main
 main
 main
         </div>

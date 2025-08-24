@@ -1,15 +1,26 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
+
+jest.mock('../services/api', () => ({
+  fetchDialogs: jest.fn(() => Promise.resolve({ ok: true, data: [] }))
+}));
+
 import SettingsForm from '../components/SettingsForm';
 import { AppContext } from '../context/AppContext';
 
 test('renders settings inputs', () => {
   const value = {
+codex/add-group-selection-list-feature-08lv7i
+    cfg: { api_id: '', api_hash: '', session: '', out: '', types: [], dry_run: false, chats: [] },
+    setField: () => {},
+    save: () => {}
+
     cfg: { api_id:'', api_hash:'', session:'', out:'', types:[], dry_run:false },
     setField: ()=>{},
     save: ()=>{},
     dialogs: [],
+main
   };
   render(
     <AppContext.Provider value={value}>
