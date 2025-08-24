@@ -1,4 +1,4 @@
-import React, { useContext, useEffect } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import SettingsForm from './SettingsForm';
 import StatusPanel from './StatusPanel';
 import LogViewer from './LogViewer';
@@ -6,7 +6,12 @@ import { AppContext } from '../context/AppContext';
 import { fetchDialogs } from '../services/api';
 
 export default function ControlPanel(){
+codex/add-group-selection-list-feature-z3rqdr
   const { error, setDialogs } = useContext(AppContext);
+
+  const { error } = useContext(AppContext);
+  const [dialogs, setDialogs] = useState([]);
+main
 
   useEffect(() => {
     fetchDialogs().then(r => {
@@ -14,7 +19,11 @@ export default function ControlPanel(){
         setDialogs(r.data);
       }
     });
+codex/add-group-selection-list-feature-z3rqdr
   }, [setDialogs]);
+
+  }, []);
+main
   return (
     <div style={{maxWidth:1100,margin:'24px auto',padding:'0 16px'}}>
       <h1 style={{fontSize:22,margin:0,marginBottom:12}}>Telegram Arşivleyici — Kontrol Paneli</h1>
@@ -23,7 +32,7 @@ export default function ControlPanel(){
           {error}
         </div>
       )}
-      <SettingsForm />
+      <SettingsForm dialogs={dialogs} />
       <StatusPanel />
       <LogViewer />
     </div>

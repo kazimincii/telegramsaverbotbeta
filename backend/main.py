@@ -181,13 +181,9 @@ async def download_worker(
     sem = asyncio.Semaphore(cfg.concurrency)
     chosen = set(str(x) for x in (chats or cfg.chats or []))
     flt = make_media_filter(media_types)
-
-codex/add-stop-condition-in-download_worker
     tasks = []
     stop_event = STATE["stop"]
 
-
-main
     async for dialog in client.iter_dialogs():
         if stop_event.is_set():
             break
@@ -232,23 +228,21 @@ main
                                 break
                             await asyncio.sleep(cfg.throttle)
             tasks.append(asyncio.create_task(runner()))
-codex/add-stop-condition-in-download_worker
-        if stop_event.is_set():
-            break
+            if stop_event.is_set():
+                break
+
+        if tasks:
+            if stop_event.is_set():
+                for task in tasks:
+                    task.cancel()
+                await asyncio.gather(*tasks, return_exceptions=True)
+            else:
+                if len(tasks) >= cfg.concurrency:
+                    await asyncio.gather(*tasks)
+                    tasks.clear()
 
     if tasks:
-        if stop_event.is_set():
-            for task in tasks:
-                task.cancel()
-            await asyncio.gather(*tasks, return_exceptions=True)
-        else:
-
-            if len(tasks) >= cfg.concurrency:
-                await asyncio.gather(*tasks)
-                tasks.clear()
-        if tasks:
-main
-            await asyncio.gather(*tasks)
+        await asyncio.gather(*tasks)
     await client.disconnect()
     log("[*] Worker bitti.")
 
