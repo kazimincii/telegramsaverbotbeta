@@ -13,11 +13,16 @@ import pytest
 
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 from backend import main
+codex/fix-all-issues-0zhom0
+from backend.main import Config
+from telethon import types, types as tl_types
+
 codex/fix-all-issues-g5pt6z
 
 from backend.main import Config
 from telethon import types
 from telethon import types as tl_types
+main
 main
 
 
@@ -49,6 +54,9 @@ codex/fix-all-issues-g5pt6z
 main
             yield SimpleNamespace(id=10, date=now, photo=True, file=SimpleNamespace(name="p.jpg"), media="loc")
             yield SimpleNamespace(id=11, date=now, video=True, file=SimpleNamespace(name="v.mp4"), media="loc")
+        if dialog.name == "chan1" and isinstance(filter, types.InputMessagesFilterPhotoVideo):
+            yield SimpleNamespace(id=10, date=now, photo=True, file=SimpleNamespace(name="p.jpg"), media="loc")
+            yield SimpleNamespace(id=11, date=now, video=True, file=SimpleNamespace(name="v.mp4"), media="loc")
 
     async def download_file(self, *a, **k):
         pass
@@ -66,6 +74,38 @@ class ResumeClient:
             file.write(self.data[offset:])
 
 
+class DummyClient:
+    def __init__(self, messages):
+        self.messages = messages
+        self.iter_messages_filter = None
+        self.download_file_calls = []
+
+    async def connect(self):
+        pass
+
+    async def is_user_authorized(self):
+        return True
+
+    async def disconnect(self):
+        pass
+
+    async def iter_dialogs(self):
+        yield SimpleNamespace(id=1, name="chan1")
+
+    async def iter_messages(self, dialog, reverse=True, filter=None):
+        self.iter_messages_filter = filter
+        for m in self.messages:
+            yield m
+
+    async def download_file(self, media, file, offset=0):
+        self.download_file_calls.append(offset)
+        file.write(b"data")
+
+
+async def _dummy_sleep(*args, **kwargs):
+    return None
+
+
 def test_channel_and_media_filters(monkeypatch, tmp_path):
     fake = FilterClient()
     monkeypatch.setattr(main, "TelegramClient", lambda *a, **k: fake)
@@ -78,7 +118,11 @@ def test_channel_and_media_filters(monkeypatch, tmp_path):
     cfg = Config(api_id="1", api_hash="h", out=str(tmp_path))
     asyncio.run(main.download_worker(cfg, channels=["chan1"], media_types=["photos", "videos"]))
     assert fake.iter_calls == [("chan1", "InputMessagesFilterPhotoVideo")]
+codex/fix-all-issues-0zhom0
+    assert sorted(m[0] for m in calls) == [10, 11]
+
     assert len(calls) == 2
+main
 
 
 def test_download_resume(tmp_path):
@@ -92,6 +136,12 @@ def test_download_resume(tmp_path):
     full = tmp_path / "big.bin"
     assert full.exists() and full.stat().st_size == 2048
 codex/fix-all-issues-g5pt6z
+
+codex/fix-all-issues-0zhom0
+
+def test_photo_filter(monkeypatch, tmp_path):
+    msg = SimpleNamespace(id=1, date=dt.datetime(2024, 1, 1), photo=True, video=None, document=None,
+                          file=SimpleNamespace(size=10, name="a.jpg"))
 
 
 
@@ -139,6 +189,7 @@ def test_photo_filter(monkeypatch, tmp_path):
         document=None,
         file=SimpleNamespace(size=10, name="a.jpg"),
     )
+main
     client = DummyClient([msg])
     monkeypatch.setattr(main, "TelegramClient", lambda *a, **k: client)
     monkeypatch.setattr(main.asyncio, "sleep", _dummy_sleep)
@@ -148,6 +199,10 @@ def test_photo_filter(monkeypatch, tmp_path):
 
 
 def test_photo_video_filter(monkeypatch, tmp_path):
+codex/fix-all-issues-0zhom0
+    msg = SimpleNamespace(id=1, date=dt.datetime(2024, 1, 1), photo=True, video=None, document=None,
+                          file=SimpleNamespace(size=10, name="a.jpg"))
+
     msg = SimpleNamespace(
         id=1,
         date=dt.datetime(2024, 1, 1),
@@ -156,6 +211,7 @@ def test_photo_video_filter(monkeypatch, tmp_path):
         document=None,
         file=SimpleNamespace(size=10, name="a.jpg"),
     )
+main
     client = DummyClient([msg])
     monkeypatch.setattr(main, "TelegramClient", lambda *a, **k: client)
     monkeypatch.setattr(main.asyncio, "sleep", _dummy_sleep)
@@ -165,6 +221,11 @@ def test_photo_video_filter(monkeypatch, tmp_path):
 
 
 def test_document_filter(monkeypatch, tmp_path):
+codex/fix-all-issues-0zhom0
+    msg = SimpleNamespace(id=1, date=dt.datetime(2024, 1, 1), photo=None, video=None,
+                          document=SimpleNamespace(size=10, attributes=[SimpleNamespace(file_name="a.pdf")]),
+                          file=SimpleNamespace(size=10, name="a.pdf"))
+
     msg = SimpleNamespace(
         id=1,
         date=dt.datetime(2024, 1, 1),
@@ -173,6 +234,7 @@ def test_document_filter(monkeypatch, tmp_path):
         document=SimpleNamespace(size=10, attributes=[SimpleNamespace(file_name="a.pdf")]),
         file=SimpleNamespace(size=10, name="a.pdf"),
     )
+main
     client = DummyClient([msg])
     monkeypatch.setattr(main, "TelegramClient", lambda *a, **k: client)
     monkeypatch.setattr(main.asyncio, "sleep", _dummy_sleep)
@@ -202,4 +264,7 @@ def test_large_file_resume(monkeypatch, tmp_path):
     assert client.download_file_calls == [5]
     assert (part_dir / "big.bin").exists()
 
+codex/fix-all-issues-0zhom0
+
+main
 main

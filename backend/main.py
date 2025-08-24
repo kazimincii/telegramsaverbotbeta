@@ -1,4 +1,10 @@
 import asyncio
+codex/fix-all-issues-0zhom0
+import json
+import re
+import datetime as dt
+import time
+
 import datetime as dt
 import json
 import re
@@ -6,9 +12,17 @@ codex/fix-all-issues-g5pt6z
 
 import time
 main
+main
 from pathlib import Path
 from threading import Event
 from typing import List, Optional
+
+codex/fix-all-issues-0zhom0
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+from telethon import TelegramClient, types as tl_types
 
 codex/fix-all-issues-g5pt6z
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
@@ -21,6 +35,7 @@ from pydantic import BaseModel
 from telethon import TelegramClient, types
 
 codex/fix-all-issues-g5pt6z
+main
 
 
 main
@@ -64,6 +79,9 @@ ROOT = Path(__file__).resolve().parent
 CFG_FILE = ROOT / "config.json"
 
 
+codex/fix-all-issues-0zhom0
+
+main
 main
 class Config(BaseModel):
     api_id: str
@@ -82,11 +100,14 @@ class Config(BaseModel):
     channels: List[int] = []
 
 
+codex/fix-all-issues-0zhom0
+
 codex/fix-all-issues-g5pt6z
 ROOT = Path(__file__).resolve().parent
 CFG_FILE = ROOT / "config.json"
 
 
+main
 main
 STATE = {
     "running": False,
@@ -98,6 +119,8 @@ STATE = {
 }
 
 
+codex/fix-all-issues-0zhom0
+
 codex/fix-all-issues-g5pt6z
 def log(msg: str) -> None:
     print(msg, flush=True)
@@ -107,6 +130,7 @@ def log(msg: str) -> None:
 
 
 
+main
 main
 def load_cfg() -> Config:
     if CFG_FILE.exists():
@@ -119,6 +143,24 @@ def load_cfg() -> Config:
         CFG_FILE.write_text(cfg.json(indent=2), encoding="utf-8")
     STATE["config"] = cfg
     return cfg
+
+
+codex/fix-all-issues-0zhom0
+def save_cfg(cfg: Config):
+    CFG_FILE.write_text(cfg.json(indent=2), encoding="utf-8")
+    STATE["config"] = cfg
+
+
+def log(msg: str):
+    print(msg, flush=True)
+    buf = STATE["log"]
+    buf.append(msg)
+    del buf[:-500]
+
+
+@APP.get("/api/config")
+async def get_config():
+    return load_cfg()
 
 
 codex/fix-all-issues-g5pt6z
@@ -178,6 +220,7 @@ def _make_filters(media_types: List[str]):
 
 
 async def download_worker(cfg: Config, channels: Optional[List[str]] = None, media_types: Optional[List[str]] = None):
+main
 
 def save_cfg(cfg: Config):
     CFG_FILE.write_text(cfg.json(indent=2), encoding="utf-8")
@@ -222,8 +265,16 @@ async def download_file(client: TelegramClient, msg, target_dir: Path):
         or getattr(msg, "video", None)
         or getattr(msg, "media", None)
     )
+codex/fix-all-issues-0zhom0
+    try:
+        with open(temp, "ab") as f:
+            await client.download_file(media, file=f, offset=offset)
+    except Exception:
+        raise
+
     with open(temp, "ab") as f:
         await client.download_file(media, file=f, offset=offset)
+main
     temp.replace(final)
     return final
 
@@ -233,6 +284,13 @@ async def download_worker(
     channels: Optional[List[str]] = None,
     media_types: Optional[List[str]] = None,
 ):
+codex/fix-all-issues-0zhom0
+    log("[*] Worker basladi.")
+    client = TelegramClient(cfg.session, int(cfg.api_id or 0), cfg.api_hash or "")
+    await client.connect()
+    if not await client.is_user_authorized():
+        log("[!] Telegram oturumu yetkili degil. login_once.bat calistirin.")
+
     STATE["stop"].clear()
     STATE["running"] = True
     STATE["progress"] = {"chat": "", "downloaded": 0, "skipped": 0}
@@ -386,8 +444,60 @@ codex/fix-all-issues-g5pt6z
 
         log("[*] Worker bitti.")
     finally:
+main
         await client.disconnect()
-        STATE["running"] = False
+        return
+
+codex/fix-all-issues-0zhom0
+    media_types = media_types or cfg.types
+    out_base = Path(cfg.out or "C:/TelegramArchive")
+    out_base.mkdir(parents=True, exist_ok=True)
+    STATE["progress"] = {"total": 0, "downloaded": 0}
+    sem = asyncio.Semaphore(cfg.concurrency)
+
+    async def handle_message(dialog_name, mtype, msg):
+        target_dir = out_base / dialog_name / mtype / str(msg.date.year)
+        for attempt in range(3):
+            try:
+                await download_file(client, msg, target_dir)
+                STATE["progress"]["downloaded"] += 1
+                break
+            except Exception:
+                if attempt == 2:
+                    break
+                await asyncio.sleep(cfg.throttle)
+
+    tasks = []
+    chosen = set(channels or cfg.channels or [])
+    filt = make_media_filter(media_types)
+
+    async for dialog in client.iter_dialogs():
+        name = (
+            getattr(dialog, "name", None)
+            or getattr(getattr(dialog, "entity", None), "username", None)
+            or str(getattr(dialog, "id", ""))
+        )
+        if chosen and (name not in chosen and getattr(dialog, "id", None) not in chosen):
+            continue
+        async for msg in client.iter_messages(dialog, reverse=True, filter=filt):
+            if getattr(msg, "photo", None):
+                mtype = "photos"
+            elif getattr(msg, "video", None):
+                mtype = "videos"
+            elif getattr(msg, "document", None):
+                mtype = "documents"
+            else:
+                continue
+            STATE["progress"]["total"] += 1
+            async def run(msg=msg, mtype=mtype, dname=name):
+                async with sem:
+                    await handle_message(dname, mtype, msg)
+            tasks.append(asyncio.create_task(run()))
+
+    await asyncio.gather(*tasks)
+    await client.disconnect()
+    log("[*] Worker bitti.")
+
 
 
 def run_worker(cfg: Config, channels: Optional[List[str]] = None, media_types: Optional[List[str]] = None):
@@ -449,4 +559,5 @@ def launch_worker(cfg: Config, channels=None, media_types=None):
 def get_config():
     cfg = load_cfg()
     return cfg.dict()
+main
 main
