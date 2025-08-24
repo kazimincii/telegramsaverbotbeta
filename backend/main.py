@@ -127,12 +127,22 @@ async def list_dialogs():
         raise HTTPException(status_code=401, detail="Telegram oturumu yetkili değil")
     items = []
     async for d in client.iter_dialogs():
+        entity = getattr(d, "entity", None)
         name = (
             getattr(d, "name", None)
-            or getattr(getattr(d, "entity", None), "username", None)
+            or getattr(entity, "username", None)
             or str(getattr(d, "id", ""))
         )
-        items.append({"id": getattr(d, "id", None), "name": name})
+        username = getattr(entity, "username", None)
+        items.append(
+            {
+                "id": getattr(d, "id", None),
+                "name": name,
+                "username": username,
+                "photo": None,
+                "counts": {"photos": 0, "videos": 0, "documents": 0},
+            }
+        )
     await client.disconnect()
     return items
 

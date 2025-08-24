@@ -26,4 +26,19 @@ def test_dialogs_endpoint(monkeypatch):
     monkeypatch.setattr(main, "TelegramClient", lambda *a, **k: DialogClient())
     monkeypatch.setattr(main, "load_cfg", lambda: main.Config(api_id="1", api_hash="h"))
     data = asyncio.run(main.list_dialogs())
-    assert data == [{"id": 1, "name": "chat1"}, {"id": 2, "name": "chat2"}]
+    assert data == [
+        {
+            "id": 1,
+            "name": "chat1",
+            "username": None,
+            "photo": None,
+            "counts": {"photos": 0, "videos": 0, "documents": 0},
+        },
+        {
+            "id": 2,
+            "name": "chat2",
+            "username": None,
+            "photo": None,
+            "counts": {"photos": 0, "videos": 0, "documents": 0},
+        },
+    ]

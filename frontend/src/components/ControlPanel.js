@@ -6,6 +6,8 @@ import ErrorViewer from './ErrorViewer';
 import ContactsPanel from './ContactsPanel';
 import FaqSection from './FaqSection';
 import MinimalButton from './MinimalButton';
+import ProfilePanel from './ProfilePanel';
+import GroupsPanel from './GroupsPanel';
 import panelIcon from '../assets/panel.svg';
 import faqIcon from '../assets/faq.svg';
 import settingsIcon from '../assets/settings.svg';
@@ -19,7 +21,7 @@ import { fetchDialogs } from '../services/api';
 export default function ControlPanel(){
   const { setDialogs } = useContext(AppContext);
   const [mainTab, setMainTab] = useState('panel');
-  const [subTab, setSubTab] = useState('settings');
+  const [subTab, setSubTab] = useState('profile');
 
   useEffect(() => {
     fetchDialogs().then(r => {
@@ -39,12 +41,16 @@ export default function ControlPanel(){
       {mainTab === 'panel' ? (
         <>
           <div style={{display:'flex',gap:8,marginBottom:12,flexWrap:'wrap'}}>
+            <MinimalButton icon={panelIcon} onClick={()=>setSubTab('profile')}>Profil</MinimalButton>
+            <MinimalButton icon={contactsIcon} onClick={()=>setSubTab('groups')}>Gruplar</MinimalButton>
             <MinimalButton icon={settingsIcon} onClick={()=>setSubTab('settings')}>Ayarlar</MinimalButton>
             <MinimalButton icon={statusIcon} onClick={()=>setSubTab('status')}>Durum</MinimalButton>
             <MinimalButton icon={logIcon} onClick={()=>setSubTab('log')}>Loglar</MinimalButton>
             <MinimalButton icon={errorIcon} onClick={()=>setSubTab('errors')}>Hatalar</MinimalButton>
             <MinimalButton icon={contactsIcon} onClick={()=>setSubTab('contacts')}>Kişiler</MinimalButton>
           </div>
+          {subTab === 'profile' && <ProfilePanel />}
+          {subTab === 'groups' && <GroupsPanel />}
           {subTab === 'settings' && <SettingsForm />}
           {subTab === 'status' && <StatusPanel />}
           {subTab === 'log' && <LogViewer />}
