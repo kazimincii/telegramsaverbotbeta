@@ -1,15 +1,15 @@
-import React, {useEffect,useMemo,useState} from "react";
-
-const RAW_BASE = process.env.REACT_APP_API_BASE || "http://127.0.0.1:8000";
-const API_BASE = RAW_BASE.trim().replace(/\/+$/, ""); // boşluğu ve sonda kalan / işaretlerini at
-const buildUrl = (p) => `${API_BASE}${p.startsWith("/") ? p : `/${p}`}`;
-
-function headers(){ return {"Content-Type":"application/json"}; }
-async function getJSON(p){ const r=await fetch(API_BASE+p,{headers:headers()}); const t=await r.text(); try{return {ok:r.ok,data:t?JSON.parse(t):{}}}catch{return {ok:r.ok,data:{}}} }
-async function postJSON(p,b){ const r=await fetch(API_BASE+p,{method:"POST",headers:headers(),body:JSON.stringify(b||{})}); const t=await r.text(); try{return {ok:r.ok,data:t?JSON.parse(t):{}}}catch{return {ok:r.ok,data:{}}} }
+import React from 'react';
+import SettingsForm from './SettingsForm';
+import StatusPanel from './StatusPanel';
+import LogViewer from './LogViewer';
 
 export default function ControlPanel(){
+ codex/gelistir-bot-arayuzunu-basit-hale-getir
   const [cfg,setCfg]=useState({api_id:"",api_hash:"",session:"tg_media",out:"C:/TelegramArchive",types:["photos"],include:[],exclude:[],chats:[],min_date:"",max_date:"",throttle:0.2,concurrency:3,dry_run:false});
+
+ codex/add-filters-to-download_worker-function
+  const [cfg,setCfg]=useState({api_id:"",api_hash:"",session:"tg_media",out:"C:/TelegramArchive",types:["photos"],include:[],exclude:[],min_date:"",max_date:"",throttle:0.2,concurrency:3,dry_run:false,channels:[]});
+ main
   const [running,setRunning]=useState(false);
   const [log,setLog]=useState([]);
   const [error,setError]=useState("");
@@ -23,7 +23,12 @@ export default function ControlPanel(){
 
   const setField=(k,v)=>setCfg(c=>({...c,[k]:v}));
   async function save(){ setError(""); const r=await postJSON("/api/config",cfg); if(!r.ok) setError("Kaydetme hatasi"); }
-  async function start(dry){ setError(""); if(typeof dry==="boolean") await postJSON("/api/config",{...cfg,dry_run:dry}); const r=await postJSON("/api/start",{}); if(!r.ok) setError("Baslatma hatasi"); }
+  async function start(dry){
+    setError("");
+    if(typeof dry==="boolean") await postJSON("/api/config",{...cfg,dry_run:dry});
+    const r=await postJSON("/api/start",{channels:cfg.channels,media_types:cfg.types});
+    if(!r.ok) setError("Baslatma hatasi");
+  }
   async function stop(){ setError(""); const r=await postJSON("/api/stop",{}); if(!r.ok) setError("Durdurma hatasi"); }
 
   return (<div style={{maxWidth:1100,margin:"24px auto",padding:"0 16px"}}>
@@ -51,6 +56,11 @@ export default function ControlPanel(){
     <div style={{display:'grid',gap:12,gridTemplateColumns:'1fr 1fr',marginTop:12}}>
       <div><label style={{fontSize:12,color:'#555'}}>Min Tarih</label><input type="date" value={cfg.min_date||""} onChange={e=>setField('min_date',e.target.value)} style={{width:'100%',padding:8,border:'1px solid #d0d0d0',borderRadius:10}}/></div>
       <div><label style={{fontSize:12,color:'#555'}}>Max Tarih</label><input type="date" value={cfg.max_date||""} onChange={e=>setField('max_date',e.target.value)} style={{width:'100%',padding:8,border:'1px solid #d0d0d0',borderRadius:10}}/></div>
+    </div>
+
+    <div style={{marginTop:12}}>
+      <label style={{fontSize:12,color:'#555'}}>Kanallar (ID, virgülle)</label>
+      <input value={(cfg.channels||[]).join(',')} onChange={e=>setField('channels',e.target.value.split(',').map(s=>parseInt(s.trim())).filter(n=>!isNaN(n)))} style={{width:'100%',padding:8,border:'1px solid #d0d0d0',borderRadius:10}}/>
     </div>
 
     <div style={{display:'flex',gap:16,alignItems:'center',marginTop:12,flexWrap:'wrap'}}>
@@ -86,4 +96,14 @@ export default function ControlPanel(){
       <pre style={{fontFamily:'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',fontSize:12,background:'#fafafa',border:'1px solid #e7e7e7',borderRadius:10,padding:10,height:340,overflow:'auto',whiteSpace:'pre-wrap',marginTop:8}}>{(log&&log.length)?log.join("\n"):"Log bekleniyor..."}</pre>
     </div>
   </div>);
+
+  return (
+    <div style={{maxWidth:1100,margin:'24px auto',padding:'0 16px'}}>
+      <h1 style={{fontSize:22,marginBottom:12}}>Telegram Arşivleyici — Kontrol Paneli</h1>
+      <SettingsForm />
+      <StatusPanel />
+      <LogViewer />
+    </div>
+  );
+ main
 }
