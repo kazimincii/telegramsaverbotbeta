@@ -161,8 +161,11 @@ async def download_worker(
     flt = make_media_filter(media_types)
 
     tasks = []
+    stop_event = STATE["stop"]
 
     async for dialog in client.iter_dialogs():
+        if stop_event.is_set():
+            break
         name = (
             getattr(dialog, "name", None)
             or getattr(getattr(dialog, "entity", None), "username", None)
@@ -172,6 +175,8 @@ async def download_worker(
             continue
         chat_dir = out_base / name
         async for msg in client.iter_messages(dialog, reverse=True, filter=flt):
+            if stop_event.is_set():
+                break
             kind = None
             if "photos" in media_types and getattr(msg, "photo", None):
                 kind = "photos"
@@ -196,9 +201,16 @@ async def download_worker(
                             await asyncio.sleep(cfg.throttle)
 
             tasks.append(asyncio.create_task(runner()))
+        if stop_event.is_set():
+            break
 
     if tasks:
-        await asyncio.gather(*tasks)
+        if stop_event.is_set():
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+        else:
+            await asyncio.gather(*tasks)
     await client.disconnect()
     log("[*] Worker bitti.")
 
