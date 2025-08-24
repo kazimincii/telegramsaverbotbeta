@@ -160,8 +160,6 @@ async def download_worker(
     chosen = set(channels or cfg.channels or [])
     flt = make_media_filter(media_types)
 
-    tasks = []
-
     async for dialog in client.iter_dialogs():
         name = (
             getattr(dialog, "name", None)
@@ -171,6 +169,7 @@ async def download_worker(
         if chosen and (name not in chosen and getattr(dialog, "id", None) not in chosen):
             continue
         chat_dir = out_base / name
+        tasks = []
         async for msg in client.iter_messages(dialog, reverse=True, filter=flt):
             kind = None
             if "photos" in media_types and getattr(msg, "photo", None):
@@ -194,11 +193,12 @@ async def download_worker(
                             if attempt == 2:
                                 break
                             await asyncio.sleep(cfg.throttle)
-
             tasks.append(asyncio.create_task(runner()))
-
-    if tasks:
-        await asyncio.gather(*tasks)
+            if len(tasks) >= cfg.concurrency:
+                await asyncio.gather(*tasks)
+                tasks.clear()
+        if tasks:
+            await asyncio.gather(*tasks)
     await client.disconnect()
     log("[*] Worker bitti.")
 
