@@ -37,7 +37,6 @@ class Config(BaseModel):
     throttle: float = 0.2
     concurrency: int = 3
     dry_run: bool = False
-    channels: List[int] = []
 
 
 STATE = {
@@ -109,6 +108,27 @@ def set_config(payload: dict):
     return {"ok": True}
 
 
+@APP.get("/api/dialogs")
+async def list_dialogs():
+    """Return available dialogs/chats for the logged in user."""
+    cfg = load_cfg()
+    client = TelegramClient(cfg.session, int(cfg.api_id or 0), cfg.api_hash or "")
+    await client.connect()
+    if not await client.is_user_authorized():
+        await client.disconnect()
+        raise HTTPException(status_code=401, detail="Telegram oturumu yetkili değil")
+    items = []
+    async for d in client.iter_dialogs():
+        name = (
+            getattr(d, "name", None)
+            or getattr(getattr(d, "entity", None), "username", None)
+            or str(getattr(d, "id", ""))
+        )
+        items.append({"id": getattr(d, "id", None), "name": name})
+    await client.disconnect()
+    return items
+
+
 def make_media_filter(types_list: Optional[List[str]]):
     tset = set(types_list or [])
     if tset == {"photos"}:
@@ -145,7 +165,7 @@ async def download_file(client: TelegramClient, msg, target_dir: Path) -> Path:
 
 async def download_worker(
     cfg: Config,
-    channels: Optional[List[str]] = None,
+    chats: Optional[List[str]] = None,
     media_types: Optional[List[str]] = None,
 ):
     client = TelegramClient(cfg.session, int(cfg.api_id or 0), cfg.api_hash or "")
@@ -159,7 +179,7 @@ async def download_worker(
     # reset progress counters for a new run
     STATE["progress"] = {"chat": "", "downloaded": 0, "skipped": 0}
     sem = asyncio.Semaphore(cfg.concurrency)
-    chosen = set(channels or cfg.channels or [])
+    chosen = set(str(x) for x in (chats or cfg.chats or []))
     flt = make_media_filter(media_types)
 
 codex/add-stop-condition-in-download_worker
@@ -176,7 +196,9 @@ main
             or getattr(getattr(dialog, "entity", None), "username", None)
             or str(getattr(dialog, "id", ""))
         )
-        if chosen and (name not in chosen and getattr(dialog, "id", None) not in chosen):
+        if chosen and (
+            name not in chosen and str(getattr(dialog, "id", "")) not in chosen
+        ):
             continue
         # record current chat being processed
         STATE["progress"]["chat"] = name
@@ -232,21 +254,21 @@ main
 
 
 def run_worker_sync(
-    cfg: Config, channels: Optional[List[str]] = None, media_types: Optional[List[str]] = None
+    cfg: Config, chats: Optional[List[str]] = None, media_types: Optional[List[str]] = None
 ):
     STATE["stop"].clear()
     STATE["running"] = True
     try:
-        asyncio.run(download_worker(cfg, channels=channels, media_types=media_types))
+        asyncio.run(download_worker(cfg, chats=chats, media_types=media_types))
     finally:
         STATE["running"] = False
 
 
-async def run_worker_async(cfg: Config, channels=None, media_types=None):
+async def run_worker_async(cfg: Config, chats=None, media_types=None):
     STATE["stop"].clear()
     STATE["running"] = True
     try:
-        await download_worker(cfg, channels=channels, media_types=media_types)
+        await download_worker(cfg, chats=chats, media_types=media_types)
     finally:
         STATE["running"] = False
 
@@ -258,9 +280,9 @@ def start(background_tasks: BackgroundTasks, payload: Optional[dict] = None):
     cfg = load_cfg()
     if not cfg.api_id or not cfg.api_hash:
         raise HTTPException(status_code=400, detail="API ID/HASH zorunlu")
-    channels = (payload or {}).get("channels")
+    chats = (payload or {}).get("chats")
     media_types = (payload or {}).get("media_types")
-    background_tasks.add_task(run_worker_sync, cfg, channels, media_types)
+    background_tasks.add_task(run_worker_sync, cfg, chats, media_types)
     return {"ok": True}
 
 

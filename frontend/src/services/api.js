@@ -35,9 +35,9 @@ export async function saveConfig(cfg){
   return postJSON('/api/config', cfg);
 }
 
-export async function startRun(cfg, dry){
-  await saveConfig({ ...cfg, dry_run: dry });
-  return postJSON('/api/start', {});
+export async function startRun(cfg, dry, chats){
+  await saveConfig({ ...cfg, dry_run: dry, chats });
+  return postJSON('/api/start', { chats });
 }
 
 export async function stopRun(){
@@ -46,6 +46,10 @@ export async function stopRun(){
 
 export async function fetchStatus(){
   return getJSON('/api/status');
+}
+
+export async function fetchDialogs(){
+  return getJSON('/api/dialogs');
 }
 
 export { API_BASE };
