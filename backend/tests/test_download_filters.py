@@ -1,36 +1,23 @@
 import asyncio
 import datetime as dt
 from types import SimpleNamespace
- codex/add-filters-to-download_worker-function-ugf6ef
 from pathlib import Path
 import sys
 import pytest
 
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 from backend import main
-from telethon import types
+from backend.main import Config
+from telethon import types, types as tl_types
 
 
 class FilterClient:
     def __init__(self):
         self.iter_calls = []
 
-
-import backend.main as main
-from backend.main import Config
-from telethon import types as tl_types
-
-class DummyClient:
-    def __init__(self, messages):
-        self.messages = messages
-        self.iter_messages_filter = None
-        self.download_file_calls = []
- main
-
     async def connect(self):
         pass
 
- codex/add-filters-to-download_worker-function-ugf6ef
     async def is_user_authorized(self):
         return True
 
@@ -47,6 +34,9 @@ class DummyClient:
         if dialog.name == "chan1" and isinstance(filter, types.InputMessagesFilterPhotos):
             yield SimpleNamespace(id=10, date=now, photo=True, file=SimpleNamespace(name="p.jpg"), media="loc")
         if dialog.name == "chan1" and isinstance(filter, types.InputMessagesFilterVideo):
+            yield SimpleNamespace(id=11, date=now, video=True, file=SimpleNamespace(name="v.mp4"), media="loc")
+        if dialog.name == "chan1" and isinstance(filter, types.InputMessagesFilterPhotoVideo):
+            yield SimpleNamespace(id=10, date=now, photo=True, file=SimpleNamespace(name="p.jpg"), media="loc")
             yield SimpleNamespace(id=11, date=now, video=True, file=SimpleNamespace(name="v.mp4"), media="loc")
 
     async def download_file(self, *a, **k):
@@ -65,6 +55,38 @@ class ResumeClient:
             file.write(self.data[offset:])
 
 
+class DummyClient:
+    def __init__(self, messages):
+        self.messages = messages
+        self.iter_messages_filter = None
+        self.download_file_calls = []
+
+    async def connect(self):
+        pass
+
+    async def is_user_authorized(self):
+        return True
+
+    async def disconnect(self):
+        pass
+
+    async def iter_dialogs(self):
+        yield SimpleNamespace(id=1, name="chan1")
+
+    async def iter_messages(self, dialog, reverse=True, filter=None):
+        self.iter_messages_filter = filter
+        for m in self.messages:
+            yield m
+
+    async def download_file(self, media, file, offset=0):
+        self.download_file_calls.append(offset)
+        file.write(b"data")
+
+
+async def _dummy_sleep(*args, **kwargs):
+    return None
+
+
 def test_channel_and_media_filters(monkeypatch, tmp_path):
     fake = FilterClient()
     monkeypatch.setattr(main, "TelegramClient", lambda *a, **k: fake)
@@ -76,8 +98,8 @@ def test_channel_and_media_filters(monkeypatch, tmp_path):
     monkeypatch.setattr(main, "download_file", fake_download_file)
     cfg = main.Config(api_id="1", api_hash="h", out=str(tmp_path))
     asyncio.run(main.download_worker(cfg, channels=["chan1"], media_types=["photos", "videos"]))
-    assert fake.iter_calls == [("chan1", "InputMessagesFilterPhotos"), ("chan1", "InputMessagesFilterVideo")]
-    assert len(calls) == 2
+    assert fake.iter_calls == [("chan1", "InputMessagesFilterPhotoVideo")]
+    assert sorted(m[0] for m in calls) == [10, 11]
 
 
 def test_download_resume(tmp_path):
@@ -91,33 +113,9 @@ def test_download_resume(tmp_path):
     full = tmp_path / "big.bin"
     assert full.exists() and full.stat().st_size == 2048
 
-    async def disconnect(self):
-        pass
-
-    async def is_user_authorized(self):
-        return True
-
-    async def iter_dialogs(self):
-        yield SimpleNamespace(id=1, name="chan1")
-
-    async def iter_messages(self, dialog, reverse=True, filter=None):
-        self.iter_messages_filter = filter
-        for m in self.messages:
-            yield m
-
-    async def download_media(self, msg, file=None):
-        pass
-
-    async def download_file(self, media, file, offset=0):
-        self.download_file_calls.append(offset)
-        file.write(b"data")
-
-async def _dummy_sleep(*args, **kwargs):
-    return None
-
 
 def test_photo_filter(monkeypatch, tmp_path):
-    msg = SimpleNamespace(id=1, date=dt.datetime(2024,1,1), photo=True, video=None, document=None,
+    msg = SimpleNamespace(id=1, date=dt.datetime(2024, 1, 1), photo=True, video=None, document=None,
                           file=SimpleNamespace(size=10, name="a.jpg"))
     client = DummyClient([msg])
     monkeypatch.setattr(main, "TelegramClient", lambda *a, **k: client)
@@ -128,18 +126,18 @@ def test_photo_filter(monkeypatch, tmp_path):
 
 
 def test_photo_video_filter(monkeypatch, tmp_path):
-    msg = SimpleNamespace(id=1, date=dt.datetime(2024,1,1), photo=True, video=None, document=None,
+    msg = SimpleNamespace(id=1, date=dt.datetime(2024, 1, 1), photo=True, video=None, document=None,
                           file=SimpleNamespace(size=10, name="a.jpg"))
     client = DummyClient([msg])
     monkeypatch.setattr(main, "TelegramClient", lambda *a, **k: client)
     monkeypatch.setattr(main.asyncio, "sleep", _dummy_sleep)
-    cfg = Config(api_id="1", api_hash="2", out=str(tmp_path), types=["photos","videos"])
-    asyncio.run(main.download_worker(cfg, channels=[1], media_types=["photos","videos"]))
+    cfg = Config(api_id="1", api_hash="2", out=str(tmp_path), types=["photos", "videos"])
+    asyncio.run(main.download_worker(cfg, channels=[1], media_types=["photos", "videos"]))
     assert isinstance(client.iter_messages_filter, tl_types.InputMessagesFilterPhotoVideo)
 
 
 def test_document_filter(monkeypatch, tmp_path):
-    msg = SimpleNamespace(id=1, date=dt.datetime(2024,1,1), photo=None, video=None,
+    msg = SimpleNamespace(id=1, date=dt.datetime(2024, 1, 1), photo=None, video=None,
                           document=SimpleNamespace(size=10, attributes=[SimpleNamespace(file_name="a.pdf")]),
                           file=SimpleNamespace(size=10, name="a.pdf"))
     client = DummyClient([msg])
@@ -154,7 +152,7 @@ def test_large_file_resume(monkeypatch, tmp_path):
     big = 3 * 1024 ** 3
     msg = SimpleNamespace(
         id=2,
-        date=dt.datetime(2024,1,1),
+        date=dt.datetime(2024, 1, 1),
         photo=None,
         video=None,
         document=SimpleNamespace(size=big, attributes=[SimpleNamespace(file_name="big.bin")]),
@@ -170,4 +168,4 @@ def test_large_file_resume(monkeypatch, tmp_path):
     asyncio.run(main.download_worker(cfg, channels=[1], media_types=["documents"]))
     assert client.download_file_calls == [5]
     assert (part_dir / "big.bin").exists()
- main
+
