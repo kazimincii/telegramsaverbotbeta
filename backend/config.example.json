@@ -1,8 +1,8 @@
 {
-  "api_id": "28849275",
-  "api_hash": "d2677ac50fef8365d650bac93476bccc",
+  "api_id": "YOUR_API_ID",
+  "api_hash": "YOUR_API_HASH",
   "session": "tg_media",
-  "out": "d2677ac50fef8365d650bac93476bccc",
+  "out": "./downloads",
   "types": [
     "photos"
   ],

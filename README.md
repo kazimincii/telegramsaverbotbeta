@@ -1,6 +1,15 @@
 # Telegram Archiver — One Click
 1) run-all.bat çift tık. 2) Panel: http://localhost:3000. 3) API ID/HASH gir → Kaydet → Başlat. 4) Kişiler sekmesi → Önizleme → VCF dışa aktar.
 
+## Backend Configuration
+
+Backend ayarları `backend/config.json` dosyasında saklanır. Başlamadan önce örnek dosyayı kopyalayın ve düzenleyin:
+
+```bash
+cp backend/config.example.json backend/config.json
+# backend/config.json'u düzenleyip kendi Telegram API ID ve API HASH değerlerinizi girin
+```
+
 ## Frontend Environment
 
 The React frontend reads the backend URL from the `REACT_APP_API_BASE` variable.
