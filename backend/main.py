@@ -79,11 +79,42 @@ async def download_worker(cfg:Config):
     include_re = re.compile("|".join(cfg.include), re.I) if cfg.include else None
     exclude_re = re.compile("|".join(cfg.exclude), re.I) if cfg.exclude else None
 
+    sem = asyncio.Semaphore(cfg.concurrency)
+    progress_lock = asyncio.Lock()
     total = 0
+
+    async def handle_message(msg, name, kind, target_dir):
+        nonlocal total
+        async with sem:
+            if cfg.dry_run:
+                async with progress_lock:
+                    total += 1
+                    STATE["progress"] = {"chat": name, "downloaded": total, "skipped": 0}
+                    if total % 50 == 0:
+                        log(f"[dry] {name} / {kind} ...")
+                await asyncio.sleep(cfg.throttle or 0)
+                return
+
+            for attempt in range(3):
+                try:
+                    await client.download_media(msg, file=str(target_dir))
+                    async with progress_lock:
+                        total += 1
+                        STATE["progress"] = {"chat": name, "downloaded": total, "skipped": 0}
+                        if total % 10 == 0:
+                            log(f"[ok] {name} / {kind}")
+                    await asyncio.sleep(cfg.throttle or 0)
+                    break
+                except Exception as e:
+                    if attempt == 2:
+                        log(f"[!] indirme hatasi: {e}")
+                    await asyncio.sleep(2 ** attempt)
+
     async for dialog in client.iter_dialogs():
-        if STATE["stop"].is_set(): break
+        if STATE["stop"].is_set():
+            break
         name = dialog.name or str(dialog.id)
-        if include_re and not include_re.search(name): 
+        if include_re and not include_re.search(name):
             continue
         if exclude_re and exclude_re.search(name):
             continue
@@ -92,11 +123,13 @@ async def download_worker(cfg:Config):
         chat_dir.mkdir(parents=True, exist_ok=True)
 
         log(f"[*] Sohbet: {name}")
+        tasks = []
         async for msg in client.iter_messages(dialog, reverse=True):
-            if STATE["stop"].is_set(): break
-            if min_d and (msg.date.replace(tzinfo=None) < min_d): 
+            if STATE["stop"].is_set():
+                break
+            if min_d and (msg.date.replace(tzinfo=None) < min_d):
                 continue
-            if max_d and (msg.date.replace(tzinfo=None) > max_d): 
+            if max_d and (msg.date.replace(tzinfo=None) > max_d):
                 continue
 
             # types filter (sadece foto/video/doc)
@@ -114,23 +147,10 @@ async def download_worker(cfg:Config):
             target_dir = chat_dir / kind / str(msg.date.year)
             target_dir.mkdir(parents=True, exist_ok=True)
 
-            if cfg.dry_run:
-                total += 1
-                STATE["progress"] = {"chat": name, "downloaded": total, "skipped": 0}
-                if total % 50 == 0:
-                    log(f"[dry] {name} / {kind} ...")
-                await asyncio.sleep(cfg.throttle or 0)
-                continue
+            tasks.append(asyncio.create_task(handle_message(msg, name, kind, target_dir)))
 
-            try:
-                await client.download_media(msg, file=str(target_dir))
-                total += 1
-                STATE["progress"] = {"chat": name, "downloaded": total, "skipped": 0}
-                if total % 10 == 0:
-                    log(f"[ok] {name} / {kind}")
-                await asyncio.sleep(cfg.throttle or 0)
-            except Exception as e:
-                log(f"[!] indirme hatasi: {e}")
+        if tasks:
+            await asyncio.gather(*tasks)
 
     await client.disconnect()
     log("[*] Worker bitti.")
