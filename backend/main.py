@@ -1,9 +1,10 @@
 
-import asyncio, json, re, os, datetime as dt
+import asyncio, json, re, os, datetime as dt, time
 from pathlib import Path
-from threading import Thread, Event
-from fastapi import FastAPI, Header, HTTPException
+from threading import Event
+from fastapi import FastAPI, Header, HTTPException, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import List, Optional
 
@@ -11,6 +12,27 @@ from telethon import TelegramClient
 
 APP = FastAPI()
 APP.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+
+@APP.middleware("http")
+async def timing_middleware(request: Request, call_next):
+    start = time.perf_counter()
+    try:
+        response = await call_next(request)
+    except Exception:
+        duration = time.perf_counter() - start
+        log(f"{request.method} {request.url.path} failed in {duration:.4f}s")
+        raise
+    duration = time.perf_counter() - start
+    log(f"{request.method} {request.url.path} completed in {duration:.4f}s")
+    response.headers["X-Process-Time"] = f"{duration:.4f}"
+    return response
+
+
+@APP.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    log(f"[error] {exc}")
+    return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
 
 ROOT = Path(__file__).resolve().parent
 CFG_FILE = ROOT / "config.json"
@@ -136,10 +158,16 @@ async def download_worker(cfg:Config):
     log("[*] Worker bitti.")
     STATE["running"] = False
 
-def run_worker(cfg:Config):
+
+async def run_worker(cfg: Config):
     STATE["stop"].clear()
     STATE["running"] = True
-    asyncio.run(download_worker(cfg))
+    await download_worker(cfg)
+
+
+def launch_worker(cfg: Config):
+    task = asyncio.create_task(run_worker(cfg))
+    STATE["worker"] = task
 
 @APP.get("/api/config")
 def get_config():
@@ -153,20 +181,23 @@ def set_config(payload:dict):
     return {"ok": True}
 
 @APP.post("/api/start")
-def start():
+async def start(background_tasks: BackgroundTasks):
     if STATE["running"]:
         return {"ok": True, "already": True}
     cfg = load_cfg()
     if not cfg.api_id or not cfg.api_hash:
         raise HTTPException(status_code=400, detail="API ID/HASH zorunlu")
-    t = Thread(target=run_worker, args=(cfg,), daemon=True)
-    STATE["worker"] = t
-    t.start()
+    background_tasks.add_task(launch_worker, cfg)
     return {"ok": True}
 
-@APP.post("/api/stop")
-def stop():
+
+def request_stop():
     STATE["stop"].set()
+
+
+@APP.post("/api/stop")
+async def stop(background_tasks: BackgroundTasks):
+    background_tasks.add_task(request_stop)
     return {"ok": True}
 
 @APP.get("/api/status")
