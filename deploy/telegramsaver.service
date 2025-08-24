@@ -5,12 +5,13 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=%h/telegramsaverbotbeta
+Environment=LOG_DIR=%h/telegramsaverbotbeta/log
 ExecStart=/usr/bin/pm2 start deploy/ecosystem.config.js --no-daemon
 ExecReload=/usr/bin/pm2 reload all
 ExecStop=/usr/bin/pm2 stop all
 Restart=always
-StandardOutput=append:%h/telegramsaverbotbeta/log/telegramsaver.log
-StandardError=append:%h/telegramsaverbotbeta/log/telegramsaver.err.log
+StandardOutput=append:${LOG_DIR}/telegramsaver.log
+StandardError=append:${LOG_DIR}/telegramsaver.err.log
 
 [Install]
 WantedBy=multi-user.target
