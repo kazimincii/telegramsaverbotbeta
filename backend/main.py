@@ -1,6 +1,7 @@
 import asyncio
 import json
 import time
+import base64
 from pathlib import Path
 from threading import Event
 from typing import List, Optional
@@ -118,7 +119,7 @@ def set_config(payload: dict):
 
 @APP.get("/api/dialogs")
 async def list_dialogs():
-    """Return available dialogs/chats for the logged in user."""
+    """Return joined groups/channels with basic info and media counts."""
     cfg = load_cfg()
     client = TelegramClient(cfg.session, int(cfg.api_id or 0), cfg.api_hash or "")
     await client.connect()
@@ -128,19 +129,40 @@ async def list_dialogs():
     items = []
     async for d in client.iter_dialogs():
         entity = getattr(d, "entity", None)
+        if not getattr(d, "is_group", False) and not getattr(d, "is_channel", False):
+            continue
         name = (
             getattr(d, "name", None)
             or getattr(entity, "username", None)
             or str(getattr(d, "id", ""))
         )
         username = getattr(entity, "username", None)
+        counts = {"photos": 0, "videos": 0, "documents": 0}
+        try:
+            photos = await client.get_messages(entity or d.id, limit=0, filter=tl_types.InputMessagesFilterPhotos())
+            videos = await client.get_messages(entity or d.id, limit=0, filter=tl_types.InputMessagesFilterVideo())
+            documents = await client.get_messages(entity or d.id, limit=0, filter=tl_types.InputMessagesFilterDocument())
+            counts = {
+                "photos": getattr(photos, "total", 0),
+                "videos": getattr(videos, "total", 0),
+                "documents": getattr(documents, "total", 0),
+            }
+        except Exception:
+            pass
+        photo_data = None
+        try:
+            raw = await client.download_profile_photo(entity or d.id, file=bytes)
+            if raw:
+                photo_data = "data:image/jpeg;base64," + base64.b64encode(raw).decode()
+        except Exception:
+            pass
         items.append(
             {
                 "id": getattr(d, "id", None),
                 "name": name,
                 "username": username,
-                "photo": None,
-                "counts": {"photos": 0, "videos": 0, "documents": 0},
+                "photo": photo_data,
+                "counts": counts,
             }
         )
     await client.disconnect()
