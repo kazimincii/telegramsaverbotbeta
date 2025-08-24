@@ -84,6 +84,9 @@ export function AppProvider({ children }) {
 
   return (
     <AppContext.Provider
+codex/fix-syntax-errors-in-components-ei8dp2
+      value={{ cfg, setField, save, start, stop, running, progress, log, clearLog, error, dialogs, setDialogs }}
+
       value={{
         cfg,
         setField,
@@ -98,6 +101,7 @@ export function AppProvider({ children }) {
         dialogs,
         setDialogs,
       }}
+main
     >
       {children}
     </AppContext.Provider>

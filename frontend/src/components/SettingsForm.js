@@ -1,6 +1,13 @@
+codex/fix-syntax-errors-in-components-ei8dp2
+import React, { useContext } from 'react';
+
 import React, { useContext, useEffect } from 'react';
+main
 import { AppContext } from '../context/AppContext';
-import { fetchDialogs } from '../services/api';
+
+codex/fix-syntax-errors-in-components-ei8dp2
+export default function SettingsForm(){
+  const { cfg, setField, save, dialogs } = useContext(AppContext);
 
 export default function SettingsForm() {
   const { cfg, setField, save, dialogs, setDialogs } = useContext(AppContext);
@@ -16,6 +23,7 @@ export default function SettingsForm() {
     };
   }, [setDialogs]);
 
+main
   return (
     <>
       <div style={{display:'grid',gap:12,gridTemplateColumns:'1.3fr 1fr 1fr 1fr'}}>
@@ -29,8 +37,13 @@ export default function SettingsForm() {
         <div><label style={{fontSize:12,color:'#555'}}>Max Tarih</label><input type="date" value={cfg.max_date||""} onChange={e=>setField('max_date',e.target.value)} style={{width:'100%',padding:8,border:'1px solid #d0d0d0',borderRadius:10}}/></div>
       </div>
       <div style={{marginTop:12}}>
+codex/fix-syntax-errors-in-components-ei8dp2
+        <label style={{fontSize:12,color:'#555'}}>Kanallar</label>
+        <div style={{maxHeight:180,overflowY:'auto',padding:8,border:'1px solid #d0d0d0',borderRadius:10}}>
+
         <label style={{fontSize:12,color:'#555',display:'block',marginBottom:4}}>Kanallar</label>
         <div style={{maxHeight:200,overflowY:'auto',border:'1px solid #d0d0d0',borderRadius:10,padding:8,display:'flex',flexDirection:'column',gap:4}}>
+main
           {dialogs.map(d => {
             const idStr = String(d.id);
             const selected = (cfg.chats || []).map(String).includes(idStr);
@@ -49,9 +62,12 @@ export default function SettingsForm() {
               </label>
             );
           })}
+codex/fix-syntax-errors-in-components-ei8dp2
+
           {dialogs.length === 0 && (
             <div style={{fontSize:12,color:'#999'}}>Kanal bulunamadı</div>
           )}
+main
         </div>
       </div>
       <div style={{display:'flex',gap:16,alignItems:'center',marginTop:12,flexWrap:'wrap'}}>
