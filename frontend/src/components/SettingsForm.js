@@ -1,6 +1,9 @@
 import React, { useContext, useEffect } from 'react';
 import { AppContext } from '../context/AppContext';
 import { fetchDialogs } from '../services/api';
+import Panel from './Panel';
+import MinimalButton from './MinimalButton';
+import saveIcon from '../assets/save.svg';
 
 export default function SettingsForm() {
   const { cfg, setField, save, dialogs, setDialogs } = useContext(AppContext);
@@ -17,7 +20,7 @@ export default function SettingsForm() {
   }, [setDialogs]);
 
   return (
-    <>
+    <Panel>
       <div style={{display:'grid',gap:12,gridTemplateColumns:'1.3fr 1fr 1fr 1fr'}}>
         <div><label style={{fontSize:12,color:'#555'}}>API ID</label><input value={cfg.api_id} onChange={e=>setField('api_id',e.target.value)} style={{width:'100%',padding:8,border:'1px solid #d0d0d0',borderRadius:10}}/></div>
         <div><label style={{fontSize:12,color:'#555'}}>API HASH</label><input value={cfg.api_hash} onChange={e=>setField('api_hash',e.target.value)} style={{width:'100%',padding:8,border:'1px solid #d0d0d0',borderRadius:10}}/></div>
@@ -65,8 +68,8 @@ export default function SettingsForm() {
           <input type="checkbox" checked={!!cfg.dry_run} onChange={e=>setField('dry_run',e.target.checked)}/>
           <span>Dry-run</span>
         </label>
-        <div style={{marginLeft:'auto'}}><button onClick={save}>Kaydet</button></div>
+        <div style={{marginLeft:'auto'}}><MinimalButton icon={saveIcon} onClick={save}>Kaydet</MinimalButton></div>
       </div>
-    </>
+    </Panel>
   );
 }
