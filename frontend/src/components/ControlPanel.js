@@ -4,16 +4,22 @@ import StatusPanel from './StatusPanel';
 import LogViewer from './LogViewer';
 
 export default function ControlPanel(){
+ codex/gelistir-bot-arayuzunu-basit-hale-getir
+  const [cfg,setCfg]=useState({api_id:"",api_hash:"",session:"tg_media",out:"C:/TelegramArchive",types:["photos"],include:[],exclude:[],chats:[],min_date:"",max_date:"",throttle:0.2,concurrency:3,dry_run:false});
+
  codex/add-filters-to-download_worker-function
   const [cfg,setCfg]=useState({api_id:"",api_hash:"",session:"tg_media",out:"C:/TelegramArchive",types:["photos"],include:[],exclude:[],min_date:"",max_date:"",throttle:0.2,concurrency:3,dry_run:false,channels:[]});
+ main
   const [running,setRunning]=useState(false);
   const [log,setLog]=useState([]);
   const [error,setError]=useState("");
   const [progress,setProgress]=useState(null);
+  const [dialogs,setDialogs]=useState([]);
   const valid=useMemo(()=>cfg.api_id && cfg.api_hash && cfg.out,[cfg]);
 
   useEffect(()=>{getJSON("/api/config").then(r=>{ if(r.ok && r.data) setCfg(o=>({...o,...r.data})) });},[]);
   useEffect(()=>{ let alive=true; const tick=()=>getJSON("/api/status").then(r=>{ if(!alive)return; const s=r.data||{}; setRunning(!!s.running); setProgress(s.progress||null); if(Array.isArray(s.logTail)) setLog(p=>[...p,...s.logTail].slice(-400)); }).finally(()=>{ if(alive) setTimeout(tick, 1500);}); tick(); return()=>{alive=false} },[]);
+  useEffect(()=>{getJSON("/api/dialogs").then(r=>{ if(r.ok && Array.isArray(r.data.dialogs)) setDialogs(r.data.dialogs); });},[]);
 
   const setField=(k,v)=>setCfg(c=>({...c,[k]:v}));
   async function save(){ setError(""); const r=await postJSON("/api/config",cfg); if(!r.ok) setError("Kaydetme hatasi"); }
@@ -61,6 +67,18 @@ export default function ControlPanel(){
       {['photos','videos','documents'].map(t=> (<label key={t} style={{display:'inline-flex',gap:6,alignItems:'center'}}><input type="checkbox" checked={(cfg.types||[]).includes(t)} onChange={(e)=>{const s=new Set(cfg.types||[]); if(e.target.checked)s.add(t); else s.delete(t); setField('types',Array.from(s));}}/><span>{t}</span></label>))}
       <label style={{display:'inline-flex',gap:6,alignItems:'center'}}><input type="checkbox" checked={!!cfg.dry_run} onChange={(e)=>setField('dry_run',e.target.checked)}/><span>Dry-run</span></label>
       <div style={{marginLeft:'auto'}}><button onClick={save}>Kaydet</button></div>
+    </div>
+
+    <div style={{marginTop:16}}>
+      <div style={{fontSize:12,color:'#555',marginBottom:6}}>Gruplar</div>
+      <div style={{maxHeight:200,overflow:'auto',border:'1px solid #e7e7e7',borderRadius:10,padding:8,display:'flex',flexDirection:'column',gap:4}}>
+        {dialogs.length? dialogs.map(d=>(
+          <label key={d.id} style={{display:'flex',gap:6,alignItems:'center'}}>
+            <input type="checkbox" checked={(cfg.chats||[]).includes(d.id)} onChange={(e)=>{const s=new Set(cfg.chats||[]); if(e.target.checked)s.add(d.id); else s.delete(d.id); setField('chats',Array.from(s));}}/>
+            <span>{d.name}</span>
+          </label>
+        )) : <div style={{fontSize:12,color:'#999'}}>Sohbet bulunamadı</div>}
+      </div>
     </div>
 
     <div style={{marginTop:16}}>
