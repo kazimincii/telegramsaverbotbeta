@@ -1,0 +1,30 @@
+name: Token Push Test
+
+on:
+  workflow_dispatch:  # Elle çalıştırmak için
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repo'yu klonla
+        uses: actions/checkout@v3
+
+      - name: Yeni satır ekle (test.txt)
+        run: |
+          echo "Test edildi: $(date)" >> test.txt
+
+      - name: Git ayarları
+        run: |
+          git config user.name "codex-bot"
+          git config user.email "codex-bot@example.com"
+
+      - name: Remote adresini güncelle (Token ile)
+        run: |
+          git remote set-url origin https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}
+
+      - name: Commit ve Push
+        run: |
+          git add .
+          git commit -m "✅ Test: Token başarılı çalıştı" || echo "Değişiklik yok"
+          git push origin main
