@@ -1,14 +1,10 @@
-import React, {useEffect,useMemo,useState} from "react";
-
-const RAW_BASE = process.env.REACT_APP_API_BASE || "http://127.0.0.1:8000";
-const API_BASE = RAW_BASE.trim().replace(/\/+$/, ""); // boşluğu ve sonda kalan / işaretlerini at
-const buildUrl = (p) => `${API_BASE}${p.startsWith("/") ? p : `/${p}`}`;
-
-function headers(){ return {"Content-Type":"application/json"}; }
-async function getJSON(p){ const r=await fetch(API_BASE+p,{headers:headers()}); const t=await r.text(); try{return {ok:r.ok,data:t?JSON.parse(t):{}}}catch{return {ok:r.ok,data:{}}} }
-async function postJSON(p,b){ const r=await fetch(API_BASE+p,{method:"POST",headers:headers(),body:JSON.stringify(b||{})}); const t=await r.text(); try{return {ok:r.ok,data:t?JSON.parse(t):{}}}catch{return {ok:r.ok,data:{}}} }
+import React from 'react';
+import SettingsForm from './SettingsForm';
+import StatusPanel from './StatusPanel';
+import LogViewer from './LogViewer';
 
 export default function ControlPanel(){
+ codex/add-filters-to-download_worker-function
   const [cfg,setCfg]=useState({api_id:"",api_hash:"",session:"tg_media",out:"C:/TelegramArchive",types:["photos"],include:[],exclude:[],min_date:"",max_date:"",throttle:0.2,concurrency:3,dry_run:false,channels:[]});
   const [running,setRunning]=useState(false);
   const [log,setLog]=useState([]);
@@ -82,4 +78,14 @@ export default function ControlPanel(){
       <pre style={{fontFamily:'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',fontSize:12,background:'#fafafa',border:'1px solid #e7e7e7',borderRadius:10,padding:10,height:340,overflow:'auto',whiteSpace:'pre-wrap',marginTop:8}}>{(log&&log.length)?log.join("\n"):"Log bekleniyor..."}</pre>
     </div>
   </div>);
+
+  return (
+    <div style={{maxWidth:1100,margin:'24px auto',padding:'0 16px'}}>
+      <h1 style={{fontSize:22,marginBottom:12}}>Telegram Arşivleyici — Kontrol Paneli</h1>
+      <SettingsForm />
+      <StatusPanel />
+      <LogViewer />
+    </div>
+  );
+ main
 }
