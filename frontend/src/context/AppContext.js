@@ -25,25 +25,33 @@ export function AppProvider({ children }) {
   const [running, setRunning] = useState(false);
   const [log, setLog] = useState([]);
   const [progress, setProgress] = useState(null);
+  const [error, setError] = useState('');
 
   const setField = (k, v) => setCfg(c => ({ ...c, [k]: v }));
   const clearLog = () => setLog([]);
 
   async function save() {
-    await saveConfig(cfg);
+    setError('');
+    const r = await saveConfig(cfg);
+    if (!r.ok) setError(r.error?.message || 'Kaydetme hatası');
   }
 
   async function start(dry) {
-    await startRun(cfg, dry);
+    setError('');
+    const r = await startRun(cfg, dry);
+    if (!r.ok) setError(r.error?.message || 'Başlatma hatası');
   }
 
   async function stop() {
-    await stopRun();
+    setError('');
+    const r = await stopRun();
+    if (!r.ok) setError(r.error?.message || 'Durdurma hatası');
   }
 
   useEffect(() => {
     fetchConfig().then(r => {
       if (r.ok && r.data) setCfg(o => ({ ...o, ...r.data }));
+      else if (r.error) setError(r.error.message || 'Config alınamadı');
     });
   }, []);
 
@@ -53,11 +61,15 @@ export function AppProvider({ children }) {
       fetchStatus()
         .then(r => {
           if (!alive) return;
-          const s = r.data || {};
-          setRunning(!!s.running);
-          setProgress(s.progress || null);
-          if (Array.isArray(s.logTail))
-            setLog(p => [...p, ...s.logTail].slice(-400));
+          if (r.ok) {
+            const s = r.data || {};
+            setRunning(!!s.running);
+            setProgress(s.progress || null);
+            if (Array.isArray(s.logTail))
+              setLog(p => [...p, ...s.logTail].slice(-400));
+          } else if (r.error) {
+            setError(r.error.message || 'Durum alınamadı');
+          }
         })
         .finally(() => {
           if (alive) setTimeout(tick, 1500);
@@ -70,7 +82,7 @@ export function AppProvider({ children }) {
 
   return (
     <AppContext.Provider
-      value={{ cfg, setField, save, start, stop, running, progress, log, clearLog }}
+      value={{ cfg, setField, save, start, stop, running, progress, log, clearLog, error }}
     >
       {children}
     </AppContext.Provider>
