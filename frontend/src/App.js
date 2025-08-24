@@ -1,3 +1,11 @@
 import React from "react";
 import ControlPanel from "./components/ControlPanel";
-export default function App(){ return <ControlPanel/>; }
+import { AppProvider } from "./context/AppContext";
+
+export default function App(){
+  return (
+    <AppProvider>
+      <ControlPanel />
+    </AppProvider>
+  );
+}
