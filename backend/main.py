@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import List, Optional
 
-from telethon import TelegramClient
+from telethon import TelegramClient, types
 
 APP = FastAPI()
 APP.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -82,7 +82,23 @@ def log(msg:str):
     buf.append(msg)
     del buf[:-500]
 
-async def download_worker(cfg:Config):
+async def download_file(client: TelegramClient, msg, target_dir: Path, part_size_kb: int = 512):
+    """Download ``msg`` media to ``target_dir`` with resume support."""
+    fname = getattr(getattr(msg, "file", None), "name", f"{msg.id}")
+    dest = target_dir / fname
+    part = dest.with_suffix(dest.suffix + ".part")
+    offset = part.stat().st_size if part.exists() else 0
+    mode = "ab" if offset else "wb"
+    try:
+        with open(part, mode) as f:
+            await client.download_file(msg.media, f, offset=offset, part_size_kb=part_size_kb)
+    except Exception:
+        # keep partial file for later resume
+        raise
+    part.rename(dest)
+    return dest
+
+async def download_worker(cfg: Config, channels: Optional[List[str]] = None, media_types: Optional[List[str]] = None):
     log("[*] Worker basladi.")
     client = TelegramClient(cfg.session, int(cfg.api_id or 0), cfg.api_hash or "")
     await client.connect()
@@ -100,6 +116,15 @@ async def download_worker(cfg:Config):
 
     include_re = re.compile("|".join(cfg.include), re.I) if cfg.include else None
     exclude_re = re.compile("|".join(cfg.exclude), re.I) if cfg.exclude else None
+
+    channel_filter = set(channels or [])
+    media_types = media_types or cfg.types
+    filter_map = {
+        "photos": (types.InputMessagesFilterPhotos, "photos"),
+        "videos": (types.InputMessagesFilterVideo, "videos"),
+        "documents": (types.InputMessagesFilterDocument, "documents"),
+    }
+    filters = [(filter_map[t][0](), filter_map[t][1]) for t in media_types if t in filter_map] or [(None, None)]
 
     sem = asyncio.Semaphore(cfg.concurrency)
     progress_lock = asyncio.Lock()
@@ -119,7 +144,7 @@ async def download_worker(cfg:Config):
 
             for attempt in range(3):
                 try:
-                    await client.download_media(msg, file=str(target_dir))
+                    await download_file(client, msg, target_dir)
                     async with progress_lock:
                         total += 1
                         STATE["progress"] = {"chat": name, "downloaded": total, "skipped": 0}
@@ -136,6 +161,10 @@ async def download_worker(cfg:Config):
         if STATE["stop"].is_set():
             break
         name = dialog.name or str(dialog.id)
+        username = getattr(dialog, "entity", None)
+        username = getattr(username, "username", None)
+        if channel_filter and name not in channel_filter and str(dialog.id) not in channel_filter and username not in channel_filter:
+            continue
         if include_re and not include_re.search(name):
             continue
         if exclude_re and exclude_re.search(name):
@@ -146,30 +175,30 @@ async def download_worker(cfg:Config):
 
         log(f"[*] Sohbet: {name}")
         tasks = []
-        async for msg in client.iter_messages(dialog, reverse=True):
-            if STATE["stop"].is_set():
-                break
-            if min_d and (msg.date.replace(tzinfo=None) < min_d):
-                continue
-            if max_d and (msg.date.replace(tzinfo=None) > max_d):
-                continue
+        for flt, fkind in filters:
+            async for msg in client.iter_messages(dialog, reverse=True, filter=flt):
+                if STATE["stop"].is_set():
+                    break
+                if min_d and (msg.date.replace(tzinfo=None) < min_d):
+                    continue
+                if max_d and (msg.date.replace(tzinfo=None) > max_d):
+                    continue
 
-            # types filter (sadece photos/videos/documents)
-            kind = None
-            if msg.photo and "photos" in cfg.types:
-                kind = "photos"
-            elif msg.video and "videos" in cfg.types:
-                kind = "videos"
-            elif getattr(msg, "document", None) and "documents" in cfg.types:
-                kind = "documents"
+                kind = fkind
+                if not kind:
+                    if msg.photo and "photos" in media_types:
+                        kind = "photos"
+                    elif msg.video and "videos" in media_types:
+                        kind = "videos"
+                    elif getattr(msg, "document", None) and "documents" in media_types:
+                        kind = "documents"
+                    else:
+                        continue
 
-            if not kind:
-                continue
+                target_dir = chat_dir / kind / str(msg.date.year)
+                target_dir.mkdir(parents=True, exist_ok=True)
 
-            target_dir = chat_dir / kind / str(msg.date.year)
-            target_dir.mkdir(parents=True, exist_ok=True)
-
-            tasks.append(asyncio.create_task(handle_message(msg, name, kind, target_dir)))
+                tasks.append(asyncio.create_task(handle_message(msg, name, kind, target_dir)))
 
         if tasks:
             await asyncio.gather(*tasks)
@@ -179,14 +208,14 @@ async def download_worker(cfg:Config):
     STATE["running"] = False
 
 
-async def run_worker(cfg: Config):
+async def run_worker(cfg: Config, channels=None, media_types=None):
     STATE["stop"].clear()
     STATE["running"] = True
-    await download_worker(cfg)
+    await download_worker(cfg, channels, media_types)
 
 
-def launch_worker(cfg: Config):
-    task = asyncio.create_task(run_worker(cfg))
+def launch_worker(cfg: Config, channels=None, media_types=None):
+    task = asyncio.create_task(run_worker(cfg, channels, media_types))
     STATE["worker"] = task
 
 @APP.get("/api/config")
@@ -201,13 +230,15 @@ def set_config(payload:dict):
     return {"ok": True}
 
 @APP.post("/api/start")
-async def start(background_tasks: BackgroundTasks):
+async def start(background_tasks: BackgroundTasks, payload: Optional[dict] = None):
     if STATE["running"]:
         return {"ok": True, "already": True}
     cfg = load_cfg()
     if not cfg.api_id or not cfg.api_hash:
         raise HTTPException(status_code=400, detail="API ID/HASH zorunlu")
-    background_tasks.add_task(launch_worker, cfg)
+    channels = (payload or {}).get("channels")
+    media_types = (payload or {}).get("media_types")
+    background_tasks.add_task(launch_worker, cfg, channels, media_types)
     return {"ok": True}
 
 

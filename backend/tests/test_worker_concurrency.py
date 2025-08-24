@@ -30,23 +30,24 @@ class FakeClient:
     async def iter_dialogs(self):
         yield SimpleNamespace(name="chat", id=1)
 
-    async def iter_messages(self, dialog, reverse=True):
+    async def iter_messages(self, dialog, reverse=True, filter=None):
         for i in range(self.n):
             yield SimpleNamespace(id=i, date=dt.datetime.now(), photo=True)
-
-    async def download_media(self, msg, file):
-        self.calls[msg.id] += 1
-        self.active += 1
-        self.max_active = max(self.max_active, self.active)
-        await asyncio.sleep(0.05)
-        self.active -= 1
-        if self.calls[msg.id] == 1:
-            raise Exception("fail")
 
 
 def test_worker_limits_concurrency_and_retries(monkeypatch, tmp_path):
     fake = FakeClient(5)
     monkeypatch.setattr(main, "TelegramClient", lambda *a, **k: fake)
+    async def fake_download_file(client, msg, target_dir):
+        fake.calls[msg.id] += 1
+        fake.active += 1
+        fake.max_active = max(fake.max_active, fake.active)
+        await asyncio.sleep(0.05)
+        fake.active -= 1
+        if fake.calls[msg.id] == 1:
+            raise Exception("fail")
+
+    monkeypatch.setattr(main, "download_file", fake_download_file)
     cfg = main.Config(api_id="1", api_hash="h", concurrency=2, types=["photos"], out=str(tmp_path))
     asyncio.run(main.download_worker(cfg))
     assert fake.max_active <= cfg.concurrency
