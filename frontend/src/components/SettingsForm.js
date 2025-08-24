@@ -17,7 +17,7 @@ export default function SettingsForm(){
       </div>
       <div style={{marginTop:12}}>
         <label style={{fontSize:12,color:'#555'}}>Kanallar (virgülle ayır)</label>
-        <input value={(cfg.channels||[]).join(',')} onChange={e=>setField('channels',e.target.value.split(',').map(s=>s.trim()).filter(Boolean))} style={{width:'100%',padding:8,border:'1px solid #d0d0d0',borderRadius:10}}/>
+        <input value={(cfg.chats||[]).join(',')} onChange={e=>setField('chats',e.target.value.split(',').map(s=>s.trim()).filter(Boolean))} style={{width:'100%',padding:8,border:'1px solid #d0d0d0',borderRadius:10}}/>
       </div>
       <div style={{display:'flex',gap:16,alignItems:'center',marginTop:12,flexWrap:'wrap'}}>
         {['photos','videos','documents'].map(t=> (

@@ -10,7 +10,7 @@ const defaultCfg = {
   session: "tg_media",
   out: "C:/TelegramArchive",
   types: ["photos"],
-  channels: [],
+  chats: [],
   include: [],
   exclude: [],
   min_date: "",
@@ -38,7 +38,7 @@ export function AppProvider({ children }) {
 
   async function start(dry) {
     setError('');
-    const r = await startRun(cfg, dry);
+    const r = await startRun(cfg, dry, cfg.chats);
     if (!r.ok) setError(r.error?.message || 'Başlatma hatası');
   }
 
