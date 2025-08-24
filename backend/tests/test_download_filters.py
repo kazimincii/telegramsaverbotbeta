@@ -1,5 +1,10 @@
 import asyncio
 import datetime as dt
+codex/fix-all-issues-g5pt6z
+from types import SimpleNamespace
+from pathlib import Path
+
+main
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -8,9 +13,12 @@ import pytest
 
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 from backend import main
+codex/fix-all-issues-g5pt6z
+
 from backend.main import Config
 from telethon import types
 from telethon import types as tl_types
+main
 
 
 class FilterClient:
@@ -33,7 +41,12 @@ class FilterClient:
     async def iter_messages(self, dialog, reverse=True, filter=None):
         self.iter_calls.append((dialog.name, type(filter).__name__ if filter else None))
         now = dt.datetime.now()
+codex/fix-all-issues-g5pt6z
+        from telethon import types
+        if dialog.name == "chan1" and isinstance(filter, types.InputMessagesFilterPhotos):
+
         if dialog.name == "chan1" and isinstance(filter, types.InputMessagesFilterPhotoVideo):
+main
             yield SimpleNamespace(id=10, date=now, photo=True, file=SimpleNamespace(name="p.jpg"), media="loc")
             yield SimpleNamespace(id=11, date=now, video=True, file=SimpleNamespace(name="v.mp4"), media="loc")
 
@@ -78,6 +91,8 @@ def test_download_resume(tmp_path):
     asyncio.run(main.download_file(client, msg, tmp_path))
     full = tmp_path / "big.bin"
     assert full.exists() and full.stat().st_size == 2048
+codex/fix-all-issues-g5pt6z
+
 
 
 class DummyClient:
@@ -187,3 +202,4 @@ def test_large_file_resume(monkeypatch, tmp_path):
     assert client.download_file_calls == [5]
     assert (part_dir / "big.bin").exists()
 
+main
