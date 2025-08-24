@@ -10,6 +10,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from telethon import TelegramClient, types as tl_types
+try:
+    from . import contacts
+except ImportError:
+    import contacts
 
 APP = FastAPI()
 APP.add_middleware(
@@ -131,6 +135,17 @@ async def list_dialogs():
         items.append({"id": getattr(d, "id", None), "name": name})
     await client.disconnect()
     return items
+
+
+@APP.get("/api/contacts")
+async def list_contacts():
+    """Return contacts of users from joined chats."""
+    cfg = load_cfg()
+    try:
+        data = await contacts.list_contacts(cfg.dict(), {})
+    except PermissionError as exc:
+        raise HTTPException(status_code=401, detail=str(exc))
+    return data.get("items", [])
 
 
 def make_media_filter(types_list: Optional[List[str]]):

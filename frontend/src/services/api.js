@@ -52,4 +52,8 @@ export async function fetchDialogs(){
   return getJSON('/api/dialogs');
 }
 
+export async function fetchContacts(){
+  return getJSON('/api/contacts');
+}
+
 export { API_BASE };

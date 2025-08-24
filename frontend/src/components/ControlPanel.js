@@ -2,13 +2,21 @@ import React, { useContext, useEffect, useState } from 'react';
 import SettingsForm from './SettingsForm';
 import StatusPanel from './StatusPanel';
 import LogViewer from './LogViewer';
+codex/add-kisiler-sekmesi
+import ContactsPanel from './ContactsPanel';
+
 import FaqSection from './FaqSection';
+main
 import { AppContext } from '../context/AppContext';
 import { fetchDialogs } from '../services/api';
 
 export default function ControlPanel(){
   const { error, setDialogs } = useContext(AppContext);
+codex/add-kisiler-sekmesi
+  const [tab, setTab] = useState('settings');
+
   const [tab, setTab] = useState('panel');
+main
 
   useEffect(() => {
     fetchDialogs().then(r => {
@@ -29,6 +37,18 @@ export default function ControlPanel(){
           {error}
         </div>
       )}
+codex/add-kisiler-sekmesi
+      <div style={{display:'flex',gap:8,marginBottom:12}}>
+        <button onClick={()=>setTab('settings')}>Ayarlar</button>
+        <button onClick={()=>setTab('status')}>Durum</button>
+        <button onClick={()=>setTab('log')}>Loglar</button>
+        <button onClick={()=>setTab('contacts')}>Kişiler</button>
+      </div>
+      {tab === 'settings' && <SettingsForm />}
+      {tab === 'status' && <StatusPanel />}
+      {tab === 'log' && <LogViewer />}
+      {tab === 'contacts' && <ContactsPanel />}
+
       {tab === 'panel' ? (
         <>
           <SettingsForm />
@@ -38,6 +58,7 @@ export default function ControlPanel(){
       ) : (
         <FaqSection />
       )}
+main
     </div>
   );
 }
