@@ -167,6 +167,11 @@ def start():
 @APP.post("/api/stop")
 def stop():
     STATE["stop"].set()
+    t = STATE.get("worker")
+    if t and t.is_alive():
+        t.join(timeout=5)
+        log("[*] Worker durdu.")
+    STATE["worker"] = None
     return {"ok": True}
 
 @APP.get("/api/status")
