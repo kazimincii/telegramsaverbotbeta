@@ -92,13 +92,17 @@ def load_cfg() -> Config:
 
 
 def save_cfg(cfg: Config) -> None:
-    CFG_FILE.write_text(cfg.json(indent=2), encoding="utf-8")
+    if hasattr(cfg, "model_dump_json"):
+        CFG_FILE.write_text(cfg.model_dump_json(indent=2), encoding="utf-8")
+    else:  # pragma: no cover - fallback for Pydantic v1
+        CFG_FILE.write_text(cfg.json(indent=2), encoding="utf-8")
     STATE["config"] = cfg
 
 
 @APP.get("/api/config")
 def get_config():
-    return load_cfg().dict()
+    cfg = load_cfg()
+    return cfg.model_dump() if hasattr(cfg, "model_dump") else cfg.dict()  # pragma: no cover
 
 
 @APP.post("/api/config")
