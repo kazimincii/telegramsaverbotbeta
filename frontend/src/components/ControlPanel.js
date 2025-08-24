@@ -1,7 +1,19 @@
+ codex/update-getjson-and-postjson-to-buildurl
+import React, {useEffect,useMemo,useState} from "react";
+
+const RAW_BASE = process.env.REACT_APP_API_BASE || "http://127.0.0.1:8000";
+const API_BASE = RAW_BASE.trim().replace(/\/+$/, ""); // boşluğu ve sonda kalan / işaretlerini at
+const buildUrl = (p) => `${API_BASE}${p.startsWith("/") ? p : `/${p}`}`;
+
+function headers(){ return {"Content-Type":"application/json"}; }
+async function getJSON(p){ const r=await fetch(buildUrl(p),{headers:headers()}); const t=await r.text(); try{return {ok:r.ok,data:t?JSON.parse(t):{}}}catch{return {ok:r.ok,data:{}}} }
+async function postJSON(p,b){ const r=await fetch(buildUrl(p),{method:"POST",headers:headers(),body:JSON.stringify(b||{})}); const t=await r.text(); try{return {ok:r.ok,data:t?JSON.parse(t):{}}}catch{return {ok:r.ok,data:{}}} }
+
 import React from 'react';
 import SettingsForm from './SettingsForm';
 import StatusPanel from './StatusPanel';
 import LogViewer from './LogViewer';
+ main
 
 export default function ControlPanel(){
  codex/gelistir-bot-arayuzunu-basit-hale-getir
