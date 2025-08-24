@@ -6,15 +6,15 @@ import { AppContext } from '../context/AppContext';
 import { fetchDialogs } from '../services/api';
 
 export default function ControlPanel(){
-  const { error, setField } = useContext(AppContext);
+  const { error, setDialogs } = useContext(AppContext);
 
   useEffect(() => {
     fetchDialogs().then(r => {
       if (r.ok && Array.isArray(r.data)) {
-        setField('chats', r.data.map(d => d.name));
+        setDialogs(r.data);
       }
     });
-  }, [setField]);
+  }, [setDialogs]);
   return (
     <div style={{maxWidth:1100,margin:'24px auto',padding:'0 16px'}}>
       <h1 style={{fontSize:22,margin:0,marginBottom:12}}>Telegram Arşivleyici — Kontrol Paneli</h1>
