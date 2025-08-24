@@ -28,6 +28,7 @@ export function AppProvider({ children }) {
   const [log, setLog] = useState([]);
   const [progress, setProgress] = useState(defaultProgress);
   const [error, setError] = useState('');
+  const [dialogs, setDialogs] = useState([]);
 
   const setField = (k, v) => setCfg(c => ({ ...c, [k]: v }));
   const clearLog = () => setLog([]);
@@ -84,7 +85,24 @@ export function AppProvider({ children }) {
 
   return (
     <AppContext.Provider
-      value={{ cfg, setField, save, start, stop, running, progress, log, clearLog, error }}
+codex/add-group-selection-list-feature-047pqy
+      value={{
+        cfg,
+        setField,
+        save,
+        start,
+        stop,
+        running,
+        progress,
+        log,
+        clearLog,
+        error,
+        dialogs,
+        setDialogs,
+      }}
+
+      value={{ cfg, setField, save, start, stop, running, progress, log, clearLog, error, dialogs, setDialogs }}
+main
     >
       {children}
     </AppContext.Provider>
