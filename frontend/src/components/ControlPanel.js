@@ -6,11 +6,15 @@ import { AppContext } from '../context/AppContext';
 import { fetchDialogs } from '../services/api';
 
 export default function ControlPanel(){
+codex/add-group-selection-list-feature-047pqy
+  const { error, setDialogs } = useContext(AppContext);
+
 codex/add-group-selection-list-feature-z3rqdr
   const { error, setDialogs } = useContext(AppContext);
 
   const { error } = useContext(AppContext);
   const [dialogs, setDialogs] = useState([]);
+main
 main
 
   useEffect(() => {
@@ -19,10 +23,14 @@ main
         setDialogs(r.data);
       }
     });
+codex/add-group-selection-list-feature-047pqy
+  }, [setDialogs]);
+
 codex/add-group-selection-list-feature-z3rqdr
   }, [setDialogs]);
 
   }, []);
+main
 main
   return (
     <div style={{maxWidth:1100,margin:'24px auto',padding:'0 16px'}}>

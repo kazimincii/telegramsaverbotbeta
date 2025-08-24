@@ -3,10 +3,14 @@ import { AppContext } from '../context/AppContext';
 
 codex/add-group-selection-list-feature-z3rqdr
 export default function SettingsForm(){
+codex/add-group-selection-list-feature-047pqy
+  const { cfg, dialogs, setField, save } = useContext(AppContext);
+
   const { cfg, setField, save, dialogs } = useContext(AppContext);
 
 export default function SettingsForm({ dialogs = [] }){
   const { cfg, setField, save } = useContext(AppContext);
+main
 main
   return (
     <>
@@ -21,6 +25,19 @@ main
         <div><label style={{fontSize:12,color:'#555'}}>Max Tarih</label><input type="date" value={cfg.max_date||""} onChange={e=>setField('max_date',e.target.value)} style={{width:'100%',padding:8,border:'1px solid #d0d0d0',borderRadius:10}}/></div>
       </div>
       <div style={{marginTop:12}}>
+codex/add-group-selection-list-feature-047pqy
+        <label style={{fontSize:12,color:'#555',display:'block',marginBottom:4}}>Kanallar</label>
+        <div style={{maxHeight:200,overflowY:'auto',border:'1px solid #d0d0d0',borderRadius:10,padding:8}}>
+          {dialogs.map(d => (
+            <label key={d.id} style={{display:'flex',gap:6,alignItems:'center',marginBottom:4}}>
+              <input
+                type="checkbox"
+                checked={(cfg.chats||[]).includes(d.name)}
+                onChange={(e)=>{
+                  const s=new Set(cfg.chats||[]);
+                  if(e.target.checked) s.add(d.name); else s.delete(d.name);
+                  setField('chats',Array.from(s));
+
 codex/add-group-selection-list-feature-z3rqdr
         <label style={{fontSize:12,color:'#555'}}>Kanallar</label>
         <div style={{maxHeight:180,overflowY:'auto',padding:8,border:'1px solid #d0d0d0',borderRadius:10}}>
@@ -59,11 +76,18 @@ codex/add-group-selection-list-feature-z3rqdr
                   const s = new Set(cfg.chats||[]);
                   if (e.target.checked) s.add(d.name); else s.delete(d.name);
                   setField('chats', Array.from(s));
+main
                 }}
               />
               <span>{d.name}</span>
             </label>
           ))}
+codex/add-group-selection-list-feature-047pqy
+          {dialogs.length===0 && (
+            <div style={{fontSize:12,color:'#999'}}>Kanal bulunamadı</div>
+          )}
+
+main
 main
         </div>
       </div>

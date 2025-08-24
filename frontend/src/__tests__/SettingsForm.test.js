@@ -5,7 +5,12 @@ import SettingsForm from '../components/SettingsForm';
 import { AppContext } from '../context/AppContext';
 
 test('renders settings inputs', () => {
-  const value = { cfg: { api_id:'', api_hash:'', session:'', out:'', types:[], dry_run:false }, setField: ()=>{}, save: ()=>{} };
+  const value = {
+    cfg: { api_id:'', api_hash:'', session:'', out:'', types:[], dry_run:false },
+    setField: ()=>{},
+    save: ()=>{},
+    dialogs: [],
+  };
   render(
     <AppContext.Provider value={value}>
       <SettingsForm dialogs={[]} />
