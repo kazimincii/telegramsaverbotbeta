@@ -2,25 +2,69 @@ import asyncio
 import datetime as dt
 import json
 import re
+codex/fix-all-issues-g5pt6z
+
+import time
+main
 from pathlib import Path
 from threading import Event
 from typing import List, Optional
 
+codex/fix-all-issues-g5pt6z
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
+
+from fastapi import FastAPI, Request
+main
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from telethon import TelegramClient, types
 
+codex/fix-all-issues-g5pt6z
+
+
+main
 APP = FastAPI()
 APP.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
+codex/fix-all-issues-g5pt6z
     allow_headers=["*"]
 )
 
 
+
+    allow_headers=["*"],
+)
+
+
+@APP.middleware("http")
+async def timing_middleware(request: Request, call_next):
+    start = time.perf_counter()
+    try:
+        response = await call_next(request)
+    except Exception:
+        duration = time.perf_counter() - start
+        log(f"{request.method} {request.url.path} failed in {duration:.4f}s")
+        raise
+    duration = time.perf_counter() - start
+    log(f"{request.method} {request.url.path} completed in {duration:.4f}s")
+    response.headers["X-Process-Time"] = f"{duration:.4f}"
+    return response
+
+
+@APP.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    log(f"[error] {exc}")
+    return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
+
+
+ROOT = Path(__file__).resolve().parent
+CFG_FILE = ROOT / "config.json"
+
+
+main
 class Config(BaseModel):
     api_id: str
     api_hash: str
@@ -38,9 +82,12 @@ class Config(BaseModel):
     channels: List[int] = []
 
 
+codex/fix-all-issues-g5pt6z
 ROOT = Path(__file__).resolve().parent
 CFG_FILE = ROOT / "config.json"
 
+
+main
 STATE = {
     "running": False,
     "log": [],
@@ -51,6 +98,7 @@ STATE = {
 }
 
 
+codex/fix-all-issues-g5pt6z
 def log(msg: str) -> None:
     print(msg, flush=True)
     buf = STATE["log"]
@@ -58,6 +106,8 @@ def log(msg: str) -> None:
     del buf[:-500]
 
 
+
+main
 def load_cfg() -> Config:
     if CFG_FILE.exists():
         try:
@@ -71,6 +121,7 @@ def load_cfg() -> Config:
     return cfg
 
 
+codex/fix-all-issues-g5pt6z
 def save_cfg(cfg: Config) -> None:
     CFG_FILE.write_text(cfg.json(indent=2), encoding="utf-8")
     STATE["config"] = cfg
@@ -127,6 +178,65 @@ def _make_filters(media_types: List[str]):
 
 
 async def download_worker(cfg: Config, channels: Optional[List[str]] = None, media_types: Optional[List[str]] = None):
+
+def save_cfg(cfg: Config):
+    CFG_FILE.write_text(cfg.json(indent=2), encoding="utf-8")
+    STATE["config"] = cfg
+
+
+def log(msg: str):
+    print(msg, flush=True)
+    buf = STATE["log"]
+    buf.append(msg)
+    del buf[:-500]
+
+
+def make_media_filter(types_list: Optional[List[str]]):
+    tset = set(types_list or [])
+    if tset == {"photos"}:
+        return types.InputMessagesFilterPhotos()
+    if tset == {"videos"}:
+        return types.InputMessagesFilterVideo()
+    if tset == {"documents"}:
+        return types.InputMessagesFilterDocument()
+    if tset == {"photos", "videos"}:
+        return types.InputMessagesFilterPhotoVideo()
+    return None
+
+
+async def download_file(client: TelegramClient, msg, target_dir: Path):
+    filename = getattr(getattr(msg, "file", None), "name", None)
+    if not filename and getattr(msg, "document", None):
+        for attr in getattr(msg.document, "attributes", []):
+            if getattr(attr, "file_name", None):
+                filename = attr.file_name
+                break
+    filename = filename or f"{msg.id}"
+    target_dir.mkdir(parents=True, exist_ok=True)
+    final = target_dir / filename
+    temp = final.with_suffix(final.suffix + ".part")
+    offset = temp.stat().st_size if temp.exists() else 0
+    media = (
+        getattr(msg, "document", None)
+        or getattr(msg, "photo", None)
+        or getattr(msg, "video", None)
+        or getattr(msg, "media", None)
+    )
+    with open(temp, "ab") as f:
+        await client.download_file(media, file=f, offset=offset)
+    temp.replace(final)
+    return final
+
+
+async def download_worker(
+    cfg: Config,
+    channels: Optional[List[str]] = None,
+    media_types: Optional[List[str]] = None,
+):
+    STATE["stop"].clear()
+    STATE["running"] = True
+    STATE["progress"] = {"chat": "", "downloaded": 0, "skipped": 0}
+main
     log("[*] Worker basladi.")
     client = TelegramClient(cfg.session, int(cfg.api_id or 0), cfg.api_hash or "")
     try:
@@ -144,8 +254,13 @@ async def download_worker(cfg: Config, channels: Optional[List[str]] = None, med
         exclude_re = re.compile("|".join(cfg.exclude), re.I) if cfg.exclude else None
 
         channel_filter = {str(c) for c in (channels or cfg.channels or [])}
+codex/fix-all-issues-g5pt6z
         allowed_types = media_types or cfg.types
         filters = _make_filters(allowed_types)
+
+        media_types = media_types or cfg.types
+        msg_filter = make_media_filter(media_types)
+main
 
         sem = asyncio.Semaphore(cfg.concurrency)
         progress_lock = asyncio.Lock()
@@ -154,12 +269,33 @@ async def download_worker(cfg: Config, channels: Optional[List[str]] = None, med
         async def handle_message(msg, name, kind, target_dir):
             nonlocal total
             async with sem:
+codex/fix-all-issues-g5pt6z
+
+                if cfg.dry_run:
+                    async with progress_lock:
+                        total += 1
+                        STATE["progress"] = {
+                            "chat": name,
+                            "downloaded": total,
+                            "skipped": 0,
+                        }
+                    await asyncio.sleep(cfg.throttle or 0)
+                    return
+main
                 for attempt in range(3):
                     try:
                         await download_file(client, msg, target_dir)
                         async with progress_lock:
                             total += 1
+codex/fix-all-issues-g5pt6z
                             STATE["progress"] = {"chat": name, "downloaded": total, "skipped": 0}
+
+                            STATE["progress"] = {
+                                "chat": name,
+                                "downloaded": total,
+                                "skipped": 0,
+                            }
+main
                             if total % 10 == 0:
                                 log(f"[ok] {name} / {kind}")
                         await asyncio.sleep(cfg.throttle or 0)
@@ -173,8 +309,18 @@ async def download_worker(cfg: Config, channels: Optional[List[str]] = None, med
             if STATE["stop"].is_set():
                 break
             name = dialog.name or str(dialog.id)
+codex/fix-all-issues-g5pt6z
             username = getattr(getattr(dialog, "entity", None), "username", None)
             if channel_filter and name not in channel_filter and str(dialog.id) not in channel_filter and username not in channel_filter:
+
+            username = getattr(getattr(dialog, "entity", None), "username", None) or ""
+            if (
+                channel_filter
+                and str(dialog.id) not in channel_filter
+                and name not in channel_filter
+                and username not in channel_filter
+            ):
+main
                 continue
             if include_re and not include_re.search(name):
                 continue
@@ -185,6 +331,7 @@ async def download_worker(cfg: Config, channels: Optional[List[str]] = None, med
             chat_dir.mkdir(parents=True, exist_ok=True)
 
             tasks = []
+codex/fix-all-issues-g5pt6z
             for flt, fkind in filters:
                 async for msg in client.iter_messages(dialog, reverse=True, filter=flt):
                     if STATE["stop"].is_set():
@@ -212,16 +359,58 @@ async def download_worker(cfg: Config, channels: Optional[List[str]] = None, med
             if tasks:
                 await asyncio.gather(*tasks)
 
+            async for msg in client.iter_messages(dialog, reverse=True, filter=msg_filter):
+                if STATE["stop"].is_set():
+                    break
+                if min_d and (msg.date.replace(tzinfo=None) < min_d):
+                    continue
+                if max_d and (msg.date.replace(tzinfo=None) > max_d):
+                    continue
+
+                kind = None
+                if getattr(msg, "photo", None) and "photos" in media_types:
+                    kind = "photos"
+                elif getattr(msg, "video", None) and "videos" in media_types:
+                    kind = "videos"
+                elif getattr(msg, "document", None) and "documents" in media_types:
+                    kind = "documents"
+                if not kind:
+                    continue
+
+                target_dir = chat_dir / kind / str(msg.date.year)
+                target_dir.mkdir(parents=True, exist_ok=True)
+                tasks.append(asyncio.create_task(handle_message(msg, name, kind, target_dir)))
+
+            if tasks:
+                await asyncio.gather(*tasks)
+
         log("[*] Worker bitti.")
     finally:
         await client.disconnect()
         STATE["running"] = False
 
+
+def run_worker(cfg: Config, channels: Optional[List[str]] = None, media_types: Optional[List[str]] = None):
+    STATE["stop"].clear()
+    STATE["running"] = True
+    asyncio.run(download_worker(cfg, channels=channels, media_types=media_types))
+main
+
+        log("[*] Worker bitti.")
+    finally:
+        await client.disconnect()
+        STATE["running"] = False
+
+codex/fix-all-issues-g5pt6z
 def run_worker_sync(cfg: Config, channels: Optional[List[str]] = None, media_types: Optional[List[str]] = None):
+
+async def run_worker_async(cfg: Config, channels=None, media_types=None):
+main
     STATE["stop"].clear()
     STATE["running"] = True
     asyncio.run(download_worker(cfg, channels, media_types))
 
+codex/fix-all-issues-g5pt6z
 
 @APP.post("/api/start")
 def start(background_tasks: BackgroundTasks, payload: Optional[dict] = None):
@@ -250,3 +439,14 @@ async def stop(background_tasks: BackgroundTasks):
 def status():
     tail = STATE["log"][-50:]
     return {"running": STATE["running"], "progress": STATE.get("progress"), "logTail": tail}
+
+def launch_worker(cfg: Config, channels=None, media_types=None):
+    task = asyncio.create_task(run_worker_async(cfg, channels, media_types))
+    STATE["worker"] = task
+
+
+@APP.get("/api/config")
+def get_config():
+    cfg = load_cfg()
+    return cfg.dict()
+main
