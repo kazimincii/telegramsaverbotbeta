@@ -2,3 +2,5 @@ __pycache__/
 *.py[cod]
 *.session
 *.log
+
+backend/config.json

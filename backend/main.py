@@ -42,7 +42,8 @@ class Config(BaseModel):
 STATE = {
     "running": False,
     "log": [],
-    "progress": None,
+    # Track current chat name, number of downloaded files and skipped messages
+    "progress": {"chat": "", "downloaded": 0, "skipped": 0},
     "stop": Event(),
     "worker": None,
     "config": None,
@@ -175,14 +176,21 @@ async def download_worker(
     media_types = media_types or cfg.types
     out_base = Path(cfg.out or "C:/TelegramArchive")
     out_base.mkdir(parents=True, exist_ok=True)
-    STATE["progress"] = {"downloaded": 0}
+    # reset progress counters for a new run
+    STATE["progress"] = {"chat": "", "downloaded": 0, "skipped": 0}
     sem = asyncio.Semaphore(cfg.concurrency)
     chosen = set(str(x) for x in (chats or cfg.chats or []))
     flt = make_media_filter(media_types)
 
+codex/add-stop-condition-in-download_worker
     tasks = []
+    stop_event = STATE["stop"]
 
+
+main
     async for dialog in client.iter_dialogs():
+        if stop_event.is_set():
+            break
         name = (
             getattr(dialog, "name", None)
             or getattr(getattr(dialog, "entity", None), "username", None)
@@ -192,8 +200,13 @@ async def download_worker(
             name not in chosen and str(getattr(dialog, "id", "")) not in chosen
         ):
             continue
+        # record current chat being processed
+        STATE["progress"]["chat"] = name
         chat_dir = out_base / name
+        tasks = []
         async for msg in client.iter_messages(dialog, reverse=True, filter=flt):
+            if stop_event.is_set():
+                break
             kind = None
             if "photos" in media_types and getattr(msg, "photo", None):
                 kind = "photos"
@@ -202,6 +215,8 @@ async def download_worker(
             elif "documents" in media_types and getattr(msg, "document", None):
                 kind = "documents"
             else:
+                # ignored message does not match requested media types
+                STATE["progress"]["skipped"] += 1
                 continue
             target_dir = chat_dir / kind / str(msg.date.year)
 
@@ -216,11 +231,24 @@ async def download_worker(
                             if attempt == 2:
                                 break
                             await asyncio.sleep(cfg.throttle)
-
             tasks.append(asyncio.create_task(runner()))
+codex/add-stop-condition-in-download_worker
+        if stop_event.is_set():
+            break
 
     if tasks:
-        await asyncio.gather(*tasks)
+        if stop_event.is_set():
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+        else:
+
+            if len(tasks) >= cfg.concurrency:
+                await asyncio.gather(*tasks)
+                tasks.clear()
+        if tasks:
+main
+            await asyncio.gather(*tasks)
     await client.disconnect()
     log("[*] Worker bitti.")
 

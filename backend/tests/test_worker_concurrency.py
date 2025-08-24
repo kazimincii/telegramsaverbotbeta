@@ -53,3 +53,5 @@ def test_worker_limits_concurrency_and_retries(monkeypatch, tmp_path):
     assert fake.max_active <= cfg.concurrency
     assert all(c == 2 for c in fake.calls.values())
     assert main.STATE["progress"]["downloaded"] == 5
+    assert main.STATE["progress"]["skipped"] == 0
+    assert main.STATE["progress"]["chat"] == "chat"
