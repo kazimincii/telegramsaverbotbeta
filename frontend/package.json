@@ -11,6 +11,10 @@
     "start": "react-scripts start",
     "test": "react-scripts test"
   },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.1.5",
+    "@testing-library/react": "^14.1.2"
+  },
   "browserslist": {
     "production": [
       ">0.2%",
