@@ -28,33 +28,40 @@ export function AppProvider({ children }) {
   const [log, setLog] = useState([]);
   const [progress, setProgress] = useState(defaultProgress);
   const [error, setError] = useState('');
+  const [errors, setErrors] = useState([]);
   const [dialogs, setDialogs] = useState([]);
 
   const setField = (k, v) => setCfg(c => ({ ...c, [k]: v }));
   const clearLog = () => setLog([]);
+  const clearErrors = () => setErrors([]);
+
+  const recordError = (msg) => {
+    setError(msg);
+    if (msg) setErrors(prev => [...prev, msg]);
+  };
 
   async function save() {
-    setError('');
+    recordError('');
     const r = await saveConfig(cfg);
-    if (!r.ok) setError(r.error?.message || 'Kaydetme hatası');
+    if (!r.ok) recordError(r.error?.message || 'Kaydetme hatası');
   }
 
   async function start(dry) {
-    setError('');
+    recordError('');
     const r = await startRun(cfg, dry, cfg.chats);
-    if (!r.ok) setError(r.error?.message || 'Başlatma hatası');
+    if (!r.ok) recordError(r.error?.message || 'Başlatma hatası');
   }
 
   async function stop() {
-    setError('');
+    recordError('');
     const r = await stopRun();
-    if (!r.ok) setError(r.error?.message || 'Durdurma hatası');
+    if (!r.ok) recordError(r.error?.message || 'Durdurma hatası');
   }
 
   useEffect(() => {
     fetchConfig().then(r => {
       if (r.ok && r.data) setCfg(o => ({ ...o, ...r.data }));
-      else if (r.error) setError(r.error.message || 'Config alınamadı');
+      else if (r.error) recordError(r.error.message || 'Config alınamadı');
     });
   }, []);
 
@@ -70,7 +77,7 @@ export function AppProvider({ children }) {
             setProgress(s.progress || defaultProgress);
             if (Array.isArray(s.logTail)) setLog(p => [...p, ...s.logTail].slice(-400));
           } else if (r.error) {
-            setError(r.error.message || 'Durum alınamadı');
+            recordError(r.error.message || 'Durum alınamadı');
           }
         })
         .finally(() => {
@@ -95,6 +102,8 @@ export function AppProvider({ children }) {
         log,
         clearLog,
         error,
+        errors,
+        clearErrors,
         dialogs,
         setDialogs,
       }}
