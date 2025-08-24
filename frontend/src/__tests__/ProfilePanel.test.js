@@ -2,20 +2,20 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
-import SettingsForm from '../components/SettingsForm';
+import ProfilePanel from '../components/ProfilePanel';
 import { AppContext } from '../context/AppContext';
 
-test('renders settings inputs', () => {
+test('renders API fields', () => {
   const value = {
-    cfg: { session:'', out:'', types:[], dry_run:false },
+    cfg: { api_id:'', api_hash:'' },
     setField: () => {},
     save: () => {},
   };
   render(
     <AppContext.Provider value={value}>
-      <SettingsForm />
+      <ProfilePanel />
     </AppContext.Provider>
   );
-  expect(screen.getByLabelText(/Session/i)).toBeInTheDocument();
-  expect(screen.getByText(/Kaydet/)).toBeInTheDocument();
+  expect(screen.getByLabelText(/API ID/i)).toBeInTheDocument();
+  expect(screen.getByLabelText(/API HASH/i)).toBeInTheDocument();
 });
