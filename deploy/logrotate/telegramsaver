@@ -1,0 +1,8 @@
+%h/telegramsaverbotbeta/log/*.log {
+    weekly
+    rotate 4
+    copytruncate
+    compress
+    missingok
+    notifempty
+}

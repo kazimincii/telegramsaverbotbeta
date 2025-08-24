@@ -1,0 +1,34 @@
+name: Codex Auto Commit
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:  # Elle tetiklemek için
+
+jobs:
+  auto-commit:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Reposu klonla
+      uses: actions/checkout@v3
+
+    - name: Git ayarları
+      run: |
+        git config --global user.name "codex-bot"
+        git config --global user.email "codex-bot@example.com"
+
+    - name: Dummy düzenleme (örnek)
+      run: |
+        echo "🔄 Otomatik güncellendi: $(date)" >> codex_log.txt
+
+    - name: Reposu yazılabilir yap (Token ile)
+      run: |
+        git remote set-url origin https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}
+
+    - name: Commit ve Push
+      run: |
+        git add .
+        git commit -m "🤖 Codex düzenlemeleri işlendi" || echo "Hiçbir değişiklik yok"
+        git push origin main

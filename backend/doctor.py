@@ -35,7 +35,9 @@ if not VENV.exists():
     bad("Sanal ortam bulunamadi. Bir kez start_all.bat calistir.")
 else:
     ok("Sanal ortam var.")
-    pip = VENV / "Scripts" / "pip.exe"
+    bin_dir = "Scripts" if os.name == "nt" else "bin"
+    pip_name = "pip.exe" if os.name == "nt" else "pip"
+    pip = VENV / bin_dir / pip_name
     if pip.exists():
         print("\n[+] Paketler:")
         try:
