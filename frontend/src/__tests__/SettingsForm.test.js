@@ -1,47 +1,50 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
 jest.mock('../services/api', () => ({
   fetchDialogs: jest.fn(() => Promise.resolve({ ok: true, data: [] }))
 }));
 
+import { fetchDialogs } from '../services/api';
 import SettingsForm from '../components/SettingsForm';
 import { AppContext } from '../context/AppContext';
 
 test('renders settings inputs', () => {
   const value = {
-codex/add-group-selection-list-feature-08lv7i
     cfg: { api_id: '', api_hash: '', session: '', out: '', types: [], dry_run: false, chats: [] },
     setField: () => {},
-    save: () => {}
-
-    cfg: { api_id:'', api_hash:'', session:'', out:'', types:[], dry_run:false },
-    setField: ()=>{},
-    save: ()=>{},
+    save: () => {},
     dialogs: [],
-main
+    setDialogs: () => {},
   };
   render(
     <AppContext.Provider value={value}>
-      <SettingsForm dialogs={[]} />
+      <SettingsForm />
     </AppContext.Provider>
   );
   expect(screen.getByLabelText(/API ID/i)).toBeInTheDocument();
   expect(screen.getByText(/Kaydet/)).toBeInTheDocument();
 });
 
-test('renders chat checkboxes', () => {
+test('renders chat checkboxes', async () => {
   const setField = jest.fn();
-  const value = { cfg: { chats: [] }, setField, save: ()=>{} };
   const dialogs = [{ id: 1, name: 'Group1' }, { id: 2, name: 'Group2' }];
+  fetchDialogs.mockResolvedValueOnce({ ok: true, data: dialogs });
+  const value = {
+    cfg: { chats: [] },
+    setField,
+    save: () => {},
+    dialogs: [],
+    setDialogs: () => {},
+  };
   render(
     <AppContext.Provider value={value}>
-      <SettingsForm dialogs={dialogs} />
+      <SettingsForm />
     </AppContext.Provider>
   );
-  const checkbox = screen.getByLabelText('Group1');
+  const checkbox = await screen.findByLabelText('Group1');
   expect(checkbox).toBeInTheDocument();
   fireEvent.click(checkbox);
-  expect(setField).toHaveBeenCalled();
+  await waitFor(() => expect(setField).toHaveBeenCalled());
 });
