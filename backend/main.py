@@ -399,11 +399,19 @@ async def start(background_tasks: BackgroundTasks):
 
 def request_stop():
     STATE["stop"].set()
+ codex/modify-stop-endpoint-in-main.py
+    t = STATE.get("worker")
+    if t and t.is_alive():
+        t.join(timeout=5)
+        log("[*] Worker durdu.")
+    STATE["worker"] = None
+
 
 
 @APP.post("/api/stop")
 async def stop(background_tasks: BackgroundTasks):
     background_tasks.add_task(request_stop)
+ main
     return {"ok": True}
 
 @APP.get("/api/status")
