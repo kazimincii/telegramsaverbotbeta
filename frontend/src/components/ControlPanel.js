@@ -5,8 +5,8 @@ const API_BASE = RAW_BASE.trim().replace(/\/+$/, ""); // boşluğu ve sonda kala
 const buildUrl = (p) => `${API_BASE}${p.startsWith("/") ? p : `/${p}`}`;
 
 function headers(){ return {"Content-Type":"application/json"}; }
-async function getJSON(p){ const r=await fetch(API_BASE+p,{headers:headers()}); const t=await r.text(); try{return {ok:r.ok,data:t?JSON.parse(t):{}}}catch{return {ok:r.ok,data:{}}} }
-async function postJSON(p,b){ const r=await fetch(API_BASE+p,{method:"POST",headers:headers(),body:JSON.stringify(b||{})}); const t=await r.text(); try{return {ok:r.ok,data:t?JSON.parse(t):{}}}catch{return {ok:r.ok,data:{}}} }
+async function getJSON(p){ const r=await fetch(buildUrl(p),{headers:headers()}); const t=await r.text(); try{return {ok:r.ok,data:t?JSON.parse(t):{}}}catch{return {ok:r.ok,data:{}}} }
+async function postJSON(p,b){ const r=await fetch(buildUrl(p),{method:"POST",headers:headers(),body:JSON.stringify(b||{})}); const t=await r.text(); try{return {ok:r.ok,data:t?JSON.parse(t):{}}}catch{return {ok:r.ok,data:{}}} }
 
 export default function ControlPanel(){
   const [cfg,setCfg]=useState({api_id:"",api_hash:"",session:"tg_media",out:"C:/TelegramArchive",types:["photos"],include:[],exclude:[],min_date:"",max_date:"",throttle:0.2,concurrency:3,dry_run:false});
