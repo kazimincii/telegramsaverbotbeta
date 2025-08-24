@@ -2,9 +2,27 @@ import os, sys, asyncio, time
 from telethon import TelegramClient
 from telethon.errors import SessionPasswordNeededError, PhoneNumberBannedError
 
-API_ID   = int(os.environ.get("API_ID") or input("API ID: ").strip())
+
+def _get_api_id():
+    api_id_str = os.environ.get("API_ID")
+    if api_id_str:
+        try:
+            return int(api_id_str)
+        except ValueError:
+            print("[!] API_ID must be an integer.", file=sys.stderr)
+            sys.exit(1)
+
+    while True:
+        api_id_str = input("API ID: ").strip()
+        try:
+            return int(api_id_str)
+        except ValueError:
+            print("[!] API_ID must be an integer.")
+
+
+API_ID = _get_api_id()
 API_HASH = os.environ.get("API_HASH") or input("API HASH: ").strip()
-SESSION  = os.environ.get("SESSION")  or "tg_media"
+SESSION = os.environ.get("SESSION") or "tg_media"
 
 # İsteğe bağlı: QR'ı PNG olarak kaydetmek için qrcode (kurulu değilse try/except)
 def save_qr_png(url, path="qr_login.png"):
