@@ -31,3 +31,9 @@
 
 ### Logrotate
 `deploy/logrotate/telegramsaver` dosyasını `/etc/logrotate.d/` klasörüne kopyalayarak log dosyalarının otomatik döndürülmesini sağlayabilirsiniz.
+
+### Doğrulama
+Konfigürasyon dosyalarını test etmek için:
+```bash
+bash deploy/tests/test_service_scripts.sh
+```

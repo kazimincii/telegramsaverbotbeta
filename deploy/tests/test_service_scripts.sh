@@ -8,7 +8,9 @@ LOGROTATE_FILE="$(dirname "$0")/../logrotate/telegramsaver"
 # Check systemd service file
 [ -f "$SERVICE_FILE" ]
 grep -q 'ExecStart=/usr/bin/pm2 start' "$SERVICE_FILE"
-grep -q 'log/telegramsaver.log' "$SERVICE_FILE"
+grep -q 'Environment=LOG_DIR=%h/telegramsaverbotbeta/log' "$SERVICE_FILE"
+grep -q 'StandardOutput=append:${LOG_DIR}/telegramsaver.log' "$SERVICE_FILE"
+grep -q 'StandardError=append:${LOG_DIR}/telegramsaver.err.log' "$SERVICE_FILE"
 
 # Check PM2 config
 [ -f "$PM2_FILE" ]
