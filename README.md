@@ -28,6 +28,18 @@ cp frontend/.env.example frontend/.env
 # edit frontend/.env and set REACT_APP_API_BASE as needed
 ```
 
+## Masaüstü Uygulaması
+
+Frontend'i masaüstünde çalıştırmak için React uygulamasını derleyip Electron ile açabilirsiniz:
+
+```bash
+cd frontend
+npm run build
+cd ../desktop
+npm install
+npm start
+```
+
 ## Servis Kurulumu
 
 ### Systemd
