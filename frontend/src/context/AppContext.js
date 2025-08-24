@@ -20,11 +20,13 @@ const defaultCfg = {
   dry_run: false
 };
 
+const defaultProgress = { chat: '', downloaded: 0, skipped: 0 };
+
 export function AppProvider({ children }) {
   const [cfg, setCfg] = useState(defaultCfg);
   const [running, setRunning] = useState(false);
   const [log, setLog] = useState([]);
-  const [progress, setProgress] = useState(null);
+  const [progress, setProgress] = useState(defaultProgress);
   const [error, setError] = useState('');
 
   const setField = (k, v) => setCfg(c => ({ ...c, [k]: v }));
@@ -64,7 +66,7 @@ export function AppProvider({ children }) {
           if (r.ok) {
             const s = r.data || {};
             setRunning(!!s.running);
-            setProgress(s.progress || null);
+            setProgress(s.progress || defaultProgress);
             if (Array.isArray(s.logTail))
               setLog(p => [...p, ...s.logTail].slice(-400));
           } else if (r.error) {
