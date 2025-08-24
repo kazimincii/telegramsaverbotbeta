@@ -62,6 +62,18 @@ def test_photo_video_filter(monkeypatch, tmp_path):
     assert isinstance(client.iter_messages_filter, tl_types.InputMessagesFilterPhotoVideo)
 
 
+def test_document_filter(monkeypatch, tmp_path):
+    msg = SimpleNamespace(id=1, date=dt.datetime(2024,1,1), photo=None, video=None,
+                          document=SimpleNamespace(size=10, attributes=[SimpleNamespace(file_name="a.pdf")]),
+                          file=SimpleNamespace(size=10, name="a.pdf"))
+    client = DummyClient([msg])
+    monkeypatch.setattr(main, "TelegramClient", lambda *a, **k: client)
+    monkeypatch.setattr(main.asyncio, "sleep", _dummy_sleep)
+    cfg = Config(api_id="1", api_hash="2", out=str(tmp_path), types=["documents"])
+    asyncio.run(main.download_worker(cfg, channels=[1], media_types=["documents"]))
+    assert isinstance(client.iter_messages_filter, tl_types.InputMessagesFilterDocument)
+
+
 def test_large_file_resume(monkeypatch, tmp_path):
     big = 3 * 1024 ** 3
     msg = SimpleNamespace(
