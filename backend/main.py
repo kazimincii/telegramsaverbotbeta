@@ -43,7 +43,8 @@ class Config(BaseModel):
 STATE = {
     "running": False,
     "log": [],
-    "progress": None,
+    # Track current chat name, number of downloaded files and skipped messages
+    "progress": {"chat": "", "downloaded": 0, "skipped": 0},
     "stop": Event(),
     "worker": None,
     "config": None,
@@ -155,7 +156,8 @@ async def download_worker(
     media_types = media_types or cfg.types
     out_base = Path(cfg.out or "C:/TelegramArchive")
     out_base.mkdir(parents=True, exist_ok=True)
-    STATE["progress"] = {"downloaded": 0}
+    # reset progress counters for a new run
+    STATE["progress"] = {"chat": "", "downloaded": 0, "skipped": 0}
     sem = asyncio.Semaphore(cfg.concurrency)
     chosen = set(channels or cfg.channels or [])
     flt = make_media_filter(media_types)
@@ -170,6 +172,8 @@ async def download_worker(
         )
         if chosen and (name not in chosen and getattr(dialog, "id", None) not in chosen):
             continue
+        # record current chat being processed
+        STATE["progress"]["chat"] = name
         chat_dir = out_base / name
         async for msg in client.iter_messages(dialog, reverse=True, filter=flt):
             kind = None
@@ -180,6 +184,8 @@ async def download_worker(
             elif "documents" in media_types and getattr(msg, "document", None):
                 kind = "documents"
             else:
+                # ignored message does not match requested media types
+                STATE["progress"]["skipped"] += 1
                 continue
             target_dir = chat_dir / kind / str(msg.date.year)
 
