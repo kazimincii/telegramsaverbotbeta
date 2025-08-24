@@ -5,17 +5,25 @@ function headers(){ return {"Content-Type":"application/json"}; }
 function toUrl(p){ return `${API_BASE}${p.startsWith('/')?p:`/${p}`}`; }
 
 async function getJSON(p){
-  const r = await fetch(toUrl(p), { headers: headers() });
-  const t = await r.text();
-  try { return { ok: r.ok, data: t ? JSON.parse(t) : {} }; }
-  catch { return { ok: r.ok, data: {} }; }
+  try{
+    const r = await fetch(toUrl(p), { headers: headers() });
+    const t = await r.text();
+    try { return { ok: r.ok, data: t ? JSON.parse(t) : {} }; }
+    catch { return { ok: r.ok, data: {} }; }
+  }catch(error){
+    return { ok: false, data: {}, error };
+  }
 }
 
 async function postJSON(p, b){
-  const r = await fetch(toUrl(p), { method: 'POST', headers: headers(), body: JSON.stringify(b || {}) });
-  const t = await r.text();
-  try { return { ok: r.ok, data: t ? JSON.parse(t) : {} }; }
-  catch { return { ok: r.ok, data: {} }; }
+  try{
+    const r = await fetch(toUrl(p), { method: 'POST', headers: headers(), body: JSON.stringify(b || {}) });
+    const t = await r.text();
+    try { return { ok: r.ok, data: t ? JSON.parse(t) : {} }; }
+    catch { return { ok: r.ok, data: {} }; }
+  }catch(error){
+    return { ok: false, data: {}, error };
+  }
 }
 
 // high level API helpers
