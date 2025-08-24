@@ -1,7 +1,7 @@
 import React, { useContext } from 'react';
 import { AppContext } from '../context/AppContext';
 
-export default function SettingsForm(){
+export default function SettingsForm({ dialogs = [] }){
   const { cfg, setField, save } = useContext(AppContext);
   return (
     <>
@@ -16,8 +16,23 @@ export default function SettingsForm(){
         <div><label style={{fontSize:12,color:'#555'}}>Max Tarih</label><input type="date" value={cfg.max_date||""} onChange={e=>setField('max_date',e.target.value)} style={{width:'100%',padding:8,border:'1px solid #d0d0d0',borderRadius:10}}/></div>
       </div>
       <div style={{marginTop:12}}>
-        <label style={{fontSize:12,color:'#555'}}>Kanallar (virgülle ayır)</label>
-        <input value={(cfg.chats||[]).join(',')} onChange={e=>setField('chats',e.target.value.split(',').map(s=>s.trim()).filter(Boolean))} style={{width:'100%',padding:8,border:'1px solid #d0d0d0',borderRadius:10}}/>
+        <label style={{fontSize:12,color:'#555',display:'block',marginBottom:4}}>Kanallar</label>
+        <div style={{maxHeight:200,overflowY:'auto',border:'1px solid #d0d0d0',borderRadius:10,padding:8,display:'flex',flexDirection:'column',gap:4}}>
+          {dialogs.map(d => (
+            <label key={d.id} style={{display:'inline-flex',gap:6,alignItems:'center'}}>
+              <input
+                type="checkbox"
+                checked={(cfg.chats||[]).includes(d.name)}
+                onChange={e=>{
+                  const s = new Set(cfg.chats||[]);
+                  if (e.target.checked) s.add(d.name); else s.delete(d.name);
+                  setField('chats', Array.from(s));
+                }}
+              />
+              <span>{d.name}</span>
+            </label>
+          ))}
+        </div>
       </div>
       <div style={{display:'flex',gap:16,alignItems:'center',marginTop:12,flexWrap:'wrap'}}>
         {['photos','videos','documents'].map(t=> (

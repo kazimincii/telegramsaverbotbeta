@@ -34,7 +34,8 @@ async def asgi_request(method, path):
     return messages
 
 
-def test_request_logging_and_header(capsys):
+def test_request_logging_and_header(capsys, monkeypatch):
+    monkeypatch.setattr(main, "load_cfg", lambda: main.Config(api_id="1", api_hash="h"))
     messages = asyncio.run(asgi_request("GET", "/api/config"))
     headers = dict((k.decode(), v.decode()) for k, v in messages[0]["headers"])
     assert "x-process-time" in headers
