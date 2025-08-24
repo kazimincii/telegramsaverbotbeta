@@ -162,7 +162,15 @@ async def download_worker(
     chosen = set(channels or cfg.channels or [])
     flt = make_media_filter(media_types)
 
+codex/add-stop-condition-in-download_worker
+    tasks = []
+    stop_event = STATE["stop"]
+
+
+main
     async for dialog in client.iter_dialogs():
+        if stop_event.is_set():
+            break
         name = (
             getattr(dialog, "name", None)
             or getattr(getattr(dialog, "entity", None), "username", None)
@@ -175,6 +183,8 @@ async def download_worker(
         chat_dir = out_base / name
         tasks = []
         async for msg in client.iter_messages(dialog, reverse=True, filter=flt):
+            if stop_event.is_set():
+                break
             kind = None
             if "photos" in media_types and getattr(msg, "photo", None):
                 kind = "photos"
@@ -200,10 +210,22 @@ async def download_worker(
                                 break
                             await asyncio.sleep(cfg.throttle)
             tasks.append(asyncio.create_task(runner()))
+codex/add-stop-condition-in-download_worker
+        if stop_event.is_set():
+            break
+
+    if tasks:
+        if stop_event.is_set():
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+        else:
+
             if len(tasks) >= cfg.concurrency:
                 await asyncio.gather(*tasks)
                 tasks.clear()
         if tasks:
+main
             await asyncio.gather(*tasks)
     await client.disconnect()
     log("[*] Worker bitti.")
