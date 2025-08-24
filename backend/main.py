@@ -23,6 +23,7 @@ class Config(BaseModel):
     types: List[str] = ["photos"]
     include: List[str] = []
     exclude: List[str] = []
+    chats: List[str] = []
     min_date: str = ""
     max_date: str = ""
     throttle: float = 0.2
@@ -83,7 +84,9 @@ async def download_worker(cfg:Config):
     async for dialog in client.iter_dialogs():
         if STATE["stop"].is_set(): break
         name = dialog.name or str(dialog.id)
-        if include_re and not include_re.search(name): 
+        if cfg.chats and str(dialog.id) not in cfg.chats:
+            continue
+        if include_re and not include_re.search(name):
             continue
         if exclude_re and exclude_re.search(name):
             continue
@@ -151,6 +154,22 @@ def set_config(payload:dict):
     cfg.update(payload or {})
     save_cfg(Config(**cfg))
     return {"ok": True}
+
+@APP.get("/api/dialogs")
+async def list_dialogs():
+    cfg = load_cfg()
+    client = TelegramClient(cfg.session, int(cfg.api_id or 0), cfg.api_hash or "")
+    await client.connect()
+    if not await client.is_user_authorized():
+        await client.disconnect()
+        raise HTTPException(status_code=400, detail="Telegram oturumu yetkili degil. login_once.bat calistirin.")
+    items = []
+    async for d in client.iter_dialogs():
+        if getattr(d, "is_user", False):
+            continue
+        items.append({"id": str(d.id), "name": d.name or str(d.id)})
+    await client.disconnect()
+    return {"dialogs": items}
 
 @APP.post("/api/start")
 def start():
