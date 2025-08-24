@@ -5,19 +5,19 @@ import { fetchConfig, saveConfig, startRun, stopRun, fetchStatus } from '../serv
 export const AppContext = createContext();
 
 const defaultCfg = {
-  api_id: "",
-  api_hash: "",
-  session: "tg_media",
-  out: "C:/TelegramArchive",
-  types: ["photos"],
+  api_id: '',
+  api_hash: '',
+  session: 'tg_media',
+  out: 'C:/TelegramArchive',
+  types: ['photos'],
   chats: [],
   include: [],
   exclude: [],
-  min_date: "",
-  max_date: "",
+  min_date: '',
+  max_date: '',
   throttle: 0.2,
   concurrency: 3,
-  dry_run: false
+  dry_run: false,
 };
 
 const defaultProgress = { chat: '', downloaded: 0, skipped: 0 };
@@ -68,8 +68,7 @@ export function AppProvider({ children }) {
             const s = r.data || {};
             setRunning(!!s.running);
             setProgress(s.progress || defaultProgress);
-            if (Array.isArray(s.logTail))
-              setLog(p => [...p, ...s.logTail].slice(-400));
+            if (Array.isArray(s.logTail)) setLog(p => [...p, ...s.logTail].slice(-400));
           } else if (r.error) {
             setError(r.error.message || 'Durum alınamadı');
           }
@@ -85,7 +84,6 @@ export function AppProvider({ children }) {
 
   return (
     <AppContext.Provider
-codex/add-group-selection-list-feature-047pqy
       value={{
         cfg,
         setField,
@@ -100,12 +98,8 @@ codex/add-group-selection-list-feature-047pqy
         dialogs,
         setDialogs,
       }}
-
-      value={{ cfg, setField, save, start, stop, running, progress, log, clearLog, error, dialogs, setDialogs }}
-main
     >
       {children}
     </AppContext.Provider>
   );
 }
-
