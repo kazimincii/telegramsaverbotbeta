@@ -2,7 +2,7 @@ import React, { useContext } from 'react';
 import { AppContext } from '../context/AppContext';
 
 export default function SettingsForm(){
-  const { cfg, setField, save } = useContext(AppContext);
+  const { cfg, dialogs, setField, save } = useContext(AppContext);
   return (
     <>
       <div style={{display:'grid',gap:12,gridTemplateColumns:'1.3fr 1fr 1fr 1fr'}}>
@@ -16,8 +16,26 @@ export default function SettingsForm(){
         <div><label style={{fontSize:12,color:'#555'}}>Max Tarih</label><input type="date" value={cfg.max_date||""} onChange={e=>setField('max_date',e.target.value)} style={{width:'100%',padding:8,border:'1px solid #d0d0d0',borderRadius:10}}/></div>
       </div>
       <div style={{marginTop:12}}>
-        <label style={{fontSize:12,color:'#555'}}>Kanallar (virgülle ayır)</label>
-        <input value={(cfg.chats||[]).join(',')} onChange={e=>setField('chats',e.target.value.split(',').map(s=>s.trim()).filter(Boolean))} style={{width:'100%',padding:8,border:'1px solid #d0d0d0',borderRadius:10}}/>
+        <label style={{fontSize:12,color:'#555',display:'block',marginBottom:4}}>Kanallar</label>
+        <div style={{maxHeight:200,overflowY:'auto',border:'1px solid #d0d0d0',borderRadius:10,padding:8}}>
+          {dialogs.map(d => (
+            <label key={d.id} style={{display:'flex',gap:6,alignItems:'center',marginBottom:4}}>
+              <input
+                type="checkbox"
+                checked={(cfg.chats||[]).includes(d.name)}
+                onChange={(e)=>{
+                  const s=new Set(cfg.chats||[]);
+                  if(e.target.checked) s.add(d.name); else s.delete(d.name);
+                  setField('chats',Array.from(s));
+                }}
+              />
+              <span>{d.name}</span>
+            </label>
+          ))}
+          {dialogs.length===0 && (
+            <div style={{fontSize:12,color:'#999'}}>Kanal bulunamadı</div>
+          )}
+        </div>
       </div>
       <div style={{display:'flex',gap:16,alignItems:'center',marginTop:12,flexWrap:'wrap'}}>
         {['photos','videos','documents'].map(t=> (
