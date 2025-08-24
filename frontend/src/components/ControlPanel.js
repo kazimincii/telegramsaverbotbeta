@@ -1,12 +1,14 @@
-import React, { useContext, useEffect } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import SettingsForm from './SettingsForm';
 import StatusPanel from './StatusPanel';
 import LogViewer from './LogViewer';
+import ContactsPanel from './ContactsPanel';
 import { AppContext } from '../context/AppContext';
 import { fetchDialogs } from '../services/api';
 
 export default function ControlPanel(){
   const { error, setDialogs } = useContext(AppContext);
+  const [tab, setTab] = useState('settings');
 
   useEffect(() => {
     fetchDialogs().then(r => {
@@ -23,9 +25,16 @@ export default function ControlPanel(){
           {error}
         </div>
       )}
-      <SettingsForm />
-      <StatusPanel />
-      <LogViewer />
+      <div style={{display:'flex',gap:8,marginBottom:12}}>
+        <button onClick={()=>setTab('settings')}>Ayarlar</button>
+        <button onClick={()=>setTab('status')}>Durum</button>
+        <button onClick={()=>setTab('log')}>Loglar</button>
+        <button onClick={()=>setTab('contacts')}>Kişiler</button>
+      </div>
+      {tab === 'settings' && <SettingsForm />}
+      {tab === 'status' && <StatusPanel />}
+      {tab === 'log' && <LogViewer />}
+      {tab === 'contacts' && <ContactsPanel />}
     </div>
   );
 }
