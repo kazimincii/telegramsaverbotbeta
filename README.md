@@ -1,6 +1,24 @@
 # Telegram Archiver — One Click
 1) run-all.bat çift tık. 2) Panel: http://localhost:3000. 3) API ID/HASH gir → Kaydet → Başlat. 4) Kişiler sekmesi → Önizleme → VCF dışa aktar.
 
+## Frontend Environment
+
+The React frontend reads the backend URL from the `REACT_APP_API_BASE` variable.
+
+Examples:
+
+| Environment | Example Value |
+|-------------|---------------|
+| Local       | `http://127.0.0.1:8000` |
+| Production  | `https://api.example.com` |
+
+Before building or starting the frontend, copy the sample environment file and adjust the URL:
+
+```bash
+cp frontend/.env.example frontend/.env
+# edit frontend/.env and set REACT_APP_API_BASE as needed
+```
+
 ## Servis Kurulumu
 
 ### Systemd
