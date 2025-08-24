@@ -85,6 +85,7 @@ export function AppProvider({ children }) {
 
   return (
     <AppContext.Provider
+codex/add-group-selection-list-feature-047pqy
       value={{
         cfg,
         setField,
@@ -99,6 +100,9 @@ export function AppProvider({ children }) {
         dialogs,
         setDialogs,
       }}
+
+      value={{ cfg, setField, save, start, stop, running, progress, log, clearLog, error, dialogs, setDialogs }}
+main
     >
       {children}
     </AppContext.Provider>
