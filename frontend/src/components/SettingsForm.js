@@ -15,6 +15,10 @@ export default function SettingsForm(){
         <div><label style={{fontSize:12,color:'#555'}}>Min Tarih</label><input type="date" value={cfg.min_date||""} onChange={e=>setField('min_date',e.target.value)} style={{width:'100%',padding:8,border:'1px solid #d0d0d0',borderRadius:10}}/></div>
         <div><label style={{fontSize:12,color:'#555'}}>Max Tarih</label><input type="date" value={cfg.max_date||""} onChange={e=>setField('max_date',e.target.value)} style={{width:'100%',padding:8,border:'1px solid #d0d0d0',borderRadius:10}}/></div>
       </div>
+      <div style={{marginTop:12}}>
+        <label style={{fontSize:12,color:'#555'}}>Kanallar (virgülle ayır)</label>
+        <input value={(cfg.channels||[]).join(',')} onChange={e=>setField('channels',e.target.value.split(',').map(s=>s.trim()).filter(Boolean))} style={{width:'100%',padding:8,border:'1px solid #d0d0d0',borderRadius:10}}/>
+      </div>
       <div style={{display:'flex',gap:16,alignItems:'center',marginTop:12,flexWrap:'wrap'}}>
         {['photos','videos','documents'].map(t=> (
           <label key={t} style={{display:'inline-flex',gap:6,alignItems:'center'}}>
