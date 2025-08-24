@@ -63,78 +63,78 @@ def log(msg:str):
 async def download_worker(cfg:Config):
     log("[*] Worker basladi.")
     client = TelegramClient(cfg.session, int(cfg.api_id or 0), cfg.api_hash or "")
-    await client.connect()
-    if not await client.is_user_authorized():
-        log("[!] Telegram oturumu yetkili degil. login_once.bat calistirin.")
-        STATE["running"] = False
-        await client.disconnect()
-        return
+    try:
+        await client.connect()
+        if not await client.is_user_authorized():
+            log("[!] Telegram oturumu yetkili degil. login_once.bat calistirin.")
+            return
 
-    out_base = Path(cfg.out or "C:/TelegramArchive")
-    out_base.mkdir(parents=True, exist_ok=True)
+        out_base = Path(cfg.out or "C:/TelegramArchive")
+        out_base.mkdir(parents=True, exist_ok=True)
 
-    min_d = dt.datetime.fromisoformat(cfg.min_date) if cfg.min_date else None
-    max_d = dt.datetime.fromisoformat(cfg.max_date) if cfg.max_date else None
+        min_d = dt.datetime.fromisoformat(cfg.min_date) if cfg.min_date else None
+        max_d = dt.datetime.fromisoformat(cfg.max_date) if cfg.max_date else None
 
-    include_re = re.compile("|".join(cfg.include), re.I) if cfg.include else None
-    exclude_re = re.compile("|".join(cfg.exclude), re.I) if cfg.exclude else None
+        include_re = re.compile("|".join(cfg.include), re.I) if cfg.include else None
+        exclude_re = re.compile("|".join(cfg.exclude), re.I) if cfg.exclude else None
 
-    total = 0
-    async for dialog in client.iter_dialogs():
-        if STATE["stop"].is_set(): break
-        name = dialog.name or str(dialog.id)
-        if include_re and not include_re.search(name): 
-            continue
-        if exclude_re and exclude_re.search(name):
-            continue
-
-        chat_dir = out_base / name.replace("/", "_")
-        chat_dir.mkdir(parents=True, exist_ok=True)
-
-        log(f"[*] Sohbet: {name}")
-        async for msg in client.iter_messages(dialog, reverse=True):
+        total = 0
+        async for dialog in client.iter_dialogs():
             if STATE["stop"].is_set(): break
-            if min_d and (msg.date.replace(tzinfo=None) < min_d): 
+            name = dialog.name or str(dialog.id)
+            if include_re and not include_re.search(name):
                 continue
-            if max_d and (msg.date.replace(tzinfo=None) > max_d): 
-                continue
-
-            # types filter (sadece foto/video/doc)
-            kind = None
-            if msg.photo and "photos" in cfg.types:
-                kind = "photos"
-            elif msg.video and "videos" in cfg.types:
-                kind = "videos"
-            elif getattr(msg, "document", None) and "documents" in cfg.types:
-                kind = "documents"
-
-            if not kind:
+            if exclude_re and exclude_re.search(name):
                 continue
 
-            target_dir = chat_dir / kind / str(msg.date.year)
-            target_dir.mkdir(parents=True, exist_ok=True)
+            chat_dir = out_base / name.replace("/", "_")
+            chat_dir.mkdir(parents=True, exist_ok=True)
 
-            if cfg.dry_run:
-                total += 1
-                STATE["progress"] = {"chat": name, "downloaded": total, "skipped": 0}
-                if total % 50 == 0:
-                    log(f"[dry] {name} / {kind} ...")
-                await asyncio.sleep(cfg.throttle or 0)
-                continue
+            log(f"[*] Sohbet: {name}")
+            async for msg in client.iter_messages(dialog, reverse=True):
+                if STATE["stop"].is_set(): break
+                if min_d and (msg.date.replace(tzinfo=None) < min_d):
+                    continue
+                if max_d and (msg.date.replace(tzinfo=None) > max_d):
+                    continue
 
-            try:
-                await client.download_media(msg, file=str(target_dir))
-                total += 1
-                STATE["progress"] = {"chat": name, "downloaded": total, "skipped": 0}
-                if total % 10 == 0:
-                    log(f"[ok] {name} / {kind}")
-                await asyncio.sleep(cfg.throttle or 0)
-            except Exception as e:
-                log(f"[!] indirme hatasi: {e}")
+                # types filter (sadece foto/video/doc)
+                kind = None
+                if msg.photo and "photos" in cfg.types:
+                    kind = "photos"
+                elif msg.video and "videos" in cfg.types:
+                    kind = "videos"
+                elif getattr(msg, "document", None) and "documents" in cfg.types:
+                    kind = "documents"
 
-    await client.disconnect()
-    log("[*] Worker bitti.")
-    STATE["running"] = False
+                if not kind:
+                    continue
+
+                target_dir = chat_dir / kind / str(msg.date.year)
+                target_dir.mkdir(parents=True, exist_ok=True)
+
+                if cfg.dry_run:
+                    total += 1
+                    STATE["progress"] = {"chat": name, "downloaded": total, "skipped": 0}
+                    if total % 50 == 0:
+                        log(f"[dry] {name} / {kind} ...")
+                    await asyncio.sleep(cfg.throttle or 0)
+                    continue
+
+                try:
+                    await client.download_media(msg, file=str(target_dir))
+                    total += 1
+                    STATE["progress"] = {"chat": name, "downloaded": total, "skipped": 0}
+                    if total % 10 == 0:
+                        log(f"[ok] {name} / {kind}")
+                    await asyncio.sleep(cfg.throttle or 0)
+                except Exception as e:
+                    log(f"[!] indirme hatasi: {e}")
+
+        log("[*] Worker bitti.")
+    finally:
+        await client.disconnect()
+        STATE["running"] = False
 
 def run_worker(cfg:Config):
     STATE["stop"].clear()
