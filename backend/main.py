@@ -195,7 +195,8 @@ async def list_contacts():
     """Return contacts of users from joined chats."""
     cfg = load_cfg()
     try:
-        data = await contacts.list_contacts(cfg.dict(), {})
+        cfg_dict = cfg.model_dump() if hasattr(cfg, "model_dump") else cfg.dict()
+        data = await contacts.list_contacts(cfg_dict, {})
     except PermissionError as exc:
         raise HTTPException(status_code=401, detail=str(exc))
     return data.get("items", [])
