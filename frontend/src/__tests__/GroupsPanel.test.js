@@ -21,6 +21,10 @@ test('renders group checkboxes', () => {
   );
   const checkbox = screen.getByLabelText('Group1');
   expect(checkbox).toBeInTheDocument();
+  // media counts should be rendered next to the group
+  expect(
+    screen.getByText('📷 1 | 📄 3 | 🎞️ 2')
+  ).toBeInTheDocument();
   fireEvent.click(checkbox);
   expect(setField).toHaveBeenCalled();
 });
