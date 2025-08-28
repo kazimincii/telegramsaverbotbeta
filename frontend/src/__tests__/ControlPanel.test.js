@@ -1,6 +1,5 @@
 import React from 'react';
-import { render, waitFor } from '@testing-library/react';
-import '@testing-library/jest-dom';
+import { render, waitFor } from '../test-utils';
 
 import ControlPanel from '../components/ControlPanel';
 import { AppContext } from '../context/AppContext';
@@ -13,7 +12,7 @@ jest.mock('../services/api', () => ({
 test('alerts on fetchDialogs error', async () => {
   fetchDialogs.mockRejectedValue(new Error('fail'));
   const alert = jest.spyOn(window, 'alert').mockImplementation(() => {});
-  const value = { setDialogs: () => {} };
+  const value = { setDialogs: () => {}, cfg: { api_id:'', api_hash:'' } };
   render(
     <AppContext.Provider value={value}>
       <ControlPanel />

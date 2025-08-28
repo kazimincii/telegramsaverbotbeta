@@ -1,6 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import '@testing-library/jest-dom';
+import { render, screen, fireEvent, waitFor } from '../test-utils';
 
 import SettingsForm from '../components/SettingsForm';
 import { AppContext } from '../context/AppContext';
