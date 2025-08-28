@@ -12,23 +12,53 @@ export default function GroupsPanel(){
           const selected = (cfg.chats || []).map(String).includes(idStr);
           const counts = d.counts || {};
           return (
-            <label key={idStr} style={{display:'flex',alignItems:'center',gap:8,borderBottom:'1px solid #eee',padding:'4px 0'}}>
+            <label
+              key={idStr}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                borderBottom: '1px solid #eee',
+                padding: '4px 0'
+              }}
+            >
+              {/* explicit tick marker for clarity */}
+              <span style={{ width: 12, textAlign: 'center' }}>
+                {selected ? '✓' : ''}
+              </span>
               <input
                 type="checkbox"
+                aria-label={d.name}
                 checked={selected}
-                onChange={e=>{
+                onChange={e => {
                   const s = new Set((cfg.chats || []).map(String));
-                  if(e.target.checked) s.add(idStr); else s.delete(idStr);
+                  if (e.target.checked) s.add(idStr);
+                  else s.delete(idStr);
                   setField('chats', Array.from(s));
                 }}
               />
-              {d.photo && <img src={d.photo} alt="" style={{width:32,height:32,borderRadius:'50%'}} />}
-              <div style={{flex:1}}>
+              {d.photo && (
+                <img
+                  src={d.photo}
+                  alt=""
+                  style={{ width: 32, height: 32, borderRadius: '50%' }}
+                />
+              )}
+              <div style={{ flex: 1 }}>
                 <div>{d.name}</div>
-                <div style={{fontSize:12,color:'#555'}}>{d.username ? `@${d.username}` : ''} {d.id}</div>
+                <div style={{ fontSize: 12, color: '#555' }}>
+                  {d.username ? `@${d.username}` : ''} {d.id}
+                </div>
               </div>
-              <div style={{fontSize:12,color:'#555',whiteSpace:'nowrap'}}>
-                📷 {counts.photos || 0} | 📄 {counts.documents || 0} | 🎞️ {counts.videos || 0}
+              <div
+                style={{
+                  fontSize: 12,
+                  color: '#555',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                📷 {counts.photos || 0} | 📄 {counts.documents || 0} | 🎞️{' '}
+                {counts.videos || 0}
               </div>
             </label>
           );
