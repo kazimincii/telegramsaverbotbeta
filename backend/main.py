@@ -278,7 +278,11 @@ async def download_worker(
                             if attempt == 2:
                                 break
                             await asyncio.sleep(cfg.throttle)
+
             tasks.append(asyncio.create_task(runner()))
+            if len(tasks) >= cfg.concurrency:
+                await asyncio.gather(*tasks)
+                tasks.clear()
             if stop_event.is_set():
                 break
 
@@ -288,10 +292,12 @@ async def download_worker(
                     task.cancel()
                 await asyncio.gather(*tasks, return_exceptions=True)
             else:
-                if len(tasks) >= cfg.concurrency:
-                    await asyncio.gather(*tasks)
-                    tasks.clear()
+                await asyncio.gather(*tasks)
+            tasks.clear()
+        if stop_event.is_set():
+            break
 
+    # ensure no leftover tasks when loop exits
     if tasks:
         await asyncio.gather(*tasks)
     await client.disconnect()
