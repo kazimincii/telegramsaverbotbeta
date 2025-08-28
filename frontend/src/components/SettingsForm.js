@@ -28,7 +28,7 @@ export default function SettingsForm() {
           <input type="checkbox" checked={!!cfg.dry_run} onChange={e=>setField('dry_run',e.target.checked)}/>
           <span>Dry-run</span>
         </label>
-        <div style={{marginLeft:'auto'}}><MinimalButton icon={saveIcon} onClick={save}>Kaydet</MinimalButton></div>
+        <div style={{marginLeft:'auto'}}><MinimalButton icon={saveIcon} onClick={async ()=>{ try { await save(); } catch(e){} }}>Kaydet</MinimalButton></div>
       </div>
     </Panel>
   );

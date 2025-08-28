@@ -26,34 +26,41 @@ async function postJSON(p, b){
   }
 }
 
+function ensureOk(r, msg){
+  if(!r.ok){
+    throw r.error || new Error(msg || 'Request failed');
+  }
+  return r.data;
+}
+
 // high level API helpers
 export async function fetchConfig(){
-  return getJSON('/api/config');
+  return ensureOk(await getJSON('/api/config'), 'Failed to fetch config');
 }
 
 export async function saveConfig(cfg){
-  return postJSON('/api/config', cfg);
+  return ensureOk(await postJSON('/api/config', cfg), 'Failed to save config');
 }
 
 export async function startRun(cfg, dry, chats){
   await saveConfig({ ...cfg, dry_run: dry, chats });
-  return postJSON('/api/start', { chats });
+  return ensureOk(await postJSON('/api/start', { chats }), 'Failed to start run');
 }
 
 export async function stopRun(){
-  return postJSON('/api/stop', {});
+  return ensureOk(await postJSON('/api/stop', {}), 'Failed to stop run');
 }
 
 export async function fetchStatus(){
-  return getJSON('/api/status');
+  return ensureOk(await getJSON('/api/status'), 'Failed to fetch status');
 }
 
 export async function fetchDialogs(){
-  return getJSON('/api/dialogs');
+  return ensureOk(await getJSON('/api/dialogs'), 'Failed to fetch dialogs');
 }
 
 export async function fetchContacts(){
-  return getJSON('/api/contacts');
+  return ensureOk(await getJSON('/api/contacts'), 'Failed to fetch contacts');
 }
 
 export { API_BASE };
