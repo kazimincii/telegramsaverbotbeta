@@ -1,4 +1,5 @@
 @echo off
+where cmd >nul 2>nul || ( echo cmd.exe bulunamadi. Lutfen README.md'deki sorun giderme bolumune bakin. & pause & exit /b 1 )
 setlocal
 cd /d "%~dp0"
 if exist .venv\Scripts\python.exe (

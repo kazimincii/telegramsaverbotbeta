@@ -1,6 +1,7 @@
 @echo off
 setlocal
 cd /d %~dp0
+where cmd >nul 2>nul || ( echo cmd.exe bulunamadi. Lutfen README.md'deki sorun giderme bolumune bakin. & pause & exit /b 1 )
 if not exist logs mkdir logs
 where python >nul 2>nul || ( echo Python bulunamadi. Lutfen Python 3.10+ kurun. & pause & exit /b 1 )
 if not exist .venv ( python -m venv .venv )
