@@ -87,8 +87,9 @@ def load_cfg() -> Config:
     if CFG_FILE.exists():
         try:
             data = json.loads(CFG_FILE.read_text("utf-8"))
-        except Exception:
-            data = {}
+        except Exception as exc:
+            log(f"[error] failed to load config: {exc}")
+            raise HTTPException(status_code=500, detail="Failed to load config") from exc
     else:
         data = {}
     cfg = Config(**data)
