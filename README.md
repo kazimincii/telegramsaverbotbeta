@@ -93,6 +93,16 @@ bash deploy/tests/test_service_scripts.sh
 
 ## Troubleshooting
 
+codex/add-cmd-check-to-batch-files
 ### `cmd.exe bulunamadi` mesaji
 
 Betik dosyalari Windows icin tasarlanmistir ve `cmd.exe` gerektirir. Bu hata gorunuyorsa komutlari bir Windows komut isteminde calistirdiginizdan ve `cmd.exe`'nin PATH icinde oldugundan emin olun.
+
+If you receive a `0xc0000142` error when launching the program, it indicates a Windows startup issue that occurs *before* the application code runs. To resolve it:
+
+- Run **System File Check** (`sfc /scannow`) to repair corrupted system files.
+- Reinstall the latest **Microsoft Visual C++ Redistributable** packages.
+- Add the application folder to your antivirus software's **exclusion list**.
+
+Because this error originates from Windows itself, verify that your operating system is healthy and fully updated before trying to run the application again.
+main
