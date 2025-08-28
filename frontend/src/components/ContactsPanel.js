@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { fetchContacts } from '../services/api';
+// Use CommonJS require so tests can easily monkeypatch exports
+const api = require('../services/api');
 
 export default function ContactsPanel(){
   const [items, setItems] = useState([]);
@@ -7,11 +8,16 @@ export default function ContactsPanel(){
 
   useEffect(() => {
     let alive = true;
-    fetchContacts().then(r => {
-      if (!alive) return;
-      if (r.ok && Array.isArray(r.data)) setItems(r.data);
-      else if (r.error) setError(r.error.message || 'Kişiler alınamadı');
-    });
+    (async () => {
+      try {
+        const r = await api.fetchContacts();
+        if (!alive) return;
+        if (r && r.ok && Array.isArray(r.data)) setItems(r.data);
+        else if (r && r.error) setError(r.error.message || 'Kişiler alınamadı');
+      } catch (e) {
+        if (alive) setError(e.message || 'Kişiler alınamadı');
+      }
+    })();
     return () => { alive = false; };
   }, []);
 
