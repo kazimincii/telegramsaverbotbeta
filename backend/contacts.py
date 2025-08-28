@@ -93,7 +93,9 @@ async def list_contacts(cfg: dict, payload: dict) -> dict:
     await client.disconnect()
     return {"items": items}
 
-async def export_vcf(cfg: dict, payload: dict, items: list[dict] | None = None) -> str:
+async def export_vcf(
+    cfg: dict, payload: dict, items: list[dict] | None = None
+) -> tuple[str, list[int]]:
     api_id = int(cfg["api_id"]); api_hash = cfg["api_hash"]; session = cfg.get("session") or "tg_media"
     only_ids = set(map(int, payload.get("only_ids") or []))
     override_notes = payload.get("override_notes") or {}
@@ -108,6 +110,7 @@ async def export_vcf(cfg: dict, payload: dict, items: list[dict] | None = None) 
         await client.connect()
 
     lines: list[str] = []
+    skipped: list[int] = []
     for it in items:
         if only_ids and int(it["id"]) not in only_ids: continue
         first = it.get("first",""); last = it.get("last",""); full = it.get("full_name","")
@@ -124,9 +127,14 @@ async def export_vcf(cfg: dict, payload: dict, items: list[dict] | None = None) 
                 if raw:
                     b64 = base64.b64encode(raw).decode("ascii")
                     lines.append(f"PHOTO;ENCODING=b;TYPE=JPEG:{b64}")
-            except Exception: pass
+            except Exception as exc:
+                skipped.append(int(it["id"]))
+                logging.getLogger(__name__).warning(
+                    "photo download failed: %s", exc
+                )
         if note: lines.append(f"NOTE:{vc_escape(str(note))}")
         lines.append("END:VCARD")
 
-    if client is not None: await client.disconnect()
-    return "\n".join(lines) + "\n"
+    if client is not None:
+        await client.disconnect()
+    return "\n".join(lines) + "\n", skipped
