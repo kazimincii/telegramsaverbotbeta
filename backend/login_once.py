@@ -1,6 +1,8 @@
-import os, sys, asyncio, time
+import os, sys, asyncio, time, logging
 from telethon import TelegramClient
 from telethon.errors import SessionPasswordNeededError, PhoneNumberBannedError
+
+logger = logging.getLogger(__name__)
 
 
 def _get_api_id():
@@ -28,10 +30,15 @@ SESSION = os.environ.get("SESSION") or "tg_media"
 def save_qr_png(url, path="qr_login.png"):
     try:
         import qrcode
+    except ImportError:
+        print("[i] 'qrcode' kurulu değil; QR URL aşağıda görünecek.")
+        return
+
+    try:
         qrcode.make(url).save(path)
         print(f"[i] QR PNG oluşturuldu: {path}")
-    except Exception:
-        print("[i] 'qrcode' kurulu değil; QR URL aşağıda görünecek.")
+    except Exception as exc:
+        logger.exception("Failed to save QR PNG: %s", exc)
 
 async def main():
     async with TelegramClient(SESSION, API_ID, API_HASH) as client:
@@ -52,7 +59,8 @@ async def main():
             try:
                 await qr.wait()              # taranırsa burada döner
                 break
-            except Exception:
+            except Exception as exc:
+                logger.warning("qr.wait failed: %s", exc)
                 # Süresi doldu; yeniden üret
                 if time.time() - start > 180:  # 3 dk sonra vazgeç
                     print("[!] Süre doldu. Tekrar deneyin.")
