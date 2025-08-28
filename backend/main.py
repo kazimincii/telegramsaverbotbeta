@@ -273,10 +273,11 @@ async def download_worker(
                         try:
                             await download_file(client, m, tdir)
                             STATE["progress"]["downloaded"] += 1
-                            break
-                        except Exception:
+                            return True
+                        except Exception as exc:
                             if attempt == 2:
-                                break
+                                log(f"[error] download failed for {dname}: {exc}")
+                                return False
                             await asyncio.sleep(cfg.throttle)
 
             tasks.append(asyncio.create_task(runner()))
