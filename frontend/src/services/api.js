@@ -55,7 +55,12 @@ export async function fetchDialogs(){
 }
 
 export async function fetchContacts(){
-  return getJSON('/api/contacts');
+  try {
+    const data = await getJSON('/api/contacts');
+    return { ok: true, data };
+  } catch (error) {
+    return { ok: false, error };
+  }
 }
 
 export { API_BASE };
