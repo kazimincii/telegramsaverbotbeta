@@ -28,6 +28,20 @@ cp frontend/.env.example frontend/.env
 # edit frontend/.env and set REACT_APP_API_BASE as needed
 ```
 
+## Code Maintenance
+
+Tüm kod tabanını hızlıca kontrol etmek veya biçimlendirmek için `maintainer.py` aracını kullanın.
+
+```bash
+# sorunları bulmak için
+python maintainer.py check
+
+# otomatik düzeltme yapmak için
+python maintainer.py fix
+```
+
+`check` komutu hem Python backend'i hem de React frontend'i için testleri ve statik analizleri çalıştırır. `fix` komutu ise uygun araçlar mevcutsa otomatik biçimlendirme ve lint düzeltmeleri uygular.
+
 ## Masaüstü Uygulaması
 
 Frontend'i masaüstünde çalıştırmak için React uygulamasını derleyip Electron ile açabilirsiniz:
