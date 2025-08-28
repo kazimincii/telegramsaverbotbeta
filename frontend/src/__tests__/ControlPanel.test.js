@@ -10,13 +10,15 @@ jest.mock('../services/api', () => ({
   fetchDialogs: jest.fn(),
 }));
 
-test('handles fetchDialogs error', async () => {
+test('alerts on fetchDialogs error', async () => {
   fetchDialogs.mockRejectedValue(new Error('fail'));
+  const alert = jest.spyOn(window, 'alert').mockImplementation(() => {});
   const value = { setDialogs: () => {} };
   render(
     <AppContext.Provider value={value}>
       <ControlPanel />
     </AppContext.Provider>
   );
-  await waitFor(() => expect(fetchDialogs).toHaveBeenCalled());
+  await waitFor(() => expect(alert).toHaveBeenCalledWith('fail'));
+  alert.mockRestore();
 });

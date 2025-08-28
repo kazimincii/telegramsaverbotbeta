@@ -4,63 +4,58 @@ const API_BASE = RAW_BASE.trim().replace(/\/+$/, "");
 function headers(){ return {"Content-Type":"application/json"}; }
 function toUrl(p){ return `${API_BASE}${p.startsWith('/')?p:`/${p}`}`; }
 
-async function getJSON(p){
-  try{
-    const r = await fetch(toUrl(p), { headers: headers() });
-    const t = await r.text();
-    try { return { ok: r.ok, data: t ? JSON.parse(t) : {} }; }
-    catch { return { ok: r.ok, data: {} }; }
-  }catch(error){
-    return { ok: false, data: {}, error };
+async function handleResponse(r){
+  const t = await r.text();
+  let data;
+  try { data = t ? JSON.parse(t) : {}; }
+  catch { data = t; }
+  if(!r.ok){
+    const error = new Error(`Request failed with status ${r.status}`);
+    error.status = r.status;
+    error.body = data;
+    throw error;
   }
+  return data;
+}
+
+async function getJSON(p){
+  const r = await fetch(toUrl(p), { headers: headers() });
+  return handleResponse(r);
 }
 
 async function postJSON(p, b){
-  try{
-    const r = await fetch(toUrl(p), { method: 'POST', headers: headers(), body: JSON.stringify(b || {}) });
-    const t = await r.text();
-    try { return { ok: r.ok, data: t ? JSON.parse(t) : {} }; }
-    catch { return { ok: r.ok, data: {} }; }
-  }catch(error){
-    return { ok: false, data: {}, error };
-  }
-}
-
-function ensureOk(r, msg){
-  if(!r.ok){
-    throw r.error || new Error(msg || 'Request failed');
-  }
-  return r.data;
+  const r = await fetch(toUrl(p), { method: 'POST', headers: headers(), body: JSON.stringify(b || {}) });
+  return handleResponse(r);
 }
 
 // high level API helpers
 export async function fetchConfig(){
-  return ensureOk(await getJSON('/api/config'), 'Failed to fetch config');
+  return getJSON('/api/config');
 }
 
 export async function saveConfig(cfg){
-  return ensureOk(await postJSON('/api/config', cfg), 'Failed to save config');
+  return postJSON('/api/config', cfg);
 }
 
 export async function startRun(cfg, dry, chats){
   await saveConfig({ ...cfg, dry_run: dry, chats });
-  return ensureOk(await postJSON('/api/start', { chats }), 'Failed to start run');
+  return postJSON('/api/start', { chats });
 }
 
 export async function stopRun(){
-  return ensureOk(await postJSON('/api/stop', {}), 'Failed to stop run');
+  return postJSON('/api/stop', {});
 }
 
 export async function fetchStatus(){
-  return ensureOk(await getJSON('/api/status'), 'Failed to fetch status');
+  return getJSON('/api/status');
 }
 
 export async function fetchDialogs(){
-  return ensureOk(await getJSON('/api/dialogs'), 'Failed to fetch dialogs');
+  return getJSON('/api/dialogs');
 }
 
 export async function fetchContacts(){
-  return ensureOk(await getJSON('/api/contacts'), 'Failed to fetch contacts');
+  return getJSON('/api/contacts');
 }
 
 export { API_BASE };
