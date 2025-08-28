@@ -127,6 +127,8 @@ async def list_dialogs():
         await client.disconnect()
         raise HTTPException(status_code=401, detail="Telegram oturumu yetkili değil")
     items = []
+    media_failures = []
+    photo_failures = []
     async for d in client.iter_dialogs():
         entity = getattr(d, "entity", None)
         if not getattr(d, "is_group", False) and not getattr(d, "is_channel", False):
@@ -139,23 +141,31 @@ async def list_dialogs():
         username = getattr(entity, "username", None)
         counts = {"photos": 0, "videos": 0, "documents": 0}
         try:
-            photos = await client.get_messages(entity or d.id, limit=0, filter=tl_types.InputMessagesFilterPhotos())
-            videos = await client.get_messages(entity or d.id, limit=0, filter=tl_types.InputMessagesFilterVideo())
-            documents = await client.get_messages(entity or d.id, limit=0, filter=tl_types.InputMessagesFilterDocument())
+            photos = await client.get_messages(
+                entity or d.id, limit=0, filter=tl_types.InputMessagesFilterPhotos()
+            )
+            videos = await client.get_messages(
+                entity or d.id, limit=0, filter=tl_types.InputMessagesFilterVideo()
+            )
+            documents = await client.get_messages(
+                entity or d.id, limit=0, filter=tl_types.InputMessagesFilterDocument()
+            )
             counts = {
                 "photos": getattr(photos, "total", 0),
                 "videos": getattr(videos, "total", 0),
                 "documents": getattr(documents, "total", 0),
             }
-        except Exception:
-            pass
+        except Exception as exc:
+            media_failures.append(name)
+            log(f"[warn] media count failed for {name}: {exc}")
         photo_data = None
         try:
             raw = await client.download_profile_photo(entity or d.id, file=bytes)
             if raw:
                 photo_data = "data:image/jpeg;base64," + base64.b64encode(raw).decode()
-        except Exception:
-            pass
+        except Exception as exc:
+            photo_failures.append(name)
+            log(f"[warn] profile photo download failed for {name}: {exc}")
         items.append(
             {
                 "id": getattr(d, "id", None),
@@ -164,6 +174,16 @@ async def list_dialogs():
                 "photo": photo_data,
                 "counts": counts,
             }
+        )
+    if media_failures:
+        log(
+            "[warn] media counts skipped for: "
+            + ", ".join(sorted(set(media_failures)))
+        )
+    if photo_failures:
+        log(
+            "[warn] profile photos skipped for: "
+            + ", ".join(sorted(set(photo_failures)))
         )
     await client.disconnect()
     return items

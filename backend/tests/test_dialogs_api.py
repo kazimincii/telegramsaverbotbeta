@@ -53,3 +53,31 @@ def test_dialogs_endpoint(monkeypatch):
             "counts": {"photos": 1, "videos": 2, "documents": 3},
         }
     ]
+
+
+class FailingClient(DialogClient):
+    async def get_messages(self, *args, **kwargs):
+        raise RuntimeError("boom")
+
+    async def download_profile_photo(self, *args, **kwargs):
+        raise RuntimeError("boom")
+
+
+def test_dialogs_endpoint_logs_failures(monkeypatch, capsys):
+    monkeypatch.setattr(main, "TelegramClient", lambda *a, **k: FailingClient())
+    monkeypatch.setattr(main, "load_cfg", lambda: main.Config(api_id="1", api_hash="h"))
+    data = asyncio.run(main.list_dialogs())
+    assert data == [
+        {
+            "id": 1,
+            "name": "chat1",
+            "username": None,
+            "photo": None,
+            "counts": {"photos": 0, "videos": 0, "documents": 0},
+        }
+    ]
+    out = capsys.readouterr().out
+    assert "media count failed for chat1" in out
+    assert "profile photo download failed for chat1" in out
+    assert "media counts skipped for: chat1" in out
+    assert "profile photos skipped for: chat1" in out
