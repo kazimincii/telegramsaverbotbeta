@@ -90,3 +90,9 @@ Konfigürasyon dosyalarını test etmek için:
 ```bash
 bash deploy/tests/test_service_scripts.sh
 ```
+
+## Troubleshooting
+
+### `cmd.exe bulunamadi` mesaji
+
+Betik dosyalari Windows icin tasarlanmistir ve `cmd.exe` gerektirir. Bu hata gorunuyorsa komutlari bir Windows komut isteminde calistirdiginizdan ve `cmd.exe`'nin PATH icinde oldugundan emin olun.
