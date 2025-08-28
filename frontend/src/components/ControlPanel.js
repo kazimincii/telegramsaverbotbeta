@@ -24,11 +24,13 @@ export default function ControlPanel(){
   const [subTab, setSubTab] = useState('profile');
 
   useEffect(() => {
-    fetchDialogs().then(r => {
-      if (r.ok && Array.isArray(r.data)) {
-        setDialogs(r.data);
-      }
-    });
+    fetchDialogs()
+      .then(d => {
+        if (Array.isArray(d)) {
+          setDialogs(d);
+        }
+      })
+      .catch(err => console.error(err));
   }, [setDialogs]);
 
   return (

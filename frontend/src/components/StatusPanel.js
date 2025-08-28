@@ -17,9 +17,9 @@ export default function StatusPanel(){
           {running?"Çalışıyor":"Beklemede"}
         </span>
         <div style={{display:'flex',gap:8}}>
-          <MinimalButton icon={stopIcon} onClick={stop}>Durdur</MinimalButton>
-          <MinimalButton icon={playIcon} onClick={()=>start(false)} disabled={!valid}>Başlat</MinimalButton>
-          <MinimalButton icon={testIcon} onClick={()=>start(true)}>Dry-Run</MinimalButton>
+          <MinimalButton icon={stopIcon} onClick={async ()=>{ try{ await stop(); } catch(e){} }}>Durdur</MinimalButton>
+          <MinimalButton icon={playIcon} onClick={async ()=>{ try{ await start(false); } catch(e){} }} disabled={!valid}>Başlat</MinimalButton>
+          <MinimalButton icon={testIcon} onClick={async ()=>{ try{ await start(true); } catch(e){} }}>Dry-Run</MinimalButton>
         </div>
       </div>
       <div style={{display:'grid',gridTemplateColumns:'auto 1fr',columnGap:8,rowGap:6,fontSize:14}}>

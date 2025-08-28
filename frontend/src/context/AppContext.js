@@ -42,43 +42,55 @@ export function AppProvider({ children }) {
 
   async function save() {
     recordError('');
-    const r = await saveConfig(cfg);
-    if (!r.ok) recordError(r.error?.message || 'Kaydetme hatası');
+    try {
+      await saveConfig(cfg);
+    } catch (e) {
+      recordError(e.message || 'Kaydetme hatası');
+      throw e;
+    }
   }
 
   async function start(dry) {
     recordError('');
-    const r = await startRun(cfg, dry, cfg.chats);
-    if (!r.ok) recordError(r.error?.message || 'Başlatma hatası');
+    try {
+      await startRun(cfg, dry, cfg.chats);
+    } catch (e) {
+      recordError(e.message || 'Başlatma hatası');
+      throw e;
+    }
   }
 
   async function stop() {
     recordError('');
-    const r = await stopRun();
-    if (!r.ok) recordError(r.error?.message || 'Durdurma hatası');
+    try {
+      await stopRun();
+    } catch (e) {
+      recordError(e.message || 'Durdurma hatası');
+      throw e;
+    }
   }
 
   useEffect(() => {
-    fetchConfig().then(r => {
-      if (r.ok && r.data) setCfg(o => ({ ...o, ...r.data }));
-      else if (r.error) recordError(r.error.message || 'Config alınamadı');
-    });
+    fetchConfig()
+      .then(data => {
+        if (data) setCfg(o => ({ ...o, ...data }));
+      })
+      .catch(e => recordError(e.message || 'Config alınamadı'));
   }, []);
 
   useEffect(() => {
     let alive = true;
     const tick = () =>
       fetchStatus()
-        .then(r => {
+        .then(s => {
           if (!alive) return;
-          if (r.ok) {
-            const s = r.data || {};
-            setRunning(!!s.running);
-            setProgress(s.progress || defaultProgress);
-            if (Array.isArray(s.logTail)) setLog(p => [...p, ...s.logTail].slice(-400));
-          } else if (r.error) {
-            recordError(r.error.message || 'Durum alınamadı');
-          }
+          const d = s || {};
+          setRunning(!!d.running);
+          setProgress(d.progress || defaultProgress);
+          if (Array.isArray(d.logTail)) setLog(p => [...p, ...d.logTail].slice(-400));
+        })
+        .catch(e => {
+          if (alive) recordError(e.message || 'Durum alınamadı');
         })
         .finally(() => {
           if (alive) setTimeout(tick, 1500);
