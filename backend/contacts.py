@@ -1,6 +1,7 @@
 from __future__ import annotations
 import re, base64
 from typing import List, Dict, Set
+import logging
 from telethon import TelegramClient
 from telethon.tl.functions.channels import GetParticipantsRequest
 from telethon.tl.types import ChannelParticipantsSearch
@@ -20,10 +21,19 @@ async def collect_chats_and_users(client: TelegramClient, filter_pat: str | None
         entity = await client.get_entity(d.entity)
         try:
             for ch in ["a","e","i","o","u","s","m","k","t"]:
-                parts = await client(GetParticipantsRequest(entity, ChannelParticipantsSearch(ch), 0, 200, hash=0))
-                for u in parts.users: users[u.id] = u
-        except Exception:
-            for u in await client.get_participants(entity): users[u.id] = u
+                parts = await client(
+                    GetParticipantsRequest(
+                        entity, ChannelParticipantsSearch(ch), 0, 200, hash=0
+                    )
+                )
+                for u in parts.users:
+                    users[u.id] = u
+        except Exception as exc:
+            logging.getLogger(__name__).warning(
+                "GetParticipantsRequest failed: %s", exc
+            )
+            for u in await client.get_participants(entity):
+                users[u.id] = u
     return chats, users
 
 async def infer_notes(client: TelegramClient, chats, scan: int, keywords: List[str]):
@@ -34,13 +44,20 @@ async def infer_notes(client: TelegramClient, chats, scan: int, keywords: List[s
         try:
             async for m in client.iter_messages(d, limit=scan):
                 txt = (m.message or "").lower()
-                if not txt: continue
+                if not txt:
+                    continue
                 uid = getattr(m, "sender_id", None)
-                if not uid: continue
+                if not uid:
+                    continue
                 hit = [kw for kw in kws if kw in txt]
                 if hit:
-                    prev = notes.get(uid, set()); prev.update(hit); notes[uid] = prev
-        except Exception: pass
+                    prev = notes.get(uid, set())
+                    prev.update(hit)
+                    notes[uid] = prev
+        except Exception as exc:
+            logging.getLogger(__name__).warning(
+                "iter_messages failed: %s", exc
+            )
     return notes
 
 def vc_escape(s: str) -> str:
