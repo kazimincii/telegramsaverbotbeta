@@ -1,6 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
-import '@testing-library/jest-dom';
+import { render, screen, fireEvent } from '../test-utils';
 
 import GroupsPanel from '../components/GroupsPanel';
 import { AppContext } from '../context/AppContext';

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen } from '../test-utils';
 import FaqSection from '../components/FaqSection';
 
 test('shows FAQ heading and contact email', () => {
