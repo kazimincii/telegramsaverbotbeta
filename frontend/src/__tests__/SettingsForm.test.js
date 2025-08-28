@@ -20,8 +20,9 @@ test('renders settings inputs', () => {
   expect(screen.getByText(/Kaydet/)).toBeInTheDocument();
 });
 
-test('handles save errors', async () => {
+test('alerts on save errors', async () => {
   const save = jest.fn().mockRejectedValue(new Error('fail'));
+  const alert = jest.spyOn(window, 'alert').mockImplementation(() => {});
   const value = {
     cfg: { session:'', out:'', types:[], dry_run:false },
     setField: () => {},
@@ -33,5 +34,6 @@ test('handles save errors', async () => {
     </AppContext.Provider>
   );
   fireEvent.click(screen.getByText(/Kaydet/));
-  await waitFor(() => expect(save).toHaveBeenCalled());
+  await waitFor(() => expect(alert).toHaveBeenCalledWith('fail'));
+  alert.mockRestore();
 });

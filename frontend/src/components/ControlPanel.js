@@ -30,7 +30,7 @@ export default function ControlPanel(){
           setDialogs(d);
         }
       })
-      .catch(err => console.error(err));
+      .catch(err => window.alert(err.message || 'Diyaloglar alınamadı'));
   }, [setDialogs]);
 
   return (
