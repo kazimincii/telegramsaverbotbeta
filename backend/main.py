@@ -3357,3 +3357,206 @@ async def get_download_speed_history(task_id: str):
     except Exception as e:
         logger.error(f"Get speed history error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# =============================================================================
+# Collaborative Features API
+# =============================================================================
+
+# Collaboration Models
+class CreateWorkspaceRequest(BaseModel):
+    name: str
+    description: Optional[str] = ""
+    owner_id: str
+
+class AddMemberRequest(BaseModel):
+    workspace_id: str
+    user_id: str
+    permission: str  # owner, admin, editor, viewer
+
+class UpdatePermissionRequest(BaseModel):
+    workspace_id: str
+    user_id: str
+    new_permission: str
+
+class CreateCollectionRequest(BaseModel):
+    workspace_id: str
+    name: str
+    created_by: str
+    items: Optional[List[dict]] = []
+
+class AddToCollectionRequest(BaseModel):
+    collection_id: str
+    item: dict
+    added_by: str
+
+class AddCommentRequest(BaseModel):
+    collection_id: str
+    user_id: str
+    text: str
+    item_id: Optional[str] = None
+
+@APP.post("/api/collaboration/workspace/create")
+async def create_workspace(request: CreateWorkspaceRequest):
+    """Create new collaborative workspace"""
+    try:
+        from api.collaboration.workspace_manager import get_workspace_manager
+        
+        manager = get_workspace_manager()
+        result = manager.create_workspace(
+            request.name,
+            request.owner_id,
+            request.description
+        )
+        
+        return result
+    except Exception as e:
+        logger.error(f"Create workspace error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/collaboration/member/add")
+async def add_member(request: AddMemberRequest):
+    """Add member to workspace"""
+    try:
+        from api.collaboration.workspace_manager import get_workspace_manager
+        
+        manager = get_workspace_manager()
+        result = manager.add_member(
+            request.workspace_id,
+            request.user_id,
+            request.permission,
+            request.user_id  # TODO: Get from auth
+        )
+        
+        return result
+    except Exception as e:
+        logger.error(f"Add member error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/collaboration/permission/update")
+async def update_permission(request: UpdatePermissionRequest):
+    """Update member permission"""
+    try:
+        from api.collaboration.workspace_manager import get_workspace_manager
+        
+        manager = get_workspace_manager()
+        result = manager.update_permission(
+            request.workspace_id,
+            request.user_id,
+            request.new_permission,
+            request.user_id  # TODO: Get from auth
+        )
+        
+        return result
+    except Exception as e:
+        logger.error(f"Update permission error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.get("/api/collaboration/workspace/{workspace_id}/members")
+async def get_workspace_members(workspace_id: str):
+    """Get workspace members"""
+    try:
+        from api.collaboration.workspace_manager import get_workspace_manager
+        
+        manager = get_workspace_manager()
+        members = manager.get_workspace_members(workspace_id)
+        
+        return {
+            'success': True,
+            'members': members,
+            'count': len(members)
+        }
+    except Exception as e:
+        logger.error(f"Get workspace members error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/collaboration/collection/create")
+async def create_collection(request: CreateCollectionRequest):
+    """Create shared collection"""
+    try:
+        from api.collaboration.workspace_manager import get_workspace_manager
+        
+        manager = get_workspace_manager()
+        result = manager.create_collection(
+            request.workspace_id,
+            request.name,
+            request.created_by,
+            request.items
+        )
+        
+        return result
+    except Exception as e:
+        logger.error(f"Create collection error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/collaboration/collection/add-item")
+async def add_to_collection(request: AddToCollectionRequest):
+    """Add item to collection"""
+    try:
+        from api.collaboration.workspace_manager import get_workspace_manager
+        
+        manager = get_workspace_manager()
+        result = manager.add_to_collection(
+            request.collection_id,
+            request.item,
+            request.added_by
+        )
+        
+        return result
+    except Exception as e:
+        logger.error(f"Add to collection error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/collaboration/comment/add")
+async def add_comment(request: AddCommentRequest):
+    """Add comment to collection"""
+    try:
+        from api.collaboration.workspace_manager import get_workspace_manager
+        
+        manager = get_workspace_manager()
+        result = manager.add_comment(
+            request.collection_id,
+            request.user_id,
+            request.text,
+            request.item_id
+        )
+        
+        return result
+    except Exception as e:
+        logger.error(f"Add comment error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.get("/api/collaboration/workspace/{workspace_id}/collections")
+async def get_workspace_collections(workspace_id: str):
+    """Get workspace collections"""
+    try:
+        from api.collaboration.workspace_manager import get_workspace_manager
+        
+        manager = get_workspace_manager()
+        collections = manager.get_workspace_collections(workspace_id)
+        
+        return {
+            'success': True,
+            'collections': collections,
+            'count': len(collections)
+        }
+    except Exception as e:
+        logger.error(f"Get collections error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.get("/api/collaboration/workspace/{workspace_id}/activity")
+async def get_activity_feed(workspace_id: str, limit: int = 50):
+    """Get workspace activity feed"""
+    try:
+        from api.collaboration.workspace_manager import get_workspace_manager
+        
+        manager = get_workspace_manager()
+        activities = manager.get_activity_feed(workspace_id, limit)
+        
+        return {
+            'success': True,
+            'activities': activities,
+            'count': len(activities)
+        }
+    except Exception as e:
+        logger.error(f"Get activity feed error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
