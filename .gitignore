@@ -5,6 +5,7 @@ __pycache__/
 
 backend/config.json
 backend/.env
+desktop/.env
 backend/downloads.db
 backend/downloads.db-shm
 backend/downloads.db-wal
