@@ -2058,3 +2058,1302 @@ async def websocket_progress(websocket: WebSocket):
         logger.error(f"WebSocket error: {e}")
     finally:
         STATE["websocket_clients"].discard(websocket)
+
+# ============= AI Assistant API =============
+
+# AI Assistant configuration
+AI_ASSISTANT_CONFIG_FILE = ROOT / "ai_assistant_config.json"
+
+def load_ai_config():
+    """Load AI assistant configuration"""
+    if AI_ASSISTANT_CONFIG_FILE.exists():
+        with open(AI_ASSISTANT_CONFIG_FILE, 'r') as f:
+            return json.load(f)
+    return {'api_key': '', 'enabled': False}
+
+def save_ai_config(config: dict):
+    """Save AI assistant configuration"""
+    with open(AI_ASSISTANT_CONFIG_FILE, 'w') as f:
+        json.dump(config, f, indent=2)
+
+class AIChatRequest(BaseModel):
+    message: str
+    context: Optional[dict] = None
+
+class AIConfigRequest(BaseModel):
+    api_key: str
+    enabled: bool
+
+@APP.get("/api/ai/config")
+async def get_ai_config():
+    """Get AI assistant configuration (without exposing API key)"""
+    config = load_ai_config()
+    return {
+        'enabled': config.get('enabled', False),
+        'has_api_key': bool(config.get('api_key', ''))
+    }
+
+@APP.post("/api/ai/config")
+async def update_ai_config(request: AIConfigRequest):
+    """Update AI assistant configuration"""
+    try:
+        config = {
+            'api_key': request.api_key,
+            'enabled': request.enabled
+        }
+        save_ai_config(config)
+
+        # Reinitialize assistant with new config
+        from api.ai.assistant import get_assistant
+        get_assistant(api_key=request.api_key if request.enabled else None)
+
+        return {'success': True, 'message': 'AI configuration updated'}
+    except Exception as e:
+        logger.error(f"Failed to update AI config: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/ai/chat")
+async def ai_chat(request: AIChatRequest):
+    """Chat with AI assistant"""
+    try:
+        from api.ai.assistant import get_assistant
+
+        # Load config
+        config = load_ai_config()
+        if not config.get('enabled'):
+            return {
+                'success': False,
+                'error': 'AI assistant is not enabled'
+            }
+
+        # Get assistant instance
+        assistant = get_assistant(api_key=config.get('api_key'))
+
+        if not assistant.is_enabled():
+            return {
+                'success': False,
+                'error': 'AI assistant is not properly configured'
+            }
+
+        # Process chat
+        response = await assistant.chat(request.message, request.context)
+
+        return response
+
+    except Exception as e:
+        logger.error(f"AI chat error: {e}")
+        return {
+            'success': False,
+            'error': str(e),
+            'response': f'Sorry, I encountered an error: {str(e)}'
+        }
+
+@APP.post("/api/ai/parse-command")
+async def parse_command(request: AIChatRequest):
+    """Parse natural language command"""
+    try:
+        from api.ai.assistant import get_assistant
+
+        config = load_ai_config()
+        assistant = get_assistant(api_key=config.get('api_key'))
+
+        # Use rule-based parser (doesn't require API key)
+        result = assistant.parse_natural_language_command(request.message)
+
+        if result:
+            return {'success': True, 'result': result}
+        else:
+            return {'success': False, 'error': 'Could not parse command'}
+
+    except Exception as e:
+        logger.error(f"Command parsing error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.get("/api/ai/suggestions")
+async def get_suggestions(context: Optional[str] = None):
+    """Get AI-powered suggestions"""
+    try:
+        from api.ai.assistant import get_assistant
+
+        config = load_ai_config()
+        assistant = get_assistant(api_key=config.get('api_key'))
+
+        context_dict = json.loads(context) if context else None
+        suggestions = assistant.get_suggestions(context_dict)
+
+        return {'success': True, 'suggestions': suggestions}
+
+    except Exception as e:
+        logger.error(f"Suggestions error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/ai/clear-history")
+async def clear_history():
+    """Clear conversation history"""
+    try:
+        from api.ai.assistant import get_assistant
+
+        config = load_ai_config()
+        assistant = get_assistant(api_key=config.get('api_key'))
+        assistant.clear_history()
+
+        return {'success': True, 'message': 'History cleared'}
+
+    except Exception as e:
+        logger.error(f"Clear history error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.get("/api/ping")
+async def ping():
+    """Simple ping endpoint for connection checking"""
+    return {'status': 'ok', 'timestamp': time.time()}
+
+# ============= Content Summarization API =============
+
+class SummarizeTextRequest(BaseModel):
+    text: str
+    style: Optional[str] = 'concise'
+    max_length: Optional[int] = 500
+    extract_keywords: Optional[bool] = True
+
+class SummarizeMessagesRequest(BaseModel):
+    messages: List[dict]
+    style: Optional[str] = 'concise'
+
+class TranscribeAudioRequest(BaseModel):
+    file_path: str
+    language: Optional[str] = None
+    translate: Optional[bool] = False
+
+class SummarizeVideoRequest(BaseModel):
+    file_path: str
+    style: Optional[str] = 'concise'
+
+@APP.post("/api/summarize/text")
+async def summarize_text(request: SummarizeTextRequest):
+    """Summarize text content"""
+    try:
+        from api.ai.summarization import get_engine
+        from api.ai.assistant import get_assistant
+
+        # Get AI config
+        config = load_ai_config()
+        if not config.get('enabled'):
+            raise HTTPException(status_code=400, detail="AI features are not enabled")
+
+        # Get engine
+        engine = get_engine(api_key=config.get('api_key'))
+
+        if not engine.is_enabled():
+            raise HTTPException(status_code=400, detail="Summarization engine is not configured")
+
+        # Summarize
+        options = {
+            'style': request.style,
+            'max_length': request.max_length,
+            'extract_keywords': request.extract_keywords
+        }
+
+        result = await engine.summarize_text(request.text, options)
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Text summarization error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/summarize/messages")
+async def summarize_messages(request: SummarizeMessagesRequest):
+    """Summarize chat messages"""
+    try:
+        from api.ai.summarization import get_engine
+
+        config = load_ai_config()
+        if not config.get('enabled'):
+            raise HTTPException(status_code=400, detail="AI features are not enabled")
+
+        engine = get_engine(api_key=config.get('api_key'))
+
+        if not engine.is_enabled():
+            raise HTTPException(status_code=400, detail="Summarization engine is not configured")
+
+        options = {'style': request.style}
+        result = await engine.summarize_messages(request.messages, options)
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Message summarization error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/summarize/audio")
+async def transcribe_audio(request: TranscribeAudioRequest):
+    """Transcribe audio file to text"""
+    try:
+        from api.ai.summarization import get_engine
+
+        config = load_ai_config()
+        if not config.get('enabled'):
+            raise HTTPException(status_code=400, detail="AI features are not enabled")
+
+        engine = get_engine(api_key=config.get('api_key'))
+
+        if not engine.is_enabled():
+            raise HTTPException(status_code=400, detail="Transcription is not configured")
+
+        # Check if file exists
+        if not Path(request.file_path).exists():
+            raise HTTPException(status_code=404, detail="Audio file not found")
+
+        options = {
+            'language': request.language,
+            'translate': request.translate
+        }
+
+        result = await engine.transcribe_audio(request.file_path, options)
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Audio transcription error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/summarize/video")
+async def summarize_video(request: SummarizeVideoRequest):
+    """Summarize video (transcript + summary)"""
+    try:
+        from api.ai.summarization import get_engine
+
+        config = load_ai_config()
+        if not config.get('enabled'):
+            raise HTTPException(status_code=400, detail="AI features are not enabled")
+
+        engine = get_engine(api_key=config.get('api_key'))
+
+        if not engine.is_enabled():
+            raise HTTPException(status_code=400, detail="Video summarization is not configured")
+
+        # Check if file exists
+        if not Path(request.file_path).exists():
+            raise HTTPException(status_code=404, detail="Video file not found")
+
+        options = {'style': request.style}
+        result = await engine.summarize_video(request.file_path, options)
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Video summarization error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ============= Auto-Tagging API =============
+
+class TagImageRequest(BaseModel):
+    image_path: str
+    use_clip: Optional[bool] = True
+    use_vit: Optional[bool] = True
+    custom_labels: Optional[List[str]] = None
+    confidence_threshold: Optional[float] = 0.3
+
+class BatchTagRequest(BaseModel):
+    image_paths: List[str]
+    use_clip: Optional[bool] = True
+    use_vit: Optional[bool] = True
+    confidence_threshold: Optional[float] = 0.3
+
+class SuggestTagsRequest(BaseModel):
+    existing_tags: List[str]
+    context: Optional[dict] = None
+
+@APP.post("/api/tagging/initialize")
+async def initialize_tagging():
+    """Initialize auto-tagging models"""
+    try:
+        from api.ai.tagging import get_tagging_engine
+
+        engine = get_tagging_engine()
+
+        if not engine.is_available():
+            raise HTTPException(
+                status_code=400,
+                detail="Auto-tagging is not available. Required libraries not installed."
+            )
+
+        result = await engine.initialize_models()
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Tagging initialization error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/tagging/tag-image")
+async def tag_image(request: TagImageRequest):
+    """Auto-tag a single image"""
+    try:
+        from api.ai.tagging import get_tagging_engine
+
+        engine = get_tagging_engine()
+
+        if not engine.is_available():
+            raise HTTPException(
+                status_code=400,
+                detail="Auto-tagging is not available"
+            )
+
+        # Check if image exists
+        if not Path(request.image_path).exists():
+            raise HTTPException(status_code=404, detail="Image not found")
+
+        options = {
+            'use_clip': request.use_clip,
+            'use_vit': request.use_vit,
+            'custom_labels': request.custom_labels or [],
+            'confidence_threshold': request.confidence_threshold
+        }
+
+        result = await engine.tag_image(request.image_path, options)
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Image tagging error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/tagging/batch-tag")
+async def batch_tag_images(request: BatchTagRequest):
+    """Auto-tag multiple images"""
+    try:
+        from api.ai.tagging import get_tagging_engine
+
+        engine = get_tagging_engine()
+
+        if not engine.is_available():
+            raise HTTPException(
+                status_code=400,
+                detail="Auto-tagging is not available"
+            )
+
+        options = {
+            'use_clip': request.use_clip,
+            'use_vit': request.use_vit,
+            'confidence_threshold': request.confidence_threshold
+        }
+
+        result = await engine.batch_tag_images(request.image_paths, options)
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Batch tagging error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/tagging/suggest")
+async def suggest_tags(request: SuggestTagsRequest):
+    """Get tag suggestions based on existing tags"""
+    try:
+        from api.ai.tagging import get_tagging_engine
+
+        engine = get_tagging_engine()
+        suggestions = await engine.suggest_tags(request.existing_tags, request.context)
+
+        return {
+            'success': True,
+            'suggestions': suggestions
+        }
+
+    except Exception as e:
+        logger.error(f"Tag suggestion error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.get("/api/tagging/categories")
+async def get_categories():
+    """Get available tagging categories"""
+    try:
+        from api.ai.tagging import get_tagging_engine
+
+        engine = get_tagging_engine()
+        categories = engine.get_available_categories()
+
+        return {
+            'success': True,
+            'categories': categories
+        }
+
+    except Exception as e:
+        logger.error(f"Get categories error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ============= Advanced Search API =============
+
+class AdvancedSearchRequest(BaseModel):
+    query: str
+    mode: Optional[str] = 'fuzzy'  # fuzzy, exact, regex, fulltext
+    filters: Optional[dict] = None
+    limit: Optional[int] = 100
+    offset: Optional[int] = 0
+    sort_by: Optional[str] = 'relevance'
+    sort_order: Optional[str] = 'desc'
+
+class SaveSearchRequest(BaseModel):
+    name: str
+    query: str
+    mode: str
+    filters: Optional[dict] = None
+
+class ImageSimilarityRequest(BaseModel):
+    reference_image_path: str
+    threshold: Optional[float] = 0.8
+    limit: Optional[int] = 50
+
+@APP.post("/api/search/advanced")
+async def advanced_search(request: AdvancedSearchRequest):
+    """Perform advanced search"""
+    try:
+        from api.search.advanced import get_search_engine
+
+        engine = get_search_engine(database=db)
+
+        options = {
+            'mode': request.mode,
+            'filters': request.filters or {},
+            'limit': request.limit,
+            'offset': request.offset,
+            'sort_by': request.sort_by,
+            'sort_order': request.sort_order
+        }
+
+        result = engine.search(request.query, options)
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Advanced search error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.get("/api/search/history")
+async def get_search_history(limit: int = 20):
+    """Get search history"""
+    try:
+        from api.search.advanced import get_search_engine
+
+        engine = get_search_engine()
+        history = engine.get_history(limit)
+
+        return {
+            'success': True,
+            'history': history
+        }
+
+    except Exception as e:
+        logger.error(f"Get history error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/search/history/clear")
+async def clear_search_history():
+    """Clear search history"""
+    try:
+        from api.search.advanced import get_search_engine
+
+        engine = get_search_engine()
+        engine.clear_history()
+
+        return {
+            'success': True,
+            'message': 'Search history cleared'
+        }
+
+    except Exception as e:
+        logger.error(f"Clear history error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/search/save")
+async def save_search(request: SaveSearchRequest):
+    """Save search for later use"""
+    try:
+        from api.search.advanced import get_search_engine
+
+        engine = get_search_engine()
+        engine.save_search(request.name, request.query, request.mode, request.filters or {})
+
+        return {
+            'success': True,
+            'message': f'Search saved as "{request.name}"'
+        }
+
+    except Exception as e:
+        logger.error(f"Save search error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.get("/api/search/saved")
+async def get_saved_searches():
+    """Get all saved searches"""
+    try:
+        from api.search.advanced import get_search_engine
+
+        engine = get_search_engine()
+        saved = engine.get_saved_searches()
+
+        return {
+            'success': True,
+            'saved_searches': saved
+        }
+
+    except Exception as e:
+        logger.error(f"Get saved searches error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.delete("/api/search/saved/{name}")
+async def delete_saved_search(name: str):
+    """Delete saved search"""
+    try:
+        from api.search.advanced import get_search_engine
+
+        engine = get_search_engine()
+        engine.delete_saved_search(name)
+
+        return {
+            'success': True,
+            'message': f'Search "{name}" deleted'
+        }
+
+    except Exception as e:
+        logger.error(f"Delete saved search error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/search/image-similarity")
+async def image_similarity_search(request: ImageSimilarityRequest):
+    """Search for similar images"""
+    try:
+        from api.search.advanced import get_search_engine
+
+        engine = get_search_engine()
+        result = engine.image_similarity_search(
+            request.reference_image_path,
+            request.threshold,
+            request.limit
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Image similarity search error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ============= Cloud Sync API =============
+
+class RegisterDeviceRequest(BaseModel):
+    device_name: str
+    device_type: str  # desktop, mobile, web
+    user_id: Optional[str] = 'default'
+
+class SyncSettingsRequest(BaseModel):
+    device_id: str
+    settings: dict
+    encrypt: Optional[bool] = True
+
+class SyncQueueRequest(BaseModel):
+    device_id: str
+    queue_items: List[dict]
+    encrypt: Optional[bool] = True
+
+class MergeQueueRequest(BaseModel):
+    local_queue: List[dict]
+    synced_queue: List[dict]
+
+# Browser Extension API Models
+class ExtensionSendLinkRequest(BaseModel):
+    url: str
+    source_url: Optional[str] = None
+    source_title: Optional[str] = None
+    is_telegram_link: Optional[bool] = False
+    timestamp: Optional[str] = None
+
+class ExtensionSendMediaRequest(BaseModel):
+    media_url: str
+    media_type: str  # 'image' or 'video'
+    source_url: Optional[str] = None
+    source_title: Optional[str] = None
+    timestamp: Optional[str] = None
+
+class ExtensionSendTextRequest(BaseModel):
+    text: str
+    source_url: Optional[str] = None
+    source_title: Optional[str] = None
+    telegram_links: Optional[List[str]] = []
+    timestamp: Optional[str] = None
+
+@APP.post("/api/sync/register-device")
+async def register_device(request: RegisterDeviceRequest):
+    """Register a new device for sync"""
+    try:
+        from api.sync.cloud_sync_service import get_sync_service
+
+        sync_service = get_sync_service()
+        result = sync_service.register_device(
+            request.device_name,
+            request.device_type,
+            request.user_id
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Register device error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.get("/api/sync/devices")
+async def get_devices(user_id: str = 'default'):
+    """Get all registered devices"""
+    try:
+        from api.sync.cloud_sync_service import get_sync_service
+
+        sync_service = get_sync_service()
+        devices = sync_service.get_devices(user_id)
+
+        return {
+            'success': True,
+            'devices': devices
+        }
+
+    except Exception as e:
+        logger.error(f"Get devices error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.delete("/api/sync/devices/{device_id}")
+async def remove_device(device_id: str):
+    """Remove a device"""
+    try:
+        from api.sync.cloud_sync_service import get_sync_service
+
+        sync_service = get_sync_service()
+        result = sync_service.remove_device(device_id)
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Remove device error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/sync/settings")
+async def sync_settings(request: SyncSettingsRequest):
+    """Sync settings from device"""
+    try:
+        from api.sync.cloud_sync_service import get_sync_service
+
+        sync_service = get_sync_service()
+        result = sync_service.sync_settings(
+            request.device_id,
+            request.settings,
+            request.encrypt
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Sync settings error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.get("/api/sync/settings/{device_id}")
+async def get_synced_settings(device_id: str, decrypt: bool = True):
+    """Get synced settings for device"""
+    try:
+        from api.sync.cloud_sync_service import get_sync_service
+
+        sync_service = get_sync_service()
+        result = sync_service.get_synced_settings(device_id, decrypt)
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Get synced settings error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/sync/queue")
+async def sync_queue(request: SyncQueueRequest):
+    """Sync download queue from device"""
+    try:
+        from api.sync.cloud_sync_service import get_sync_service
+
+        sync_service = get_sync_service()
+        result = sync_service.sync_queue(
+            request.device_id,
+            request.queue_items,
+            request.encrypt
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Sync queue error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.get("/api/sync/queue/{device_id}")
+async def get_synced_queue(device_id: str, decrypt: bool = True):
+    """Get synced queue for device"""
+    try:
+        from api.sync.cloud_sync_service import get_sync_service
+
+        sync_service = get_sync_service()
+        result = sync_service.get_synced_queue(device_id, decrypt)
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Get synced queue error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/sync/merge-queue")
+async def merge_queues(request: MergeQueueRequest):
+    """Merge local and synced queues"""
+    try:
+        from api.sync.cloud_sync_service import get_sync_service
+
+        sync_service = get_sync_service()
+        merged_queue = sync_service.merge_queues(
+            request.local_queue,
+            request.synced_queue
+        )
+
+        return {
+            'success': True,
+            'merged_queue': merged_queue,
+            'item_count': len(merged_queue)
+        }
+
+    except Exception as e:
+        logger.error(f"Merge queues error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.get("/api/sync/status/{device_id}")
+async def get_sync_status(device_id: str):
+    """Get sync status for device"""
+    try:
+        from api.sync.cloud_sync_service import get_sync_service
+
+        sync_service = get_sync_service()
+        result = sync_service.get_sync_status(device_id)
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Get sync status error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# =============================================================================
+# Browser Extension API
+# =============================================================================
+
+@APP.get("/api/ping")
+async def ping():
+    """Health check endpoint for browser extension"""
+    return {
+        'success': True,
+        'status': 'ok',
+        'timestamp': time.time()
+    }
+
+@APP.post("/api/extension/send-link")
+async def extension_send_link(request: ExtensionSendLinkRequest):
+    """Receive link from browser extension"""
+    try:
+        logger.info(f"Extension sent link: {request.url}")
+        
+        # Store link in extension_links file
+        extension_data_dir = Path('extension_data')
+        extension_data_dir.mkdir(exist_ok=True)
+        
+        links_file = extension_data_dir / 'received_links.jsonl'
+        
+        link_data = {
+            'url': request.url,
+            'source_url': request.source_url,
+            'source_title': request.source_title,
+            'is_telegram_link': request.is_telegram_link,
+            'timestamp': request.timestamp or time.time(),
+            'received_at': time.time()
+        }
+        
+        # Append to JSONL file
+        with open(links_file, 'a') as f:
+            f.write(json.dumps(link_data) + '\n')
+        
+        # If it's a Telegram link, we could automatically trigger download
+        # For now, just acknowledge receipt
+        
+        return {
+            'success': True,
+            'message': 'Link received successfully',
+            'link': request.url,
+            'is_telegram_link': request.is_telegram_link
+        }
+        
+    except Exception as e:
+        logger.error(f"Extension send link error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/extension/send-media")
+async def extension_send_media(request: ExtensionSendMediaRequest):
+    """Receive media URL from browser extension"""
+    try:
+        logger.info(f"Extension sent {request.media_type}: {request.media_url}")
+        
+        # Store media in extension_media file
+        extension_data_dir = Path('extension_data')
+        extension_data_dir.mkdir(exist_ok=True)
+        
+        media_file = extension_data_dir / 'received_media.jsonl'
+        
+        media_data = {
+            'media_url': request.media_url,
+            'media_type': request.media_type,
+            'source_url': request.source_url,
+            'source_title': request.source_title,
+            'timestamp': request.timestamp or time.time(),
+            'received_at': time.time()
+        }
+        
+        # Append to JSONL file
+        with open(media_file, 'a') as f:
+            f.write(json.dumps(media_data) + '\n')
+        
+        return {
+            'success': True,
+            'message': f'{request.media_type.capitalize()} URL received successfully',
+            'media_url': request.media_url,
+            'media_type': request.media_type
+        }
+        
+    except Exception as e:
+        logger.error(f"Extension send media error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/extension/send-text")
+async def extension_send_text(request: ExtensionSendTextRequest):
+    """Receive selected text from browser extension"""
+    try:
+        logger.info(f"Extension sent text ({len(request.text)} chars, {len(request.telegram_links)} Telegram links)")
+        
+        # Store text in extension_text file
+        extension_data_dir = Path('extension_data')
+        extension_data_dir.mkdir(exist_ok=True)
+        
+        text_file = extension_data_dir / 'received_text.jsonl'
+        
+        text_data = {
+            'text': request.text,
+            'source_url': request.source_url,
+            'source_title': request.source_title,
+            'telegram_links': request.telegram_links,
+            'timestamp': request.timestamp or time.time(),
+            'received_at': time.time()
+        }
+        
+        # Append to JSONL file
+        with open(text_file, 'a') as f:
+            f.write(json.dumps(text_data) + '\n')
+        
+        return {
+            'success': True,
+            'message': 'Text received successfully',
+            'text_length': len(request.text),
+            'telegram_links_count': len(request.telegram_links)
+        }
+        
+    except Exception as e:
+        logger.error(f"Extension send text error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.get("/api/extension/received-links")
+async def get_received_links(limit: int = 100, offset: int = 0):
+    """Get links received from browser extension"""
+    try:
+        extension_data_dir = Path('extension_data')
+        links_file = extension_data_dir / 'received_links.jsonl'
+        
+        if not links_file.exists():
+            return {
+                'success': True,
+                'links': [],
+                'total': 0
+            }
+        
+        # Read all links
+        links = []
+        with open(links_file, 'r') as f:
+            for line in f:
+                if line.strip():
+                    links.append(json.loads(line))
+        
+        # Sort by received_at (newest first)
+        links.sort(key=lambda x: x.get('received_at', 0), reverse=True)
+        
+        # Paginate
+        total = len(links)
+        links = links[offset:offset + limit]
+        
+        return {
+            'success': True,
+            'links': links,
+            'total': total,
+            'limit': limit,
+            'offset': offset
+        }
+        
+    except Exception as e:
+        logger.error(f"Get received links error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# =============================================================================
+# Media Player API
+# =============================================================================
+
+@APP.get("/api/media/list")
+async def list_media_files():
+    """List all media files for preview"""
+    try:
+        # In a real implementation, this would query the database
+        # For now, return mock data structure
+        
+        media_files = {
+            'videos': [],
+            'audio': [],
+            'images': [],
+            'documents': []
+        }
+        
+        # Example: scan downloads directory if exists
+        import os
+        from pathlib import Path
+        
+        downloads_dir = Path('downloads')
+        if downloads_dir.exists():
+            for file_path in downloads_dir.rglob('*'):
+                if file_path.is_file():
+                    file_info = {
+                        'id': str(hash(str(file_path))),
+                        'name': file_path.name,
+                        'path': str(file_path),
+                        'url': f'/api/media/file/{file_path.name}',
+                        'size': file_path.stat().st_size,
+                        'date': file_path.stat().st_mtime
+                    }
+                    
+                    # Categorize by extension
+                    ext = file_path.suffix.lower()
+                    if ext in ['.mp4', '.mkv', '.avi', '.mov', '.webm']:
+                        file_info['type'] = 'video'
+                        media_files['videos'].append(file_info)
+                    elif ext in ['.mp3', '.wav', '.ogg', '.m4a', '.flac']:
+                        file_info['type'] = 'audio'
+                        media_files['audio'].append(file_info)
+                    elif ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']:
+                        file_info['type'] = 'image'
+                        media_files['images'].append(file_info)
+                    elif ext in ['.pdf', '.txt', '.md', '.doc', '.docx']:
+                        file_info['type'] = 'document'
+                        media_files['documents'].append(file_info)
+        
+        return {
+            'success': True,
+            'media': media_files['videos'] + media_files['audio'] + media_files['images'] + media_files['documents'],
+            'counts': {
+                'videos': len(media_files['videos']),
+                'audio': len(media_files['audio']),
+                'images': len(media_files['images']),
+                'documents': len(media_files['documents'])
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"List media files error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# =============================================================================
+# Advanced Download Manager API
+# =============================================================================
+
+# Download Manager Models
+class AddDownloadRequest(BaseModel):
+    url: str
+    destination: str
+    filename: str
+    priority: Optional[str] = "NORMAL"  # LOW, NORMAL, HIGH, URGENT
+    checksum: Optional[str] = None
+    speed_limit: Optional[int] = None  # bytes per second
+    connections: Optional[int] = 1
+
+class SetPriorityRequest(BaseModel):
+    task_id: str
+    priority: str  # LOW, NORMAL, HIGH, URGENT
+
+class SetSpeedLimitRequest(BaseModel):
+    task_id: str
+    speed_limit: Optional[int]  # bytes per second, None = unlimited
+
+@APP.post("/api/downloads/add")
+async def add_download(request: AddDownloadRequest):
+    """Add a new download to the queue"""
+    try:
+        from api.download.manager import get_download_manager, DownloadPriority
+        
+        manager = get_download_manager()
+        
+        # Parse priority
+        priority = DownloadPriority[request.priority.upper()]
+        
+        task_id = manager.add_download(
+            url=request.url,
+            destination=request.destination,
+            filename=request.filename,
+            priority=priority,
+            checksum=request.checksum,
+            speed_limit=request.speed_limit,
+            connections=request.connections
+        )
+        
+        return {
+            'success': True,
+            'task_id': task_id,
+            'message': f'Download added to queue: {request.filename}'
+        }
+        
+    except Exception as e:
+        logger.error(f"Add download error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.get("/api/downloads/list")
+async def list_downloads():
+    """Get all downloads"""
+    try:
+        from api.download.manager import get_download_manager
+        
+        manager = get_download_manager()
+        downloads = manager.get_all_downloads()
+        
+        return {
+            'success': True,
+            'downloads': downloads,
+            'count': len(downloads)
+        }
+        
+    except Exception as e:
+        logger.error(f"List downloads error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.get("/api/downloads/{task_id}")
+async def get_download(task_id: str):
+    """Get download details"""
+    try:
+        from api.download.manager import get_download_manager
+        
+        manager = get_download_manager()
+        download = manager.get_download(task_id)
+        
+        if not download:
+            raise HTTPException(status_code=404, detail="Download not found")
+        
+        return {
+            'success': True,
+            'download': download
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get download error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/downloads/{task_id}/pause")
+async def pause_download(task_id: str):
+    """Pause a download"""
+    try:
+        from api.download.manager import get_download_manager
+        
+        manager = get_download_manager()
+        success = manager.pause_download(task_id)
+        
+        if not success:
+            raise HTTPException(status_code=400, detail="Cannot pause download")
+        
+        return {
+            'success': True,
+            'message': 'Download paused'
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Pause download error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/downloads/{task_id}/resume")
+async def resume_download(task_id: str):
+    """Resume a paused download"""
+    try:
+        from api.download.manager import get_download_manager
+        
+        manager = get_download_manager()
+        success = manager.resume_download(task_id)
+        
+        if not success:
+            raise HTTPException(status_code=400, detail="Cannot resume download")
+        
+        return {
+            'success': True,
+            'message': 'Download resumed'
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Resume download error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/downloads/{task_id}/cancel")
+async def cancel_download(task_id: str):
+    """Cancel a download"""
+    try:
+        from api.download.manager import get_download_manager
+        
+        manager = get_download_manager()
+        success = manager.cancel_download(task_id)
+        
+        if not success:
+            raise HTTPException(status_code=400, detail="Cannot cancel download")
+        
+        return {
+            'success': True,
+            'message': 'Download cancelled'
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Cancel download error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/downloads/{task_id}/retry")
+async def retry_download(task_id: str):
+    """Retry a failed download"""
+    try:
+        from api.download.manager import get_download_manager
+        
+        manager = get_download_manager()
+        success = manager.retry_failed_download(task_id)
+        
+        if not success:
+            raise HTTPException(status_code=400, detail="Cannot retry download")
+        
+        return {
+            'success': True,
+            'message': 'Download retry initiated'
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Retry download error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/downloads/set-priority")
+async def set_download_priority(request: SetPriorityRequest):
+    """Set download priority"""
+    try:
+        from api.download.manager import get_download_manager, DownloadPriority
+        
+        manager = get_download_manager()
+        priority = DownloadPriority[request.priority.upper()]
+        success = manager.set_priority(request.task_id, priority)
+        
+        if not success:
+            raise HTTPException(status_code=400, detail="Cannot set priority")
+        
+        return {
+            'success': True,
+            'message': f'Priority set to {request.priority}'
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Set priority error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/downloads/set-speed-limit")
+async def set_download_speed_limit(request: SetSpeedLimitRequest):
+    """Set download speed limit"""
+    try:
+        from api.download.manager import get_download_manager
+        
+        manager = get_download_manager()
+        success = manager.set_speed_limit(request.task_id, request.speed_limit)
+        
+        if not success:
+            raise HTTPException(status_code=400, detail="Cannot set speed limit")
+        
+        return {
+            'success': True,
+            'message': 'Speed limit updated'
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Set speed limit error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.get("/api/downloads/history")
+async def get_download_history(limit: int = 100):
+    """Get download history"""
+    try:
+        from api.download.manager import get_download_manager
+        
+        manager = get_download_manager()
+        history = manager.get_download_history(limit)
+        
+        return {
+            'success': True,
+            'history': history,
+            'count': len(history)
+        }
+        
+    except Exception as e:
+        logger.error(f"Get download history error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.get("/api/downloads/statistics")
+async def get_download_statistics():
+    """Get download statistics"""
+    try:
+        from api.download.manager import get_download_manager
+        
+        manager = get_download_manager()
+        stats = manager.get_statistics()
+        
+        return {
+            'success': True,
+            'statistics': stats
+        }
+        
+    except Exception as e:
+        logger.error(f"Get download statistics error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.get("/api/downloads/{task_id}/speed-history")
+async def get_download_speed_history(task_id: str):
+    """Get speed history for a download"""
+    try:
+        from api.download.manager import get_download_manager
+        
+        manager = get_download_manager()
+        speed_history = manager.get_speed_history(task_id)
+        
+        return {
+            'success': True,
+            'speed_history': speed_history
+        }
+        
+    except Exception as e:
+        logger.error(f"Get speed history error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

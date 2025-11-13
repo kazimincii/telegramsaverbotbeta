@@ -1,5 +1,7 @@
-import React, { createContext, useEffect, useState } from 'react';
+import React, { createContext, useEffect, useState, useRef } from 'react';
 import { fetchConfig, saveConfig, startRun, stopRun, fetchStatus } from '../services/api';
+import notificationService from '../services/notificationService';
+import offlineStorage from '../services/offlineStorage';
 
 // Global application context used by the control panel components
 export const AppContext = createContext();
@@ -31,13 +33,21 @@ export function AppProvider({ children }) {
   const [errors, setErrors] = useState([]);
   const [dialogs, setDialogs] = useState([]);
 
+  // Track previous state for notification triggers
+  const prevRunning = useRef(false);
+  const prevProgress = useRef(defaultProgress);
+
   const setField = (k, v) => setCfg(c => ({ ...c, [k]: v }));
   const clearLog = () => setLog([]);
   const clearErrors = () => setErrors([]);
 
   const recordError = (msg) => {
     setError(msg);
-    if (msg) setErrors(prev => [...prev, msg]);
+    if (msg) {
+      setErrors(prev => [...prev, msg]);
+      // Show error notification
+      notificationService.notifyDownloadError({ message: msg });
+    }
   };
 
   async function save() {
@@ -85,9 +95,49 @@ export function AppProvider({ children }) {
         .then(s => {
           if (!alive) return;
           const d = s || {};
-          setRunning(!!d.running);
-          setProgress(d.progress || defaultProgress);
+          const isRunning = !!d.running;
+          const newProgress = d.progress || defaultProgress;
+
+          // Check if download just completed
+          if (prevRunning.current && !isRunning) {
+            // Download finished
+            notificationService.notifyDownloadComplete({
+              count: prevProgress.current.downloaded || 0,
+              chat: prevProgress.current.chat || 'Unknown',
+              folder: cfg.out
+            });
+
+            // Save download record to offline storage
+            if (prevProgress.current.downloaded > 0) {
+              offlineStorage.addDownload({
+                chatId: prevProgress.current.chat,
+                fileCount: prevProgress.current.downloaded,
+                skipped: prevProgress.current.skipped || 0,
+                folder: cfg.out,
+                types: cfg.types,
+                completedAt: Date.now()
+              }).catch(err => {
+                console.error('Failed to save download record:', err);
+              });
+            }
+          }
+
+          // Check if download is in progress and downloaded count increased
+          if (isRunning && newProgress.downloaded > prevProgress.current.downloaded) {
+            notificationService.notifyDownloadProgress({
+              downloaded: newProgress.downloaded,
+              chat: newProgress.chat
+            });
+          }
+
+          // Update state
+          setRunning(isRunning);
+          setProgress(newProgress);
           if (Array.isArray(d.logTail)) setLog(p => [...p, ...d.logTail].slice(-400));
+
+          // Update refs
+          prevRunning.current = isRunning;
+          prevProgress.current = newProgress;
         })
         .catch(e => {
           if (alive) recordError(e.message || 'Durum alınamadı');
@@ -99,7 +149,7 @@ export function AppProvider({ children }) {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [cfg.out]);
 
   return (
     <AppContext.Provider

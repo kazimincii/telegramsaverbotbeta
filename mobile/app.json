@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Telegram Saver",
-    "slug": "telegram-saver-mobile",
+    "slug": "telegram-saver",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -9,48 +9,52 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#2196F3"
+      "backgroundColor": "#667eea"
     },
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.telegramsaver.mobile",
-      "buildNumber": "1.0.0",
+      "bundleIdentifier": "com.telegramsaver.app",
       "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "This app needs access to save downloaded media files.",
-        "NSPhotoLibraryAddUsageDescription": "This app needs access to save downloaded media files."
+        "NSCameraUsageDescription": "Allow camera access to scan QR codes",
+        "NSFaceIDUsageDescription": "Allow biometric authentication for security",
+        "UIBackgroundModes": [
+          "fetch",
+          "remote-notification"
+        ]
       }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#2196F3"
+        "backgroundColor": "#667eea"
       },
-      "package": "com.telegramsaver.mobile",
-      "versionCode": 1,
+      "package": "com.telegramsaver.app",
       "permissions": [
-        "android.permission.INTERNET",
-        "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE"
+        "CAMERA",
+        "NOTIFICATIONS",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "USE_BIOMETRIC"
       ]
     },
     "web": {
-      "favicon": "./assets/favicon.png",
-      "bundler": "metro"
+      "favicon": "./assets/favicon.png"
     },
-    "extra": {
-      "eas": {
-        "projectId": "telegram-saver-mobile"
-      }
+    "notification": {
+      "icon": "./assets/notification-icon.png",
+      "color": "#667eea"
     },
     "plugins": [
-      "expo-file-system",
-      "expo-document-picker"
-    ],
-    "updates": {
-      "fallbackToCacheTimeout": 0
-    }
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#667eea"
+        }
+      ]
+    ]
   }
 }

@@ -1,260 +1,215 @@
-# Telegram Saver Mobile
+# Telegram Saver Mobile App
 
-React Native mobile app for monitoring and controlling Telegram media downloads from your phone.
+Cross-platform mobile application for iOS and Android built with React Native and Expo.
 
 ## Features
 
-- ✅ **Real-time monitoring** - Live status updates every 3 seconds
-- ✅ **Remote control** - Start/stop downloads from anywhere
-- ✅ **Statistics** - View download stats and recent files
-- ✅ **Dark mode** - Automatic theme based on system preferences
-- ✅ **Cross-platform** - iOS, Android, and Web support
-- ✅ **Configurable** - Easy backend URL configuration
+✅ **All Desktop Features (Mobile-Optimized)**
+- Download management with queue
+- Media preview (videos, images, documents)
+- Cloud sync with desktop app
+- AI-powered search and tagging
+- Advanced filtering
+- Offline mode
 
-## Screenshots
+✅ **Mobile-Specific Features**
+- Background downloads
+- Push notifications
+- Share extension (save from other apps)
+- Biometric authentication (Face ID / Fingerprint)
+- QR code scanner for quick login
+- Home screen widgets
+- Dark mode support
+- Responsive design
 
-### Home Screen
-- Connection status indicator
-- Download control buttons
-- Real-time progress tracking
-- Recent downloads list
+✅ **Platform Support**
+- iOS 13.0+
+- Android 5.0+ (API Level 21+)
+- Expo managed workflow
 
-### Statistics Screen
-- Total downloads count
-- Total size downloaded
-- Active chats monitoring
+## Project Structure
 
-### Settings Screen
-- Backend API URL configuration
-- Connection testing
-- App information
-
-## Prerequisites
-
-- Node.js 18+
-- Expo CLI (`npm install -g expo-cli`)
-- iOS Simulator (macOS) or Android Studio (for emulators)
-- Physical device with Expo Go app (recommended)
+```
+mobile/
+├── App.js                 # Main app entry point
+├── app.json              # Expo configuration
+├── package.json          # Dependencies
+├── assets/               # Images, fonts, icons
+├── components/           # Reusable UI components
+│   ├── DownloadCard.js
+│   ├── MediaPreview.js
+│   ├── SearchBar.js
+│   └── ...
+├── screens/              # App screens
+│   ├── HomeScreen.js
+│   ├── DownloadsScreen.js
+│   ├── SettingsScreen.js
+│   ├── LoginScreen.js
+│   └── ...
+├── navigation/           # Navigation configuration
+│   ├── AppNavigator.js   # Main app navigation
+│   └── AuthNavigator.js  # Auth flow navigation
+├── services/             # API and business logic
+│   ├── ApiService.js     # HTTP client
+│   ├── AuthService.js    # Authentication
+│   ├── DownloadService.js
+│   ├── NotificationService.js
+│   ├── SyncService.js
+│   └── ...
+└── utils/                # Helper functions
+    ├── formatters.js
+    ├── validators.js
+    └── constants.js
+```
 
 ## Installation
 
 ```bash
+# Navigate to mobile directory
 cd mobile
+
+# Install dependencies
 npm install
-```
 
-## Running the App
-
-### Development Mode with Expo Go
-
-```bash
+# Start Expo development server
 npm start
+
+# Run on iOS simulator
+npm run ios
+
+# Run on Android emulator
+npm run android
 ```
 
-This will start the Expo development server. You can then:
+## Development
 
-1. **iOS:** Press `i` to open in iOS Simulator (macOS only)
-2. **Android:** Press `a` to open in Android Emulator
-3. **Physical Device:** Scan QR code with Expo Go app
+### Prerequisites
+- Node.js 18+
+- Expo CLI (`npm install -g expo-cli`)
+- iOS: Xcode 14+ (macOS only)
+- Android: Android Studio + Android SDK
 
-### Building Standalone Apps
+### Environment Variables
+Create `.env` file:
+```
+API_BASE_URL=http://localhost:8000
+API_TIMEOUT=30000
+```
 
-#### Prerequisites
-Install EAS CLI:
+### Building for Production
+
+**iOS:**
 ```bash
-npm install -g eas-cli
-eas login
-eas build:configure
+expo build:ios
 ```
 
-#### Build for Android (APK)
+**Android:**
 ```bash
-npm run build:android
+expo build:android
 ```
 
-This creates a production APK that can be installed on any Android device.
+## Key Dependencies
 
-#### Build for iOS (IPA)
-```bash
-npm run build:ios
-```
+- **expo**: ~50.0.0 - Expo SDK
+- **react-navigation**: ^6.1.9 - Navigation
+- **axios**: ^1.6.5 - HTTP client
+- **expo-notifications**: ~0.27.6 - Push notifications
+- **expo-local-authentication**: ~13.8.0 - Biometric auth
+- **expo-file-system**: ~16.0.6 - File management
+- **expo-background-fetch**: ~12.0.1 - Background tasks
+- **expo-secure-store**: ~12.8.1 - Secure storage
+- **expo-sharing**: ~12.0.1 - Share extension
+- **expo-camera**: ~14.1.3 - QR scanner
 
-**Note:** Building for iOS requires:
-- macOS with Xcode
-- Apple Developer account ($99/year)
-- Valid iOS distribution certificate
+## Features in Detail
 
-## Configuration
+### Background Downloads
+- Continue downloads when app is backgrounded
+- Progress notifications
+- Automatic retry on failure
+- Queue management
 
-### Backend URL Setup
+### Push Notifications
+- Download completion alerts
+- Sync status updates
+- Error notifications
+- Configurable notification settings
 
-1. Open the app
-2. Go to Settings tab (⚙️)
-3. Enter your backend server URL (e.g., `http://192.168.1.100:8000`)
-4. Tap "Save Settings"
-5. Tap "Test Connection" to verify
+### Share Extension
+- Save content from other apps
+- Quick share to Telegram Saver
+- Automatic categorization
 
-### Network Requirements
+### Biometric Authentication
+- Face ID (iOS)
+- Touch ID (iOS)
+- Fingerprint (Android)
+- Fallback to PIN/Password
 
-- Backend server must be accessible from mobile device
-- For local network: Use computer's local IP (not `localhost`)
-- For remote access: Use public IP or domain with proper port forwarding
+### Cloud Sync
+- Real-time sync with desktop app
+- E2E encryption
+- Conflict resolution
+- Offline queue
 
-**Finding your backend IP:**
+### Offline Mode
+- Download for offline viewing
+- Queue sync when online
+- Cached media preview
+- Local database
 
-**macOS/Linux:**
-```bash
-ifconfig | grep "inet " | grep -v 127.0.0.1
-```
+## API Integration
 
-**Windows:**
-```bash
-ipconfig | findstr IPv4
-```
-
-## App Structure
-
-```
-mobile/
-├── App.js              # Main app component with navigation
-├── app.json            # Expo configuration
-├── package.json        # Dependencies and scripts
-└── assets/            # Images and icons
-    ├── icon.png       # App icon (1024x1024)
-    ├── splash.png     # Splash screen
-    └── adaptive-icon.png  # Android adaptive icon
-```
-
-## Features Breakdown
-
-### Home Tab
-- **Connection Status Card**
-  - Real-time connection indicator
-  - Backend URL display
-
-- **Download Control Card**
-  - Start/Stop buttons
-  - Progress indicators
-  - Stats: Downloaded, Skipped, Errors
-
-- **Recent Downloads Card**
-  - Last 5 downloaded files
-  - File names and sizes
-
-### Stats Tab
-- Total downloads count
-- Total data size
-- Active chats count
-
-### Settings Tab
-- Backend URL configuration
-- Connection testing
-- App version info
-
-## API Endpoints Used
-
-- `GET /api/status` - Fetch current status (polled every 3s)
-- `POST /api/start` - Start download session
-- `POST /api/stop` - Stop download session
-
-## Customization
-
-### Changing Theme Colors
-
-Edit `getStyles()` function in `App.js`:
+Mobile app communicates with desktop backend:
 
 ```javascript
-// Primary color
-backgroundColor: '#2196F3'
+// Example API call
+import { apiClient } from './services/ApiService';
 
-// Success color
-backgroundColor: '#4CAF50'
-
-// Error/Stop color
-backgroundColor: '#f44336'
+const downloads = await apiClient.get('/api/downloads/list');
+const stats = await apiClient.get('/api/downloads/statistics');
 ```
 
-### Adjusting Poll Interval
+## Testing
 
-Change the polling frequency in `useEffect`:
+```bash
+# Run tests
+npm test
 
-```javascript
-const interval = setInterval(fetchStatus, 3000); // 3 seconds
+# Run tests in watch mode
+npm test -- --watch
 ```
 
-## Troubleshooting
+## Deployment
 
-### "Unable to connect" error
-- Check backend is running: `curl http://YOUR_IP:8000/api/status`
-- Verify firewall allows port 8000
-- Ensure devices are on same network
+### App Store (iOS)
+1. Build production IPA
+2. Upload to App Store Connect
+3. Submit for review
 
-### "Connection refused" on Android
-- Android emulator: Use `http://10.0.2.2:8000` instead of `localhost`
-- Physical device: Use computer's local IP address
+### Google Play (Android)
+1. Build production APK/AAB
+2. Upload to Google Play Console
+3. Submit for review
 
-### App crashes on startup
-- Clear cache: `expo start -c`
-- Reinstall dependencies: `rm -rf node_modules && npm install`
+## Monetization
 
-### iOS simulator not opening
-- Install Xcode Command Line Tools: `xcode-select --install`
-- Open Xcode once to accept license
+**Free Tier:**
+- Basic download features
+- 5 concurrent downloads
+- 10GB cloud storage
 
-## Production Deployment
-
-### Android (Google Play Store)
-
-1. Build production APK:
-   ```bash
-   eas build --platform android --profile production
-   ```
-
-2. Create Google Play Console account
-
-3. Upload APK through console
-
-### iOS (App Store)
-
-1. Build production IPA:
-   ```bash
-   eas build --platform ios --profile production
-   ```
-
-2. Create App Store Connect account
-
-3. Submit through App Store Connect
-
-### Web Deployment
-
-1. Build web version:
-   ```bash
-   npm run web
-   npx expo export:web
-   ```
-
-2. Deploy `web-build/` folder to hosting (Netlify, Vercel, etc.)
-
-## Performance Tips
-
-- App uses minimal battery with 3-second polling
-- Connection timeout set to 3 seconds for fast failure
-- Dark mode reduces OLED screen power consumption
-- AsyncStorage caches settings locally
-
-## Security Notes
-
-- API URL stored in AsyncStorage (device only)
-- No authentication implemented (local network use only)
-- For public internet: Add authentication to backend APIs
-- HTTPS recommended for remote access
+**Premium Subscription** ($4.99/month):
+- Unlimited concurrent downloads
+- 100GB cloud storage
+- Priority sync
+- Background downloads
+- No ads
 
 ## License
 
-Part of Telegram Saver Bot project. See main project LICENSE.
+Part of Telegram Saver project.
 
 ## Support
 
-- Backend issues: Check main project README
-- Mobile-specific issues: Create issue with "mobile" label
-- Feature requests: Open discussion in main repo
+For issues and feature requests, please open an issue on the main repository.

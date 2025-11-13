@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import ControlPanel from "./components/ControlPanel";
 import ThemeToggle from "./components/ThemeToggle";
 import CLIPSearchPanel from "./components/CLIPSearchPanel";
@@ -8,6 +8,14 @@ import VideoProcessor from "./components/VideoProcessor";
 import AnalyticsDashboard from "./components/AnalyticsDashboard";
 import LanguageSelector, { LanguageProvider } from "./components/LanguageSelector";
 import EnterpriseManager from "./components/EnterpriseManager";
+import OfflineIndicator from "./components/OfflineIndicator";
+import AIAssistant from "./components/AIAssistant";
+import ContentSummary from "./components/ContentSummary";
+import TagManager from "./components/TagManager";
+import AdvancedSearch from "./components/AdvancedSearch";
+import MultiDeviceSync from "./components/MultiDeviceSync";
+import MediaPlayer from "./components/MediaPlayer/MediaPlayer";
+import DownloadManager from "./components/DownloadManager";
 import { AppProvider } from "./context/AppContext";
 import "./styles/modern.css";
 
@@ -21,12 +29,53 @@ export default function App(){
     document.documentElement.setAttribute('data-theme', newTheme);
   };
 
+  // Setup keyboard shortcut listeners
+  useEffect(() => {
+    if (window.electronAPI && window.electronAPI.onShortcutAction) {
+      const handleShortcut = (action) => {
+        console.log('Shortcut action received:', action);
+
+        switch (action) {
+          case 'start-download':
+            setActiveView('control');
+            break;
+
+          case 'open-settings':
+            setActiveView('control');
+            break;
+
+          case 'refresh':
+            window.location.reload();
+            break;
+
+          default:
+            console.log('Unknown shortcut action:', action);
+        }
+      };
+
+      window.electronAPI.onShortcutAction(handleShortcut);
+
+      return () => {
+        if (window.electronAPI.removeShortcutActionListener) {
+          window.electronAPI.removeShortcutActionListener();
+        }
+      };
+    }
+  }, []);
+
   const menuItems = [
     { id: 'control', label: 'Kontrol Paneli', icon: '🎛️' },
+    { id: 'downloads', label: 'İndirme Yöneticisi', icon: '📥' },
+    { id: 'media-player', label: 'Medya Oynatıcı', icon: '🎬' },
+    { id: 'ai', label: 'AI Asistan', icon: '🤖' },
+    { id: 'summary', label: 'İçerik Özetleme', icon: '📝' },
+    { id: 'tagging', label: 'Otomatik Etiketleme', icon: '🏷️' },
+    { id: 'advanced-search', label: 'Gelişmiş Arama', icon: '🔍' },
+    { id: 'multi-device', label: 'Çoklu Cihaz Sync', icon: '☁️' },
     { id: 'analytics', label: 'Analitik', icon: '📊' },
-    { id: 'search', label: 'AI Arama', icon: '🔍' },
+    { id: 'search', label: 'AI Arama', icon: '🔎' },
     { id: 'webhook', label: 'Webhook', icon: '🔗' },
-    { id: 'cloud', label: 'Bulut Senkronizasyon', icon: '☁️' },
+    { id: 'cloud', label: 'Bulut Senkronizasyon', icon: '🌩️' },
     { id: 'video', label: 'Video İşleme', icon: '🎥' },
     { id: 'enterprise', label: 'Kurumsal', icon: '🏢' }
   ];
@@ -75,6 +124,13 @@ export default function App(){
           <div className="main-content">
             <div className="content-wrapper">
               {activeView === 'control' && <ControlPanel />}
+              {activeView === 'downloads' && <DownloadManager />}
+              {activeView === 'media-player' && <MediaPlayer />}
+              {activeView === 'ai' && <AIAssistant />}
+              {activeView === 'summary' && <ContentSummary />}
+              {activeView === 'tagging' && <TagManager />}
+              {activeView === 'advanced-search' && <AdvancedSearch />}
+              {activeView === 'multi-device' && <MultiDeviceSync />}
               {activeView === 'analytics' && <AnalyticsDashboard />}
               {activeView === 'search' && <CLIPSearchPanel />}
               {activeView === 'webhook' && <WebhookManager />}
@@ -83,6 +139,9 @@ export default function App(){
               {activeView === 'enterprise' && <EnterpriseManager />}
             </div>
           </div>
+
+          {/* Offline Indicator */}
+          <OfflineIndicator />
         </div>
       </AppProvider>
     </LanguageProvider>
