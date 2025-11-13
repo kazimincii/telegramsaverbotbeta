@@ -2,10 +2,13 @@ import asyncio
 import json
 import time
 import base64
+import logging
+import os
+from collections import deque
 from pathlib import Path
-from threading import Event
 from typing import List, Optional
 
+from dotenv import load_dotenv
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -16,23 +19,51 @@ try:
 except ImportError:
     import contacts
 
+# Load environment variables
+load_dotenv(Path(__file__).resolve().parent / ".env")
+
 APP = FastAPI()
+
+# CORS configuration - restrict origins for security
+# Can be overridden via ALLOWED_ORIGINS environment variable
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "").split(",") if os.getenv("ALLOWED_ORIGINS") else [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+]
+
 APP.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 ROOT = Path(__file__).resolve().parent
 CFG_FILE = ROOT / "config.json"
+LOG_DIR = ROOT.parent / "log"
+LOG_DIR.mkdir(exist_ok=True)
+
+# Configure logging with environment variable support
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+logging.basicConfig(
+    level=getattr(logging, LOG_LEVEL, logging.INFO),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(LOG_DIR / "telegramsaver.log"),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 
 
 class Config(BaseModel):
-    api_id: str
-    api_hash: str
+    api_id: int = 0
+    api_hash: str = ""
     session: str = "tg_media"
-    out: str = "C:/TelegramArchive"
+    out: str = str(Path.home() / "TelegramArchive")  # Platform-agnostic default path
     types: List[str] = ["photos"]
     include: List[str] = []
     exclude: List[str] = []
@@ -46,20 +77,19 @@ class Config(BaseModel):
 
 STATE = {
     "running": False,
-    "log": [],
+    "log": deque(maxlen=500),  # Use deque with maxlen to prevent memory leak
     # Track current chat name, number of downloaded files and skipped messages
     "progress": {"chat": "", "downloaded": 0, "skipped": 0},
-    "stop": Event(),
+    "stop": asyncio.Event(),  # Use asyncio.Event instead of threading.Event
     "worker": None,
     "config": None,
 }
 
 
 def log(msg: str) -> None:
-    print(msg, flush=True)
-    buf = STATE["log"]
-    buf.append(msg)
-    del buf[:-500]
+    """Log message to both file/console and in-memory buffer."""
+    logger.info(msg)
+    STATE["log"].append(msg)  # deque automatically removes old items when maxlen is reached
 
 
 @APP.middleware("http")
@@ -79,8 +109,20 @@ async def timing_middleware(request: Request, call_next):
 
 @APP.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
+    """Global exception handler with environment-aware error details."""
     log(f"[error] {exc}")
-    return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
+
+    # In development, show detailed error; in production, hide sensitive info
+    is_dev = os.getenv("ENVIRONMENT", "production").lower() in ("development", "dev")
+    detail = str(exc) if is_dev else "Internal Server Error"
+
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": detail,
+            "error_type": type(exc).__name__ if is_dev else "ServerError"
+        }
+    )
 
 
 def load_cfg() -> Config:
@@ -122,7 +164,7 @@ def set_config(payload: dict):
 async def list_dialogs():
     """Return joined groups/channels with basic info and media counts."""
     cfg = load_cfg()
-    client = TelegramClient(cfg.session, int(cfg.api_id or 0), cfg.api_hash or "")
+    client = TelegramClient(cfg.session, cfg.api_id, cfg.api_hash)
     await client.connect()
     if not await client.is_user_authorized():
         await client.disconnect()
@@ -241,7 +283,7 @@ async def download_worker(
     chats: Optional[List[str]] = None,
     media_types: Optional[List[str]] = None,
 ):
-    client = TelegramClient(cfg.session, int(cfg.api_id or 0), cfg.api_hash or "")
+    client = TelegramClient(cfg.session, cfg.api_id, cfg.api_hash)
     await client.connect()
     if not await client.is_user_authorized():
         raise PermissionError("Telegram oturumu yetkili değil")

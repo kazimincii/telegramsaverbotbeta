@@ -8,3 +8,4 @@ rsa==4.9
 qrcode[pil]==8.0
 pytest==8.3.4
 pytest-asyncio==0.25.2
+python-dotenv==1.0.1

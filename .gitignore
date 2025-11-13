@@ -4,6 +4,7 @@ __pycache__/
 *.log
 
 backend/config.json
+backend/.env
 
 # Node modules
 node_modules/
