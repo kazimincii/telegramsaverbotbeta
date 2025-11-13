@@ -1,11 +1,142 @@
 {
-  "name": "telegram-desktop-app",
+  "name": "telegram-saver-desktop",
   "version": "1.0.0",
+  "description": "Telegram Saver Bot - Desktop Electron App",
+  "author": "Telegram Saver Team",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux",
+    "build:all": "electron-builder -mwl",
+    "pack": "electron-builder --dir"
+  },
+  "dependencies": {
+    "electron": "^28.0.0"
   },
   "devDependencies": {
-    "electron": "^33.2.1"
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.telegramsaver.desktop",
+    "productName": "Telegram Saver",
+    "copyright": "Copyright © 2025 Telegram Saver Team",
+    "directories": {
+      "output": "dist",
+      "buildResources": "resources"
+    },
+    "files": [
+      "main.js",
+      "package.json",
+      "../backend/**/*",
+      "../frontend/build/**/*",
+      "!../backend/__pycache__",
+      "!../backend/*.pyc",
+      "!../backend/.env",
+      "!../backend/node_modules"
+    ],
+    "extraResources": [
+      {
+        "from": "../backend",
+        "to": "backend",
+        "filter": ["**/*", "!__pycache__", "!*.pyc"]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64", "ia32"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "resources/icon.ico",
+      "artifactName": "${productName}-${version}-${os}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Telegram Saver",
+      "installerIcon": "resources/icon.ico",
+      "uninstallerIcon": "resources/icon.ico"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["x64", "arm64"]
+        }
+      ],
+      "icon": "resources/icon.icns",
+      "category": "public.app-category.utilities",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "resources/entitlements.mac.plist",
+      "entitlementsInherit": "resources/entitlements.mac.plist",
+      "artifactName": "${productName}-${version}-${os}-${arch}.${ext}"
+    },
+    "dmg": {
+      "title": "${productName} ${version}",
+      "icon": "resources/icon.icns",
+      "background": "resources/dmg-background.png",
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ],
+      "window": {
+        "width": 540,
+        "height": 380
+      }
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64", "arm64"]
+        },
+        {
+          "target": "deb",
+          "arch": ["x64", "arm64"]
+        },
+        {
+          "target": "rpm",
+          "arch": ["x64"]
+        },
+        {
+          "target": "tar.gz",
+          "arch": ["x64", "arm64"]
+        }
+      ],
+      "icon": "resources/icon.png",
+      "category": "Utility",
+      "synopsis": "Download and manage Telegram media files",
+      "description": "Telegram Saver is a powerful desktop application for downloading and managing your Telegram media files with advanced features like AI search, cloud sync, and duplicate detection.",
+      "artifactName": "${productName}-${version}-${os}-${arch}.${ext}"
+    },
+    "deb": {
+      "depends": ["python3", "python3-pip"]
+    },
+    "rpm": {
+      "depends": ["python3", "python3-pip"]
+    }
   }
 }

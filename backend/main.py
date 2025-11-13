@@ -22,6 +22,11 @@ try:
     from .cloud_sync import CloudSyncConfig, CloudSyncManager
     from .ai_classifier import AIClassifierConfig, AIClassificationManager
     from .scheduler import TaskScheduler, ScheduledTask, ScheduleType
+    from .clip_classifier import CLIPClassifier
+    from .duplicate_detector import DuplicateDetector
+    from .webhook_manager import WebhookManager, WEBHOOK_EVENTS
+    from .video_processor import VideoProcessor
+    from .ipfs_storage import IPFSStorage
 except ImportError:
     import contacts
     from database import Database
@@ -29,6 +34,11 @@ except ImportError:
     from cloud_sync import CloudSyncConfig, CloudSyncManager
     from ai_classifier import AIClassifierConfig, AIClassificationManager
     from scheduler import TaskScheduler, ScheduledTask, ScheduleType
+    from clip_classifier import CLIPClassifier
+    from duplicate_detector import DuplicateDetector
+    from webhook_manager import WebhookManager, WEBHOOK_EVENTS
+    from video_processor import VideoProcessor
+    from ipfs_storage import IPFSStorage
 
 # Load environment variables
 load_dotenv(Path(__file__).resolve().parent / ".env")
@@ -64,6 +74,7 @@ ACCOUNTS_FILE = ROOT / "accounts.json"
 CLOUD_SYNC_FILE = ROOT / "cloud_sync.json"
 AI_CLASSIFIER_FILE = ROOT / "ai_classifier.json"
 SCHEDULED_TASKS_FILE = ROOT / "scheduled_tasks.json"
+WEBHOOKS_FILE = ROOT / "webhooks.json"
 
 # Initialize database
 db = Database(DB_FILE)
@@ -81,6 +92,24 @@ ai_classification_manager = AIClassificationManager(ai_classifier_config, db)
 
 # Initialize task scheduler
 task_scheduler = TaskScheduler(SCHEDULED_TASKS_FILE)
+
+# Initialize CLIP classifier
+clip_classifier = CLIPClassifier(model_name="ViT-B/32", device="cpu")
+
+# Initialize duplicate detector
+duplicate_detector = DuplicateDetector(db)
+
+# Initialize webhook manager
+webhook_manager = WebhookManager(WEBHOOKS_FILE)
+
+# Initialize video processor
+video_processor = VideoProcessor()
+
+# Initialize IPFS storage
+ipfs_storage = IPFSStorage(
+    ipfs_api_url=os.getenv("IPFS_API_URL", "http://localhost:5001"),
+    enable_filecoin=os.getenv("ENABLE_FILECOIN", "false").lower() == "true"
+)
 
 # Configure logging with environment variable support
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -751,6 +780,442 @@ async def classify_downloads():
     except Exception as e:
         log(f"[error] Classification failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# CLIP AI Endpoints
+
+@APP.post("/api/clip/initialize")
+async def initialize_clip():
+    """Initialize CLIP model."""
+    try:
+        success = await clip_classifier.initialize()
+        if success:
+            log("[*] CLIP model initialized successfully")
+            return {"ok": True, "message": "CLIP model loaded"}
+        else:
+            return {"ok": False, "error": "Failed to initialize CLIP model"}
+    except Exception as e:
+        log(f"[error] CLIP initialization failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/clip/classify-image")
+async def clip_classify_image(payload: dict):
+    """Classify a single image using CLIP."""
+    image_path = payload.get("image_path")
+    text_prompts = payload.get("text_prompts")
+    top_k = payload.get("top_k", 3)
+
+    if not image_path:
+        raise HTTPException(status_code=400, detail="image_path is required")
+
+    try:
+        result = await clip_classifier.classify_image(
+            Path(image_path),
+            text_prompts=text_prompts,
+            top_k=top_k
+        )
+
+        if "error" in result:
+            raise HTTPException(status_code=500, detail=result["error"])
+
+        return {"ok": True, **result}
+    except Exception as e:
+        log(f"[error] CLIP classification failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/clip/search")
+async def clip_search_images(payload: dict):
+    """Search images using natural language query."""
+    query = payload.get("query")
+    folder_path = payload.get("folder_path")
+    top_n = payload.get("top_n", 10)
+    threshold = payload.get("threshold", 0.2)
+
+    if not query:
+        raise HTTPException(status_code=400, detail="query is required")
+
+    cfg = load_cfg()
+    if not folder_path:
+        folder_path = Path(cfg.out or str(Path.home() / "TelegramArchive"))
+    else:
+        folder_path = Path(folder_path)
+
+    try:
+        results = await clip_classifier.search_images(
+            folder_path,
+            query=query,
+            top_n=top_n,
+            threshold=threshold
+        )
+
+        log(f"[*] CLIP search completed: {len(results)} results for '{query}'")
+        return {"ok": True, "results": results, "query": query, "count": len(results)}
+    except Exception as e:
+        log(f"[error] CLIP search failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/clip/find-similar")
+async def clip_find_similar(payload: dict):
+    """Find similar images to a reference image."""
+    reference_image = payload.get("reference_image")
+    folder_path = payload.get("folder_path")
+    top_n = payload.get("top_n", 5)
+    threshold = payload.get("threshold", 0.85)
+
+    if not reference_image:
+        raise HTTPException(status_code=400, detail="reference_image is required")
+
+    cfg = load_cfg()
+    if not folder_path:
+        folder_path = Path(cfg.out or str(Path.home() / "TelegramArchive"))
+    else:
+        folder_path = Path(folder_path)
+
+    try:
+        results = await clip_classifier.find_similar_images(
+            Path(reference_image),
+            folder_path,
+            top_n=top_n,
+            threshold=threshold
+        )
+
+        log(f"[*] Similar images found: {len(results)} matches")
+        return {"ok": True, "results": results, "count": len(results)}
+    except Exception as e:
+        log(f"[error] Similarity search failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Duplicate Detection Endpoints
+
+@APP.post("/api/duplicates/scan")
+async def scan_duplicates(payload: Optional[dict] = None):
+    """Scan for duplicate images."""
+    folder_path = payload.get("folder_path") if payload else None
+    threshold = payload.get("threshold", 5) if payload else 5
+
+    cfg = load_cfg()
+    if not folder_path:
+        folder_path = Path(cfg.out or str(Path.home() / "TelegramArchive"))
+    else:
+        folder_path = Path(folder_path)
+
+    try:
+        result = duplicate_detector.find_duplicates(folder_path, threshold=threshold)
+        if "error" not in result:
+            log(f"[*] Duplicate scan: {result.get('duplicate_groups', 0)} groups found, "
+                f"{result.get('potential_savings_mb', 0)}MB potential savings")
+        return {"ok": True, **result}
+    except Exception as e:
+        log(f"[error] Duplicate scan failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Webhook Management Endpoints
+
+@APP.get("/api/webhooks")
+def list_webhooks():
+    """List all registered webhooks."""
+    return {
+        "ok": True,
+        "webhooks": webhook_manager.webhooks,
+        "supported_events": WEBHOOK_EVENTS
+    }
+
+
+@APP.post("/api/webhooks")
+def create_webhook(payload: dict):
+    """Create a new webhook subscription."""
+    url = payload.get("url")
+    events = payload.get("events", [])
+    name = payload.get("name", "Unnamed Webhook")
+
+    if not url:
+        raise HTTPException(status_code=400, detail="URL is required")
+
+    if not events:
+        raise HTTPException(status_code=400, detail="At least one event is required")
+
+    # Validate events
+    invalid_events = [e for e in events if e not in WEBHOOK_EVENTS]
+    if invalid_events:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid events: {invalid_events}. Supported: {WEBHOOK_EVENTS}"
+        )
+
+    webhook = webhook_manager.add_webhook(url, events, name)
+    log(f"[*] Created webhook: {name} for {len(events)} events")
+    return {"ok": True, "webhook": webhook}
+
+
+@APP.delete("/api/webhooks/{webhook_id}")
+def delete_webhook(webhook_id: str):
+    """Delete a webhook subscription."""
+    if webhook_manager.remove_webhook(webhook_id):
+        log(f"[*] Deleted webhook: {webhook_id}")
+        return {"ok": True}
+    else:
+        raise HTTPException(status_code=404, detail="Webhook not found")
+
+
+@APP.post("/api/webhooks/test")
+async def test_webhook(payload: dict):
+    """Test a webhook by sending a test event."""
+    url = payload.get("url")
+    if not url:
+        raise HTTPException(status_code=400, detail="URL is required")
+
+    # Create temporary webhook for testing
+    test_webhook = {
+        "id": "test",
+        "name": "Test Webhook",
+        "url": url,
+        "events": ["test.event"],
+        "enabled": True
+    }
+
+    test_data = {
+        "timestamp": time.time(),
+        "message": "This is a test webhook from Telegram Saver Bot"
+    }
+
+    try:
+        await webhook_manager._send_webhook(test_webhook, "test.event", test_data)
+        log(f"[*] Test webhook sent to: {url}")
+        return {"ok": True, "message": "Test webhook sent successfully"}
+    except Exception as e:
+        log(f"[error] Test webhook failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Video Processing Endpoints
+
+@APP.post("/api/video/thumbnail")
+async def generate_video_thumbnail(payload: dict):
+    """Generate thumbnail from video file."""
+    video_path = payload.get("video_path")
+    output_path = payload.get("output_path")
+
+    if not video_path:
+        raise HTTPException(status_code=400, detail="video_path is required")
+
+    try:
+        result = await video_processor.generate_thumbnail(
+            Path(video_path),
+            Path(output_path) if output_path else None
+        )
+
+        if result:
+            log(f"[*] Thumbnail generated: {result}")
+            return {"ok": True, "thumbnail_path": str(result)}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to generate thumbnail. OpenCV may not be installed.")
+    except Exception as e:
+        log(f"[error] Thumbnail generation failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/video/compress")
+async def compress_video_file(payload: dict):
+    """Compress video file using ffmpeg."""
+    video_path = payload.get("video_path")
+    output_path = payload.get("output_path")
+    quality = payload.get("quality", 23)  # CRF value: 0-51 (lower = better)
+
+    if not video_path:
+        raise HTTPException(status_code=400, detail="video_path is required")
+
+    try:
+        result = await video_processor.compress_video(
+            Path(video_path),
+            Path(output_path) if output_path else None
+        )
+
+        if result:
+            original_size = Path(video_path).stat().st_size
+            compressed_size = result.stat().st_size
+            savings_percent = ((original_size - compressed_size) / original_size) * 100
+
+            log(f"[*] Video compressed: {result} ({savings_percent:.1f}% smaller)")
+            return {
+                "ok": True,
+                "compressed_path": str(result),
+                "original_size": original_size,
+                "compressed_size": compressed_size,
+                "savings_percent": round(savings_percent, 1)
+            }
+        else:
+            raise HTTPException(status_code=500, detail="Failed to compress video. ffmpeg may not be installed.")
+    except Exception as e:
+        log(f"[error] Video compression failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/video/transcribe")
+async def transcribe_video_audio(payload: dict):
+    """Transcribe audio from video using Whisper AI."""
+    video_path = payload.get("video_path")
+
+    if not video_path:
+        raise HTTPException(status_code=400, detail="video_path is required")
+
+    try:
+        result = await video_processor.transcribe_audio(Path(video_path))
+
+        if result:
+            log(f"[*] Video transcribed: {video_path}")
+            return {"ok": True, "transcription": result}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to transcribe video. Whisper AI may not be installed.")
+    except Exception as e:
+        log(f"[error] Video transcription failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/video/status")
+def get_video_processor_status():
+    """Check video processor availability."""
+    return {
+        "ok": True,
+        "available": video_processor.available,
+        "features": {
+            "thumbnails": video_processor.available,
+            "compression": True,  # ffmpeg checked at runtime
+            "transcription": True  # whisper checked at runtime
+        }
+    }
+
+
+# IPFS/Blockchain Storage Endpoints
+
+@APP.get("/api/ipfs/status")
+def get_ipfs_status():
+    """Check IPFS daemon connection status."""
+    return {
+        "ok": True,
+        "available": ipfs_storage.available,
+        "api_url": ipfs_storage.ipfs_api_url,
+        "filecoin_enabled": ipfs_storage.enable_filecoin
+    }
+
+
+@APP.post("/api/ipfs/upload")
+async def upload_to_ipfs(payload: dict):
+    """Upload file to IPFS."""
+    file_path = payload.get("file_path")
+
+    if not file_path:
+        raise HTTPException(status_code=400, detail="file_path is required")
+
+    if not ipfs_storage.available:
+        raise HTTPException(status_code=503, detail="IPFS daemon not available")
+
+    try:
+        result = await ipfs_storage.upload_file(Path(file_path))
+
+        if result:
+            log(f"[*] Uploaded to IPFS: {file_path} -> CID: {result['cid']}")
+            return {"ok": True, **result}
+        else:
+            raise HTTPException(status_code=500, detail="Upload failed")
+    except Exception as e:
+        log(f"[error] IPFS upload failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/ipfs/download")
+async def download_from_ipfs(payload: dict):
+    """Download file from IPFS using CID."""
+    cid = payload.get("cid")
+    output_path = payload.get("output_path")
+
+    if not cid:
+        raise HTTPException(status_code=400, detail="cid is required")
+
+    if not ipfs_storage.available:
+        raise HTTPException(status_code=503, detail="IPFS daemon not available")
+
+    try:
+        result_path = await ipfs_storage.download_file(
+            cid,
+            Path(output_path) if output_path else None
+        )
+
+        if result_path:
+            log(f"[*] Downloaded from IPFS: {cid} -> {result_path}")
+            return {"ok": True, "file_path": str(result_path)}
+        else:
+            raise HTTPException(status_code=500, detail="Download failed")
+    except Exception as e:
+        log(f"[error] IPFS download failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/ipfs/pin")
+async def pin_ipfs_file(payload: dict):
+    """Pin file to IPFS (prevent garbage collection)."""
+    cid = payload.get("cid")
+
+    if not cid:
+        raise HTTPException(status_code=400, detail="cid is required")
+
+    try:
+        success = await ipfs_storage.pin_file(cid)
+        if success:
+            log(f"[*] Pinned IPFS file: {cid}")
+            return {"ok": True, "cid": cid}
+        else:
+            raise HTTPException(status_code=500, detail="Pin failed")
+    except Exception as e:
+        log(f"[error] IPFS pin failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/ipfs/pins")
+async def list_ipfs_pins():
+    """List all pinned CIDs."""
+    try:
+        pins = await ipfs_storage.list_pins()
+        log(f"[*] Listed {len(pins)} IPFS pins")
+        return {"ok": True, "pins": pins, "count": len(pins)}
+    except Exception as e:
+        log(f"[error] Failed to list IPFS pins: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/ipfs/upload-folder")
+async def upload_folder_to_ipfs(payload: dict):
+    """Upload entire folder to IPFS."""
+    folder_path = payload.get("folder_path")
+
+    if not folder_path:
+        raise HTTPException(status_code=400, detail="folder_path is required")
+
+    if not ipfs_storage.available:
+        raise HTTPException(status_code=503, detail="IPFS daemon not available")
+
+    try:
+        result = await ipfs_storage.upload_folder(Path(folder_path))
+
+        if result:
+            log(f"[*] Uploaded folder to IPFS: {folder_path} -> CID: {result['root_cid']}")
+            return {"ok": True, **result}
+        else:
+            raise HTTPException(status_code=500, detail="Folder upload failed")
+    except Exception as e:
+        log(f"[error] IPFS folder upload failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/ipfs/gateway-url/{cid}")
+def get_ipfs_gateway_url(cid: str, gateway: str = "ipfs.io"):
+    """Get public gateway URL for a CID."""
+    url = ipfs_storage.get_ipfs_url(cid, gateway)
+    return {"ok": True, "cid": cid, "gateway_url": url}
 
 
 # Scheduled Tasks Endpoints

@@ -1,0 +1,56 @@
+# Optional dependencies for advanced features
+# Install specific groups based on your needs:
+#
+# For AI features:
+#   pip install -r requirements-optional.txt --only-ai
+#
+# For cloud sync:
+#   pip install -r requirements-optional.txt --only-cloud
+#
+# For all features:
+#   pip install -r requirements-optional.txt
+
+# ===== AI & Machine Learning =====
+# CLIP AI (zero-shot image classification)
+torch>=2.1.0
+torchvision>=0.16.0
+# Install CLIP: pip install git+https://github.com/openai/CLIP.git
+
+# Duplicate Detection (perceptual hashing)
+imagehash>=4.3.1
+Pillow>=10.1.0
+
+# Video Processing
+opencv-python>=4.8.1
+ffmpeg-python>=0.2.0
+
+# Speech-to-Text (Whisper AI)
+openai-whisper>=20231117
+
+# ===== Cloud Storage =====
+# Google Drive API
+google-api-python-client>=2.108.0
+google-auth-httplib2>=0.2.0
+google-auth-oauthlib>=1.2.0
+
+# Dropbox API
+dropbox>=11.36.2
+
+# ===== Search & Database =====
+# Elasticsearch for advanced search
+elasticsearch>=8.11.0
+
+# ===== HTTP & Webhooks =====
+# Async HTTP client for webhooks
+aiohttp>=3.9.1
+
+# ===== Performance Monitoring =====
+# Memory and CPU monitoring
+psutil>=5.9.6
+
+# ===== Total Size Estimation =====
+# Core AI (torch + CLIP): ~500MB
+# Google/Dropbox APIs: ~50MB
+# Video processing: ~100MB
+# Others: ~20MB
+# Total: ~670MB

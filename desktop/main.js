@@ -1,8 +1,20 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, Tray, Menu } = require('electron');
+const { spawn } = require('child_process');
 const path = require('path');
 
+let mainWindow;
+let backendProcess;
+
+// Start backend server
+function startBackend() {
+  backendProcess = spawn('python', ['../backend/main.py']);
+  backendProcess.stdout.on('data', (data) => console.log(`Backend: ${data}`));
+  backendProcess.stderr.on('data', (data) => console.error(`Backend Error: ${data}`));
+}
+
+// Create window
 function createWindow() {
-  const win = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     webPreferences: {
@@ -10,8 +22,17 @@ function createWindow() {
       contextIsolation: true
     }
   });
-  const index = path.join(__dirname, '../frontend/build/index.html');
-  win.loadFile(index);
+
+  // Load React app
+  mainWindow.loadURL('http://localhost:3000');
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  startBackend();
+  createWindow();
+});
+
+app.on('window-all-closed', () => {
+  if (backendProcess) backendProcess.kill();
+  app.quit();
+});
