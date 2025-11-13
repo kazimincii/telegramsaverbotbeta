@@ -1,0 +1,25 @@
+# Blockchain and Decentralized Storage Dependencies
+
+# IPFS Integration
+# No Python package needed - uses HTTP API directly to IPFS daemon
+# Install IPFS: https://docs.ipfs.tech/install/
+
+# For future Filecoin integration (optional):
+# lotus-python>=0.1.0  # Lotus client for Filecoin
+# py-textile>=0.0.1    # Textile/Powergate integration
+# web3storage>=1.0.0   # Web3.Storage API
+
+# Dependencies
+requests>=2.31.0  # Already in main requirements
+aiohttp>=3.9.1    # Already in requirements-optional.txt
+
+# Installation Instructions:
+# 1. Install IPFS Desktop or CLI from https://ipfs.tech
+# 2. Start IPFS daemon: ipfs daemon
+# 3. IPFS API will be available at http://localhost:5001
+# 4. Set IPFS_API_URL environment variable if using custom port
+#
+# For Filecoin:
+# 1. Install Lotus: https://lotus.filecoin.io/
+# 2. Or use Web3.Storage: https://web3.storage/
+# 3. Set ENABLE_FILECOIN=true in environment

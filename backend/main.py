@@ -26,6 +26,7 @@ try:
     from .duplicate_detector import DuplicateDetector
     from .webhook_manager import WebhookManager, WEBHOOK_EVENTS
     from .video_processor import VideoProcessor
+    from .ipfs_storage import IPFSStorage
 except ImportError:
     import contacts
     from database import Database
@@ -37,6 +38,7 @@ except ImportError:
     from duplicate_detector import DuplicateDetector
     from webhook_manager import WebhookManager, WEBHOOK_EVENTS
     from video_processor import VideoProcessor
+    from ipfs_storage import IPFSStorage
 
 # Load environment variables
 load_dotenv(Path(__file__).resolve().parent / ".env")
@@ -102,6 +104,12 @@ webhook_manager = WebhookManager(WEBHOOKS_FILE)
 
 # Initialize video processor
 video_processor = VideoProcessor()
+
+# Initialize IPFS storage
+ipfs_storage = IPFSStorage(
+    ipfs_api_url=os.getenv("IPFS_API_URL", "http://localhost:5001"),
+    enable_filecoin=os.getenv("ENABLE_FILECOIN", "false").lower() == "true"
+)
 
 # Configure logging with environment variable support
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -1080,6 +1088,134 @@ def get_video_processor_status():
             "transcription": True  # whisper checked at runtime
         }
     }
+
+
+# IPFS/Blockchain Storage Endpoints
+
+@APP.get("/api/ipfs/status")
+def get_ipfs_status():
+    """Check IPFS daemon connection status."""
+    return {
+        "ok": True,
+        "available": ipfs_storage.available,
+        "api_url": ipfs_storage.ipfs_api_url,
+        "filecoin_enabled": ipfs_storage.enable_filecoin
+    }
+
+
+@APP.post("/api/ipfs/upload")
+async def upload_to_ipfs(payload: dict):
+    """Upload file to IPFS."""
+    file_path = payload.get("file_path")
+
+    if not file_path:
+        raise HTTPException(status_code=400, detail="file_path is required")
+
+    if not ipfs_storage.available:
+        raise HTTPException(status_code=503, detail="IPFS daemon not available")
+
+    try:
+        result = await ipfs_storage.upload_file(Path(file_path))
+
+        if result:
+            log(f"[*] Uploaded to IPFS: {file_path} -> CID: {result['cid']}")
+            return {"ok": True, **result}
+        else:
+            raise HTTPException(status_code=500, detail="Upload failed")
+    except Exception as e:
+        log(f"[error] IPFS upload failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/ipfs/download")
+async def download_from_ipfs(payload: dict):
+    """Download file from IPFS using CID."""
+    cid = payload.get("cid")
+    output_path = payload.get("output_path")
+
+    if not cid:
+        raise HTTPException(status_code=400, detail="cid is required")
+
+    if not ipfs_storage.available:
+        raise HTTPException(status_code=503, detail="IPFS daemon not available")
+
+    try:
+        result_path = await ipfs_storage.download_file(
+            cid,
+            Path(output_path) if output_path else None
+        )
+
+        if result_path:
+            log(f"[*] Downloaded from IPFS: {cid} -> {result_path}")
+            return {"ok": True, "file_path": str(result_path)}
+        else:
+            raise HTTPException(status_code=500, detail="Download failed")
+    except Exception as e:
+        log(f"[error] IPFS download failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/ipfs/pin")
+async def pin_ipfs_file(payload: dict):
+    """Pin file to IPFS (prevent garbage collection)."""
+    cid = payload.get("cid")
+
+    if not cid:
+        raise HTTPException(status_code=400, detail="cid is required")
+
+    try:
+        success = await ipfs_storage.pin_file(cid)
+        if success:
+            log(f"[*] Pinned IPFS file: {cid}")
+            return {"ok": True, "cid": cid}
+        else:
+            raise HTTPException(status_code=500, detail="Pin failed")
+    except Exception as e:
+        log(f"[error] IPFS pin failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/ipfs/pins")
+async def list_ipfs_pins():
+    """List all pinned CIDs."""
+    try:
+        pins = await ipfs_storage.list_pins()
+        log(f"[*] Listed {len(pins)} IPFS pins")
+        return {"ok": True, "pins": pins, "count": len(pins)}
+    except Exception as e:
+        log(f"[error] Failed to list IPFS pins: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/ipfs/upload-folder")
+async def upload_folder_to_ipfs(payload: dict):
+    """Upload entire folder to IPFS."""
+    folder_path = payload.get("folder_path")
+
+    if not folder_path:
+        raise HTTPException(status_code=400, detail="folder_path is required")
+
+    if not ipfs_storage.available:
+        raise HTTPException(status_code=503, detail="IPFS daemon not available")
+
+    try:
+        result = await ipfs_storage.upload_folder(Path(folder_path))
+
+        if result:
+            log(f"[*] Uploaded folder to IPFS: {folder_path} -> CID: {result['root_cid']}")
+            return {"ok": True, **result}
+        else:
+            raise HTTPException(status_code=500, detail="Folder upload failed")
+    except Exception as e:
+        log(f"[error] IPFS folder upload failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/ipfs/gateway-url/{cid}")
+def get_ipfs_gateway_url(cid: str, gateway: str = "ipfs.io"):
+    """Get public gateway URL for a CID."""
+    url = ipfs_storage.get_ipfs_url(cid, gateway)
+    return {"ok": True, "cid": cid, "gateway_url": url}
 
 
 # Scheduled Tasks Endpoints
