@@ -64,7 +64,7 @@ def vc_escape(s: str) -> str:
     return (s or "").replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace("\n", "\\n")
 
 async def list_contacts(cfg: dict, payload: dict) -> dict:
-    api_id = int(cfg["api_id"]); api_hash = cfg["api_hash"]; session = cfg.get("session") or "tg_media"
+    api_id = cfg["api_id"]; api_hash = cfg["api_hash"]; session = cfg.get("session") or "tg_media"
     filter_pat = payload.get("filter") or None
     scan = int(payload.get("scan", 0))
     do_note = bool(payload.get("note", False))
@@ -96,7 +96,7 @@ async def list_contacts(cfg: dict, payload: dict) -> dict:
 async def export_vcf(
     cfg: dict, payload: dict, items: list[dict] | None = None
 ) -> tuple[str, list[int]]:
-    api_id = int(cfg["api_id"]); api_hash = cfg["api_hash"]; session = cfg.get("session") or "tg_media"
+    api_id = cfg["api_id"]; api_hash = cfg["api_hash"]; session = cfg.get("session") or "tg_media"
     only_ids = set(map(int, payload.get("only_ids") or []))
     override_notes = payload.get("override_notes") or {}
     include_photo = bool(payload.get("include_photo", False))
