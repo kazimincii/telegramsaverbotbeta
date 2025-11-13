@@ -34,33 +34,97 @@ export default function ControlPanel(){
   }, [setDialogs]);
 
   return (
-    <div style={{maxWidth:1100,margin:'24px auto',padding:'0 16px'}}>
-      <h1 style={{fontSize:22,margin:0,marginBottom:12}}>Telegram Arşivleyici — Kontrol Paneli</h1>
-      <div style={{display:'flex',gap:8,marginBottom:12}}>
-        <MinimalButton icon={panelIcon} onClick={()=>setMainTab('panel')}>Kontrol Paneli</MinimalButton>
-        <MinimalButton icon={faqIcon} onClick={()=>setMainTab('faq')}>SSS</MinimalButton>
+    <div className="container-fluid">
+      <div className="page-header">
+        <h1 className="page-title">Telegram Arşivleyici — Kontrol Paneli</h1>
+        <div className="page-description">Telegram hesabınızı yönetin ve medya dosyalarınızı indirin</div>
       </div>
+
+      <div className="tabs-container mb-4">
+        <button
+          className={`tab ${mainTab === 'panel' ? 'active' : ''}`}
+          onClick={() => setMainTab('panel')}
+        >
+          <img src={panelIcon} alt="" width="16" height="16" style={{ marginRight: '8px' }} />
+          Kontrol Paneli
+        </button>
+        <button
+          className={`tab ${mainTab === 'faq' ? 'active' : ''}`}
+          onClick={() => setMainTab('faq')}
+        >
+          <img src={faqIcon} alt="" width="16" height="16" style={{ marginRight: '8px' }} />
+          SSS
+        </button>
+      </div>
+
       {mainTab === 'panel' ? (
         <>
-          <div style={{display:'flex',gap:8,marginBottom:12,flexWrap:'wrap'}}>
-            <MinimalButton icon={panelIcon} onClick={()=>setSubTab('profile')}>Profil</MinimalButton>
-            <MinimalButton icon={contactsIcon} onClick={()=>setSubTab('groups')}>Gruplar</MinimalButton>
-            <MinimalButton icon={settingsIcon} onClick={()=>setSubTab('settings')}>Ayarlar</MinimalButton>
-            <MinimalButton icon={statusIcon} onClick={()=>setSubTab('status')}>Durum</MinimalButton>
-            <MinimalButton icon={logIcon} onClick={()=>setSubTab('log')}>Loglar</MinimalButton>
-            <MinimalButton icon={errorIcon} onClick={()=>setSubTab('errors')}>Hatalar</MinimalButton>
-            <MinimalButton icon={contactsIcon} onClick={()=>setSubTab('contacts')}>Kişiler</MinimalButton>
+          <div className="tabs-container mb-4">
+            <button
+              className={`tab ${subTab === 'profile' ? 'active' : ''}`}
+              onClick={() => setSubTab('profile')}
+            >
+              <img src={panelIcon} alt="" width="16" height="16" style={{ marginRight: '8px' }} />
+              Profil
+            </button>
+            <button
+              className={`tab ${subTab === 'groups' ? 'active' : ''}`}
+              onClick={() => setSubTab('groups')}
+            >
+              <img src={contactsIcon} alt="" width="16" height="16" style={{ marginRight: '8px' }} />
+              Gruplar
+            </button>
+            <button
+              className={`tab ${subTab === 'settings' ? 'active' : ''}`}
+              onClick={() => setSubTab('settings')}
+            >
+              <img src={settingsIcon} alt="" width="16" height="16" style={{ marginRight: '8px' }} />
+              Ayarlar
+            </button>
+            <button
+              className={`tab ${subTab === 'status' ? 'active' : ''}`}
+              onClick={() => setSubTab('status')}
+            >
+              <img src={statusIcon} alt="" width="16" height="16" style={{ marginRight: '8px' }} />
+              Durum
+            </button>
+            <button
+              className={`tab ${subTab === 'log' ? 'active' : ''}`}
+              onClick={() => setSubTab('log')}
+            >
+              <img src={logIcon} alt="" width="16" height="16" style={{ marginRight: '8px' }} />
+              Loglar
+            </button>
+            <button
+              className={`tab ${subTab === 'errors' ? 'active' : ''}`}
+              onClick={() => setSubTab('errors')}
+            >
+              <img src={errorIcon} alt="" width="16" height="16" style={{ marginRight: '8px' }} />
+              Hatalar
+            </button>
+            <button
+              className={`tab ${subTab === 'contacts' ? 'active' : ''}`}
+              onClick={() => setSubTab('contacts')}
+            >
+              <img src={contactsIcon} alt="" width="16" height="16" style={{ marginRight: '8px' }} />
+              Kişiler
+            </button>
           </div>
-          {subTab === 'profile' && <ProfilePanel />}
-          {subTab === 'groups' && <GroupsPanel />}
-          {subTab === 'settings' && <SettingsForm />}
-          {subTab === 'status' && <StatusPanel />}
-          {subTab === 'log' && <LogViewer />}
-          {subTab === 'errors' && <ErrorViewer />}
-          {subTab === 'contacts' && <ContactsPanel />}
+
+          <div className="animate-fadeIn">
+            {subTab === 'profile' && <ProfilePanel />}
+            {subTab === 'groups' && <GroupsPanel />}
+            {subTab === 'settings' && <SettingsForm />}
+            {subTab === 'status' && <StatusPanel />}
+            {subTab === 'log' && <LogViewer />}
+            {subTab === 'errors' && <ErrorViewer />}
+            {subTab === 'contacts' && <ContactsPanel />}
+          </div>
         </>
       ) : (
-        <FaqSection />
+        <div className="animate-fadeIn">
+          <FaqSection />
+        </div>
       )}
     </div>
   );

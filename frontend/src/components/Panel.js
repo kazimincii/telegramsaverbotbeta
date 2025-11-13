@@ -1,9 +1,11 @@
 import React from 'react';
 
-export default function Panel({ children, style }) {
+export default function Panel({ children, style, className = '' }) {
   return (
-    <div style={{background:'#fff',border:'1px solid #ddd',borderRadius:10,padding:16,...style}}>
-      {children}
+    <div className={`card ${className}`} style={style}>
+      <div className="card-body">
+        {children}
+      </div>
     </div>
   );
 }

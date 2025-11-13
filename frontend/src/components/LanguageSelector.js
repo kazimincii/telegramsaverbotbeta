@@ -119,9 +119,9 @@ export default function LanguageSelector() {
 
   if (loading) {
     return (
-      <div style={styles.container}>
-        <span style={styles.loading}>Loading...</span>
-      </div>
+      <button className="btn btn-icon" disabled>
+        <span className="animate-spin">⏳</span>
+      </button>
     );
   }
 
@@ -130,46 +130,50 @@ export default function LanguageSelector() {
   );
 
   return (
-    <div style={styles.container}>
+    <div className="dropdown" style={{ position: 'relative' }}>
       <button
-        style={styles.button}
+        className="btn btn-icon"
         onClick={() => setIsOpen(!isOpen)}
         title="Change Language"
       >
-        🌐 {currentLangInfo?.native_name || currentLanguage.toUpperCase()}
+        🌐
       </button>
 
       {isOpen && (
-        <div style={styles.dropdown}>
-          <div style={styles.dropdownHeader}>
+        <div className="dropdown-menu" style={{
+          position: 'absolute',
+          top: '100%',
+          right: 0,
+          marginTop: 'var(--spacing-xs)',
+          minWidth: '250px',
+          zIndex: 1000
+        }}>
+          <div className="dropdown-header">
             <strong>Select Language</strong>
             <button
-              style={styles.closeButton}
+              className="btn btn-icon btn-sm"
               onClick={() => setIsOpen(false)}
             >
               ✕
             </button>
           </div>
 
-          <div style={styles.languageList}>
+          <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
             {availableLanguages.map((lang) => (
               <button
                 key={lang.code}
-                style={{
-                  ...styles.languageItem,
-                  ...(lang.code === currentLanguage
-                    ? styles.languageItemActive
-                    : {}),
-                }}
+                className={`dropdown-item ${lang.code === currentLanguage ? 'active' : ''}`}
                 onClick={() => {
                   changeLanguage(lang.code);
                   setIsOpen(false);
                 }}
               >
-                <span style={styles.languageNative}>{lang.native_name}</span>
-                <span style={styles.languageName}>({lang.name})</span>
+                <span style={{ fontWeight: 600 }}>{lang.native_name}</span>
+                <span style={{ fontSize: '12px', color: 'var(--text-secondary)', marginLeft: '8px' }}>
+                  ({lang.name})
+                </span>
                 {lang.code === currentLanguage && (
-                  <span style={styles.checkmark}>✓</span>
+                  <span style={{ marginLeft: 'auto', color: 'var(--tg-primary)' }}>✓</span>
                 )}
               </button>
             ))}
@@ -180,138 +184,3 @@ export default function LanguageSelector() {
   );
 }
 
-const styles = {
-  container: {
-    position: "fixed",
-    top: "20px",
-    right: "20px",
-    zIndex: 1000,
-  },
-  loading: {
-    padding: "10px 15px",
-    background: "#f0f0f0",
-    borderRadius: "8px",
-    fontSize: "14px",
-    color: "#666",
-  },
-  button: {
-    padding: "10px 15px",
-    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-    color: "white",
-    border: "none",
-    borderRadius: "8px",
-    fontSize: "14px",
-    fontWeight: "600",
-    cursor: "pointer",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-    transition: "all 0.3s ease",
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-  },
-  dropdown: {
-    position: "absolute",
-    top: "50px",
-    right: "0",
-    background: "white",
-    borderRadius: "12px",
-    boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
-    minWidth: "280px",
-    overflow: "hidden",
-    animation: "slideDown 0.2s ease",
-  },
-  dropdownHeader: {
-    padding: "15px 20px",
-    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-    color: "white",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  closeButton: {
-    background: "transparent",
-    border: "none",
-    color: "white",
-    fontSize: "20px",
-    cursor: "pointer",
-    padding: "0",
-    width: "24px",
-    height: "24px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: "4px",
-    transition: "background 0.2s",
-  },
-  languageList: {
-    maxHeight: "400px",
-    overflowY: "auto",
-  },
-  languageItem: {
-    width: "100%",
-    padding: "12px 20px",
-    border: "none",
-    borderBottom: "1px solid #f0f0f0",
-    background: "white",
-    textAlign: "left",
-    cursor: "pointer",
-    transition: "background 0.2s",
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    position: "relative",
-  },
-  languageItemActive: {
-    background: "#f0f7ff",
-    borderLeft: "3px solid #667eea",
-  },
-  languageNative: {
-    fontWeight: "600",
-    fontSize: "15px",
-    color: "#333",
-  },
-  languageName: {
-    fontSize: "13px",
-    color: "#666",
-  },
-  checkmark: {
-    marginLeft: "auto",
-    color: "#667eea",
-    fontSize: "18px",
-    fontWeight: "bold",
-  },
-};
-
-// Global CSS for animation (add to your index.css)
-const styleSheet = document.createElement("style");
-styleSheet.textContent = `
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Custom scrollbar for language list */
-.language-list::-webkit-scrollbar {
-  width: 6px;
-}
-
-.language-list::-webkit-scrollbar-track {
-  background: #f1f1f1;
-}
-
-.language-list::-webkit-scrollbar-thumb {
-  background: #888;
-  border-radius: 3px;
-}
-
-.language-list::-webkit-scrollbar-thumb:hover {
-  background: #555;
-}
-`;
-document.head.appendChild(styleSheet);
