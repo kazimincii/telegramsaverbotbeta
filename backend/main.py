@@ -27,6 +27,7 @@ try:
     from .webhook_manager import WebhookManager, WEBHOOK_EVENTS
     from .video_processor import VideoProcessor
     from .ipfs_storage import IPFSStorage
+    from .plugin_system import PluginManager, PluginHook
 except ImportError:
     import contacts
     from database import Database
@@ -39,6 +40,7 @@ except ImportError:
     from webhook_manager import WebhookManager, WEBHOOK_EVENTS
     from video_processor import VideoProcessor
     from ipfs_storage import IPFSStorage
+    from plugin_system import PluginManager, PluginHook
 
 # Load environment variables
 load_dotenv(Path(__file__).resolve().parent / ".env")
@@ -75,6 +77,8 @@ CLOUD_SYNC_FILE = ROOT / "cloud_sync.json"
 AI_CLASSIFIER_FILE = ROOT / "ai_classifier.json"
 SCHEDULED_TASKS_FILE = ROOT / "scheduled_tasks.json"
 WEBHOOKS_FILE = ROOT / "webhooks.json"
+PLUGINS_DIR = ROOT.parent / "plugins"
+PLUGINS_DIR.mkdir(exist_ok=True)
 
 # Initialize database
 db = Database(DB_FILE)
@@ -110,6 +114,9 @@ ipfs_storage = IPFSStorage(
     ipfs_api_url=os.getenv("IPFS_API_URL", "http://localhost:5001"),
     enable_filecoin=os.getenv("ENABLE_FILECOIN", "false").lower() == "true"
 )
+
+# Initialize plugin manager
+plugin_manager = PluginManager(PLUGINS_DIR)
 
 # Configure logging with environment variable support
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -1216,6 +1223,102 @@ def get_ipfs_gateway_url(cid: str, gateway: str = "ipfs.io"):
     """Get public gateway URL for a CID."""
     url = ipfs_storage.get_ipfs_url(cid, gateway)
     return {"ok": True, "cid": cid, "gateway_url": url}
+
+
+# Plugin System Endpoints
+
+@APP.get("/api/plugins")
+def list_all_plugins():
+    """List all loaded plugins."""
+    plugins = plugin_manager.list_plugins()
+    return {
+        "ok": True,
+        "plugins": plugins,
+        "count": len(plugins)
+    }
+
+
+@APP.get("/api/plugins/discover")
+def discover_available_plugins():
+    """Discover available plugins in the plugins directory."""
+    discovered = plugin_manager.discover_plugins()
+    return {
+        "ok": True,
+        "available_plugins": discovered,
+        "count": len(discovered)
+    }
+
+
+@APP.post("/api/plugins/load")
+def load_plugin_endpoint(payload: dict):
+    """Load a plugin by module name."""
+    module_name = payload.get("module_name")
+
+    if not module_name:
+        raise HTTPException(status_code=400, detail="module_name is required")
+
+    try:
+        success = plugin_manager.load_plugin(module_name)
+        if success:
+            log(f"[*] Loaded plugin: {module_name}")
+            return {"ok": True, "message": f"Plugin {module_name} loaded successfully"}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to load plugin")
+    except Exception as e:
+        log(f"[error] Failed to load plugin {module_name}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/plugins/unload")
+def unload_plugin_endpoint(payload: dict):
+    """Unload a plugin by name."""
+    plugin_name = payload.get("plugin_name")
+
+    if not plugin_name:
+        raise HTTPException(status_code=400, detail="plugin_name is required")
+
+    try:
+        success = plugin_manager.unload_plugin(plugin_name)
+        if success:
+            log(f"[*] Unloaded plugin: {plugin_name}")
+            return {"ok": True, "message": f"Plugin {plugin_name} unloaded successfully"}
+        else:
+            raise HTTPException(status_code=404, detail="Plugin not found")
+    except Exception as e:
+        log(f"[error] Failed to unload plugin {plugin_name}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/plugins/enable/{plugin_name}")
+def enable_plugin_endpoint(plugin_name: str):
+    """Enable a plugin."""
+    success = plugin_manager.enable_plugin(plugin_name)
+    if success:
+        log(f"[*] Enabled plugin: {plugin_name}")
+        return {"ok": True, "message": f"Plugin {plugin_name} enabled"}
+    else:
+        raise HTTPException(status_code=404, detail="Plugin not found")
+
+
+@APP.post("/api/plugins/disable/{plugin_name}")
+def disable_plugin_endpoint(plugin_name: str):
+    """Disable a plugin."""
+    success = plugin_manager.disable_plugin(plugin_name)
+    if success:
+        log(f"[*] Disabled plugin: {plugin_name}")
+        return {"ok": True, "message": f"Plugin {plugin_name} disabled"}
+    else:
+        raise HTTPException(status_code=404, detail="Plugin not found")
+
+
+@APP.get("/api/plugins/{plugin_name}")
+def get_plugin_info(plugin_name: str):
+    """Get detailed information about a plugin."""
+    plugin = plugin_manager.get_plugin(plugin_name)
+    if plugin:
+        return {"ok": True, "plugin": plugin.get_info()}
+    else:
+        raise HTTPException(status_code=404, detail="Plugin not found")
 
 
 # Scheduled Tasks Endpoints
