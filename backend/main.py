@@ -2639,3 +2639,181 @@ async def image_similarity_search(request: ImageSimilarityRequest):
     except Exception as e:
         logger.error(f"Image similarity search error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# ============= Cloud Sync API =============
+
+class RegisterDeviceRequest(BaseModel):
+    device_name: str
+    device_type: str  # desktop, mobile, web
+    user_id: Optional[str] = 'default'
+
+class SyncSettingsRequest(BaseModel):
+    device_id: str
+    settings: dict
+    encrypt: Optional[bool] = True
+
+class SyncQueueRequest(BaseModel):
+    device_id: str
+    queue_items: List[dict]
+    encrypt: Optional[bool] = True
+
+class MergeQueueRequest(BaseModel):
+    local_queue: List[dict]
+    synced_queue: List[dict]
+
+@APP.post("/api/sync/register-device")
+async def register_device(request: RegisterDeviceRequest):
+    """Register a new device for sync"""
+    try:
+        from api.sync.cloud_sync_service import get_sync_service
+
+        sync_service = get_sync_service()
+        result = sync_service.register_device(
+            request.device_name,
+            request.device_type,
+            request.user_id
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Register device error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.get("/api/sync/devices")
+async def get_devices(user_id: str = 'default'):
+    """Get all registered devices"""
+    try:
+        from api.sync.cloud_sync_service import get_sync_service
+
+        sync_service = get_sync_service()
+        devices = sync_service.get_devices(user_id)
+
+        return {
+            'success': True,
+            'devices': devices
+        }
+
+    except Exception as e:
+        logger.error(f"Get devices error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.delete("/api/sync/devices/{device_id}")
+async def remove_device(device_id: str):
+    """Remove a device"""
+    try:
+        from api.sync.cloud_sync_service import get_sync_service
+
+        sync_service = get_sync_service()
+        result = sync_service.remove_device(device_id)
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Remove device error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/sync/settings")
+async def sync_settings(request: SyncSettingsRequest):
+    """Sync settings from device"""
+    try:
+        from api.sync.cloud_sync_service import get_sync_service
+
+        sync_service = get_sync_service()
+        result = sync_service.sync_settings(
+            request.device_id,
+            request.settings,
+            request.encrypt
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Sync settings error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.get("/api/sync/settings/{device_id}")
+async def get_synced_settings(device_id: str, decrypt: bool = True):
+    """Get synced settings for device"""
+    try:
+        from api.sync.cloud_sync_service import get_sync_service
+
+        sync_service = get_sync_service()
+        result = sync_service.get_synced_settings(device_id, decrypt)
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Get synced settings error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/sync/queue")
+async def sync_queue(request: SyncQueueRequest):
+    """Sync download queue from device"""
+    try:
+        from api.sync.cloud_sync_service import get_sync_service
+
+        sync_service = get_sync_service()
+        result = sync_service.sync_queue(
+            request.device_id,
+            request.queue_items,
+            request.encrypt
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Sync queue error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.get("/api/sync/queue/{device_id}")
+async def get_synced_queue(device_id: str, decrypt: bool = True):
+    """Get synced queue for device"""
+    try:
+        from api.sync.cloud_sync_service import get_sync_service
+
+        sync_service = get_sync_service()
+        result = sync_service.get_synced_queue(device_id, decrypt)
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Get synced queue error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/sync/merge-queue")
+async def merge_queues(request: MergeQueueRequest):
+    """Merge local and synced queues"""
+    try:
+        from api.sync.cloud_sync_service import get_sync_service
+
+        sync_service = get_sync_service()
+        merged_queue = sync_service.merge_queues(
+            request.local_queue,
+            request.synced_queue
+        )
+
+        return {
+            'success': True,
+            'merged_queue': merged_queue,
+            'item_count': len(merged_queue)
+        }
+
+    except Exception as e:
+        logger.error(f"Merge queues error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.get("/api/sync/status/{device_id}")
+async def get_sync_status(device_id: str):
+    """Get sync status for device"""
+    try:
+        from api.sync.cloud_sync_service import get_sync_service
+
+        sync_service = get_sync_service()
+        result = sync_service.get_sync_status(device_id)
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Get sync status error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
