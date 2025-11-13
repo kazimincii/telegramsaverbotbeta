@@ -29,13 +29,16 @@
     },
     "files": [
       "main.js",
+      "preload.js",
       "package.json",
       "../backend/**/*",
       "../frontend/build/**/*",
       "!../backend/__pycache__",
       "!../backend/*.pyc",
       "!../backend/.env",
-      "!../backend/node_modules"
+      "!../backend/node_modules",
+      "!../backend/downloads.db",
+      "!../backend/*.log"
     ],
     "extraResources": [
       {

@@ -1,0 +1,63 @@
+{
+  "app": {
+    "name": "Telegram 保存机器人",
+    "description": "保存、整理和搜索您的 Telegram 媒体",
+    "version": "1.0.0"
+  },
+  "common": {
+    "start": "开始",
+    "stop": "停止",
+    "pause": "暂停",
+    "resume": "继续",
+    "save": "保存",
+    "cancel": "取消",
+    "delete": "删除",
+    "edit": "编辑",
+    "search": "搜索",
+    "upload": "上传",
+    "download": "下载",
+    "loading": "加载中...",
+    "success": "成功",
+    "error": "错误",
+    "warning": "警告",
+    "info": "信息"
+  },
+  "status": {
+    "connected": "已连接",
+    "disconnected": "已断开",
+    "running": "运行中",
+    "stopped": "已停止",
+    "paused": "已暂停",
+    "idle": "空闲",
+    "processing": "处理中"
+  },
+  "messages": {
+    "download_started": "下载已开始",
+    "download_completed": "下载成功完成",
+    "download_failed": "下载失败: {error}",
+    "upload_started": "上传已开始",
+    "upload_completed": "上传成功完成",
+    "webhook_created": "Webhook 创建成功",
+    "plugin_loaded": "插件已加载: {name}",
+    "sync_completed": "云同步完成",
+    "no_data": "无数据"
+  },
+  "sections": {
+    "control_panel": "控制面板",
+    "analytics": "分析仪表板",
+    "clip_search": "AI 图像搜索",
+    "webhooks": "Webhook 管理",
+    "cloud_sync": "云同步设置",
+    "video_processing": "视频处理",
+    "plugins": "插件管理器",
+    "settings": "设置"
+  },
+  "stats": {
+    "total_downloads": "总下载量",
+    "total_size": "总大小",
+    "media_types": "媒体类型",
+    "active_chats": "活跃聊天",
+    "hourly_activity": "每小时活动",
+    "top_chats": "热门聊天"
+  }
+}

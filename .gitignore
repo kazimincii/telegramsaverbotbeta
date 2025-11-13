@@ -6,6 +6,8 @@ __pycache__/
 backend/config.json
 backend/.env
 backend/downloads.db
+backend/downloads.db-shm
+backend/downloads.db-wal
 backend/accounts.json
 backend/cloud_sync.json
 backend/ai_classifier.json
@@ -13,3 +15,7 @@ backend/scheduled_tasks.json
 
 # Node modules
 node_modules/
+
+# Build output
+frontend/build/
+desktop/dist/

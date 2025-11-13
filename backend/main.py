@@ -27,6 +27,10 @@ try:
     from .webhook_manager import WebhookManager, WEBHOOK_EVENTS
     from .video_processor import VideoProcessor
     from .ipfs_storage import IPFSStorage
+    from .plugin_system import PluginManager, PluginHook
+    from .i18n_manager import I18nManager
+    from .rbac_system import RBACManager, Permission, Role, User, Organization
+    from .content_moderator import ContentModerator, ModerationAction, ContentCategory
 except ImportError:
     import contacts
     from database import Database
@@ -39,6 +43,10 @@ except ImportError:
     from webhook_manager import WebhookManager, WEBHOOK_EVENTS
     from video_processor import VideoProcessor
     from ipfs_storage import IPFSStorage
+    from plugin_system import PluginManager, PluginHook
+    from i18n_manager import I18nManager
+    from rbac_system import RBACManager, Permission, Role, User, Organization
+    from content_moderator import ContentModerator, ModerationAction, ContentCategory
 
 # Load environment variables
 load_dotenv(Path(__file__).resolve().parent / ".env")
@@ -75,6 +83,12 @@ CLOUD_SYNC_FILE = ROOT / "cloud_sync.json"
 AI_CLASSIFIER_FILE = ROOT / "ai_classifier.json"
 SCHEDULED_TASKS_FILE = ROOT / "scheduled_tasks.json"
 WEBHOOKS_FILE = ROOT / "webhooks.json"
+PLUGINS_DIR = ROOT.parent / "plugins"
+PLUGINS_DIR.mkdir(exist_ok=True)
+TRANSLATIONS_DIR = ROOT.parent / "translations"
+TRANSLATIONS_DIR.mkdir(exist_ok=True)
+RBAC_FILE = ROOT / "rbac_data.json"
+MODERATION_FILE = ROOT / "moderation_config.json"
 
 # Initialize database
 db = Database(DB_FILE)
@@ -110,6 +124,18 @@ ipfs_storage = IPFSStorage(
     ipfs_api_url=os.getenv("IPFS_API_URL", "http://localhost:5001"),
     enable_filecoin=os.getenv("ENABLE_FILECOIN", "false").lower() == "true"
 )
+
+# Initialize plugin manager
+plugin_manager = PluginManager(PLUGINS_DIR)
+
+# Initialize i18n manager
+i18n_manager = I18nManager(TRANSLATIONS_DIR)
+
+# Initialize RBAC manager
+rbac_manager = RBACManager(RBAC_FILE)
+
+# Initialize content moderator
+content_moderator = ContentModerator(MODERATION_FILE)
 
 # Configure logging with environment variable support
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -595,7 +621,7 @@ async def export_to_html():
 
 @APP.get("/api/status")
 def status():
-    tail = STATE["log"][-50:]
+    tail = list(STATE["log"])[-50:]  # Convert deque to list before slicing
     return {"running": STATE["running"], "progress": STATE.get("progress"), "logTail": tail}
 
 
@@ -1216,6 +1242,673 @@ def get_ipfs_gateway_url(cid: str, gateway: str = "ipfs.io"):
     """Get public gateway URL for a CID."""
     url = ipfs_storage.get_ipfs_url(cid, gateway)
     return {"ok": True, "cid": cid, "gateway_url": url}
+
+
+# Plugin System Endpoints
+
+@APP.get("/api/plugins")
+def list_all_plugins():
+    """List all loaded plugins."""
+    plugins = plugin_manager.list_plugins()
+    return {
+        "ok": True,
+        "plugins": plugins,
+        "count": len(plugins)
+    }
+
+
+@APP.get("/api/plugins/discover")
+def discover_available_plugins():
+    """Discover available plugins in the plugins directory."""
+    discovered = plugin_manager.discover_plugins()
+    return {
+        "ok": True,
+        "available_plugins": discovered,
+        "count": len(discovered)
+    }
+
+
+@APP.post("/api/plugins/load")
+def load_plugin_endpoint(payload: dict):
+    """Load a plugin by module name."""
+    module_name = payload.get("module_name")
+
+    if not module_name:
+        raise HTTPException(status_code=400, detail="module_name is required")
+
+    try:
+        success = plugin_manager.load_plugin(module_name)
+        if success:
+            log(f"[*] Loaded plugin: {module_name}")
+            return {"ok": True, "message": f"Plugin {module_name} loaded successfully"}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to load plugin")
+    except Exception as e:
+        log(f"[error] Failed to load plugin {module_name}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/plugins/unload")
+def unload_plugin_endpoint(payload: dict):
+    """Unload a plugin by name."""
+    plugin_name = payload.get("plugin_name")
+
+    if not plugin_name:
+        raise HTTPException(status_code=400, detail="plugin_name is required")
+
+    try:
+        success = plugin_manager.unload_plugin(plugin_name)
+        if success:
+            log(f"[*] Unloaded plugin: {plugin_name}")
+            return {"ok": True, "message": f"Plugin {plugin_name} unloaded successfully"}
+        else:
+            raise HTTPException(status_code=404, detail="Plugin not found")
+    except Exception as e:
+        log(f"[error] Failed to unload plugin {plugin_name}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/plugins/enable/{plugin_name}")
+def enable_plugin_endpoint(plugin_name: str):
+    """Enable a plugin."""
+    success = plugin_manager.enable_plugin(plugin_name)
+    if success:
+        log(f"[*] Enabled plugin: {plugin_name}")
+        return {"ok": True, "message": f"Plugin {plugin_name} enabled"}
+    else:
+        raise HTTPException(status_code=404, detail="Plugin not found")
+
+
+@APP.post("/api/plugins/disable/{plugin_name}")
+def disable_plugin_endpoint(plugin_name: str):
+    """Disable a plugin."""
+    success = plugin_manager.disable_plugin(plugin_name)
+    if success:
+        log(f"[*] Disabled plugin: {plugin_name}")
+        return {"ok": True, "message": f"Plugin {plugin_name} disabled"}
+    else:
+        raise HTTPException(status_code=404, detail="Plugin not found")
+
+
+@APP.get("/api/plugins/{plugin_name}")
+def get_plugin_info(plugin_name: str):
+    """Get detailed information about a plugin."""
+    plugin = plugin_manager.get_plugin(plugin_name)
+    if plugin:
+        return {"ok": True, "plugin": plugin.get_info()}
+    else:
+        raise HTTPException(status_code=404, detail="Plugin not found")
+
+
+# i18n (Internationalization) Endpoints
+
+@APP.get("/api/i18n/languages")
+def get_supported_languages():
+    """Get list of supported languages."""
+    languages = i18n_manager.get_supported_languages()
+    return {
+        "ok": True,
+        "languages": languages,
+        "default": i18n_manager.default_language
+    }
+
+
+@APP.get("/api/i18n/translations/{lang_code}")
+def get_translations(lang_code: str):
+    """Get all translations for a specific language."""
+    translations = i18n_manager.get_all_translations(lang_code)
+    if translations:
+        return {
+            "ok": True,
+            "lang_code": lang_code,
+            "translations": translations
+        }
+    else:
+        raise HTTPException(status_code=404, detail="Language not found")
+
+
+@APP.get("/api/i18n/translate")
+def translate(lang: str, key: str):
+    """
+    Get a specific translation.
+
+    Query params:
+    - lang: Language code (en, tr, es, etc.)
+    - key: Translation key in dot notation (e.g., "common.start")
+    """
+    translation = i18n_manager.get_translation(lang, key)
+    return {
+        "ok": True,
+        "lang": lang,
+        "key": key,
+        "translation": translation
+    }
+
+
+@APP.post("/api/i18n/add-translation")
+def add_translation(payload: dict):
+    """
+    Add or update a translation.
+
+    Body:
+    {
+        "lang_code": "en",
+        "key": "custom.message",
+        "value": "Hello World"
+    }
+    """
+    lang_code = payload.get("lang_code")
+    key = payload.get("key")
+    value = payload.get("value")
+
+    if not all([lang_code, key, value]):
+        raise HTTPException(status_code=400, detail="Missing required fields")
+
+    success = i18n_manager.add_translation(lang_code, key, value)
+    if success:
+        return {"ok": True, "message": "Translation added successfully"}
+    else:
+        raise HTTPException(status_code=400, detail="Failed to add translation")
+
+
+# RBAC (Role-Based Access Control) & Multi-Tenant Endpoints
+
+@APP.get("/api/rbac/organizations")
+def list_organizations():
+    """List all organizations."""
+    orgs = rbac_manager.list_organizations()
+    return {
+        "ok": True,
+        "organizations": [org.to_dict() for org in orgs],
+        "count": len(orgs)
+    }
+
+
+@APP.post("/api/rbac/organizations")
+def create_organization(payload: dict):
+    """
+    Create new organization.
+
+    Body:
+    {
+        "name": "Acme Corp",
+        "plan": "pro"  # free, pro, enterprise
+    }
+    """
+    name = payload.get("name")
+    plan = payload.get("plan", "free")
+
+    if not name:
+        raise HTTPException(status_code=400, detail="Organization name required")
+
+    org = rbac_manager.create_organization(name, plan)
+    return {"ok": True, "organization": org.to_dict()}
+
+
+@APP.get("/api/rbac/organizations/{org_id}")
+def get_organization(org_id: str):
+    """Get organization details."""
+    org = rbac_manager.get_organization(org_id)
+    if org:
+        # Get org users
+        users = rbac_manager.list_users(org_id)
+        org_dict = org.to_dict()
+        org_dict["users"] = [u.to_dict() for u in users]
+        org_dict["user_count"] = len(users)
+        return {"ok": True, "organization": org_dict}
+    else:
+        raise HTTPException(status_code=404, detail="Organization not found")
+
+
+@APP.delete("/api/rbac/organizations/{org_id}")
+def delete_organization(org_id: str):
+    """Delete organization and all its users."""
+    success = rbac_manager.delete_organization(org_id)
+    if success:
+        return {"ok": True, "message": "Organization deleted"}
+    else:
+        raise HTTPException(status_code=404, detail="Organization not found")
+
+
+@APP.get("/api/rbac/users")
+def list_users(org_id: Optional[str] = None):
+    """List users, optionally filtered by organization."""
+    users = rbac_manager.list_users(org_id)
+    return {
+        "ok": True,
+        "users": [user.to_dict() for user in users],
+        "count": len(users)
+    }
+
+
+@APP.post("/api/rbac/users")
+def create_user(payload: dict):
+    """
+    Create new user.
+
+    Body:
+    {
+        "username": "john_doe",
+        "email": "john@example.com",
+        "organization_id": "org_xxx",
+        "role_ids": ["admin", "manager"]
+    }
+    """
+    username = payload.get("username")
+    email = payload.get("email")
+    organization_id = payload.get("organization_id")
+    role_ids = payload.get("role_ids", [])
+
+    if not all([username, email, organization_id]):
+        raise HTTPException(status_code=400, detail="Missing required fields")
+
+    user = rbac_manager.create_user(username, email, organization_id, role_ids)
+    if user:
+        return {"ok": True, "user": user.to_dict()}
+    else:
+        raise HTTPException(status_code=400, detail="Failed to create user")
+
+
+@APP.get("/api/rbac/users/{user_id}")
+def get_user(user_id: str):
+    """Get user details."""
+    user = rbac_manager.get_user(user_id)
+    if user:
+        user_dict = user.to_dict()
+        # Add role details
+        roles = [rbac_manager.get_role(rid).to_dict() for rid in user.roles if rbac_manager.get_role(rid)]
+        user_dict["role_details"] = roles
+        return {"ok": True, "user": user_dict}
+    else:
+        raise HTTPException(status_code=404, detail="User not found")
+
+
+@APP.delete("/api/rbac/users/{user_id}")
+def delete_user(user_id: str):
+    """Delete user."""
+    success = rbac_manager.delete_user(user_id)
+    if success:
+        return {"ok": True, "message": "User deleted"}
+    else:
+        raise HTTPException(status_code=404, detail="User not found")
+
+
+@APP.post("/api/rbac/users/{user_id}/roles")
+def assign_role_to_user(user_id: str, payload: dict):
+    """
+    Assign role to user.
+
+    Body:
+    {
+        "role_id": "admin"
+    }
+    """
+    role_id = payload.get("role_id")
+    if not role_id:
+        raise HTTPException(status_code=400, detail="role_id required")
+
+    user = rbac_manager.get_user(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    role = rbac_manager.get_role(role_id)
+    if not role:
+        raise HTTPException(status_code=404, detail="Role not found")
+
+    user.add_role(role_id)
+    rbac_manager._save_data()
+
+    return {"ok": True, "message": f"Role {role_id} assigned to user"}
+
+
+@APP.delete("/api/rbac/users/{user_id}/roles/{role_id}")
+def remove_role_from_user(user_id: str, role_id: str):
+    """Remove role from user."""
+    user = rbac_manager.get_user(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.remove_role(role_id)
+    rbac_manager._save_data()
+
+    return {"ok": True, "message": f"Role {role_id} removed from user"}
+
+
+@APP.get("/api/rbac/roles")
+def list_roles():
+    """List all roles."""
+    roles = rbac_manager.list_roles()
+    return {
+        "ok": True,
+        "roles": [role.to_dict() for role in roles],
+        "count": len(roles)
+    }
+
+
+@APP.post("/api/rbac/roles")
+def create_role(payload: dict):
+    """
+    Create custom role.
+
+    Body:
+    {
+        "name": "Content Manager",
+        "description": "Can manage media and downloads",
+        "permissions": ["media.view", "media.upload", "download.start"]
+    }
+    """
+    name = payload.get("name")
+    description = payload.get("description", "")
+    permission_strings = payload.get("permissions", [])
+
+    if not name:
+        raise HTTPException(status_code=400, detail="Role name required")
+
+    # Convert permission strings to Permission enums
+    try:
+        permissions = [Permission(p) for p in permission_strings]
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid permission: {e}")
+
+    role = rbac_manager.create_role(name, description, permissions)
+    return {"ok": True, "role": role.to_dict()}
+
+
+@APP.get("/api/rbac/roles/{role_id}")
+def get_role(role_id: str):
+    """Get role details."""
+    role = rbac_manager.get_role(role_id)
+    if role:
+        return {"ok": True, "role": role.to_dict()}
+    else:
+        raise HTTPException(status_code=404, detail="Role not found")
+
+
+@APP.delete("/api/rbac/roles/{role_id}")
+def delete_role(role_id: str):
+    """Delete custom role (cannot delete system roles)."""
+    success = rbac_manager.delete_role(role_id)
+    if success:
+        return {"ok": True, "message": "Role deleted"}
+    else:
+        raise HTTPException(status_code=400, detail="Cannot delete system role or role not found")
+
+
+@APP.get("/api/rbac/permissions")
+def list_permissions():
+    """List all available permissions."""
+    permissions = [
+        {"name": p.value, "category": p.value.split(".")[0]}
+        for p in Permission
+    ]
+
+    # Group by category
+    categories = {}
+    for perm in permissions:
+        cat = perm["category"]
+        if cat not in categories:
+            categories[cat] = []
+        categories[cat].append(perm["name"])
+
+    return {
+        "ok": True,
+        "permissions": permissions,
+        "categories": categories
+    }
+
+
+@APP.post("/api/rbac/check-permission")
+def check_permission(payload: dict):
+    """
+    Check if user has a specific permission.
+
+    Body:
+    {
+        "user_id": "user_xxx",
+        "permission": "media.delete"
+    }
+    """
+    user_id = payload.get("user_id")
+    permission_str = payload.get("permission")
+
+    if not all([user_id, permission_str]):
+        raise HTTPException(status_code=400, detail="Missing required fields")
+
+    try:
+        permission = Permission(permission_str)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid permission")
+
+    has_perm = rbac_manager.user_has_permission(user_id, permission)
+
+    return {
+        "ok": True,
+        "user_id": user_id,
+        "permission": permission_str,
+        "has_permission": has_perm
+    }
+
+
+@APP.post("/api/rbac/authenticate")
+def authenticate_api_key(payload: dict):
+    """
+    Authenticate using API key.
+
+    Body:
+    {
+        "api_key": "tk_xxx"
+    }
+    """
+    api_key = payload.get("api_key")
+    if not api_key:
+        raise HTTPException(status_code=400, detail="api_key required")
+
+    user = rbac_manager.check_api_key(api_key)
+    if user:
+        return {
+            "ok": True,
+            "authenticated": True,
+            "user": user.to_dict()
+        }
+    else:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+
+
+# Content Moderation Endpoints
+
+@APP.post("/api/moderation/moderate")
+async def moderate_file(payload: dict):
+    """
+    Moderate a file for inappropriate content.
+
+    Body:
+    {
+        "file_path": "/path/to/file.jpg",
+        "metadata": {"caption": "Optional text"}
+    }
+    """
+    file_path_str = payload.get("file_path")
+    metadata = payload.get("metadata", {})
+
+    if not file_path_str:
+        raise HTTPException(status_code=400, detail="file_path required")
+
+    file_path = Path(file_path_str)
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    result = await content_moderator.moderate_content(file_path, metadata)
+
+    return {
+        "ok": True,
+        "result": result.to_dict()
+    }
+
+
+@APP.get("/api/moderation/rules")
+def list_moderation_rules():
+    """List all moderation rules."""
+    rules = content_moderator.list_rules()
+    return {
+        "ok": True,
+        "rules": [rule.to_dict() for rule in rules],
+        "count": len(rules)
+    }
+
+
+@APP.post("/api/moderation/rules")
+def create_moderation_rule(payload: dict):
+    """
+    Create custom moderation rule.
+
+    Body:
+    {
+        "name": "Strict Violence Filter",
+        "category": "violence",
+        "action": "block",
+        "threshold": 0.5
+    }
+    """
+    name = payload.get("name")
+    category_str = payload.get("category")
+    action_str = payload.get("action")
+    threshold = payload.get("threshold", 0.5)
+
+    if not all([name, category_str, action_str]):
+        raise HTTPException(status_code=400, detail="Missing required fields")
+
+    try:
+        category = ContentCategory(category_str)
+        action = ModerationAction(action_str)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid category or action: {e}")
+
+    rule = content_moderator.create_rule(name, category, action, threshold)
+
+    return {"ok": True, "rule": rule.to_dict()}
+
+
+@APP.get("/api/moderation/rules/{rule_id}")
+def get_moderation_rule(rule_id: str):
+    """Get moderation rule details."""
+    rule = content_moderator.get_rule(rule_id)
+    if rule:
+        return {"ok": True, "rule": rule.to_dict()}
+    else:
+        raise HTTPException(status_code=404, detail="Rule not found")
+
+
+@APP.put("/api/moderation/rules/{rule_id}")
+def update_moderation_rule(rule_id: str, payload: dict):
+    """
+    Update moderation rule.
+
+    Body:
+    {
+        "name": "Updated name",
+        "threshold": 0.7,
+        "action": "warn",
+        "enabled": true
+    }
+    """
+    success = content_moderator.update_rule(rule_id, **payload)
+    if success:
+        return {"ok": True, "message": "Rule updated"}
+    else:
+        raise HTTPException(status_code=404, detail="Rule not found")
+
+
+@APP.delete("/api/moderation/rules/{rule_id}")
+def delete_moderation_rule(rule_id: str):
+    """Delete moderation rule."""
+    success = content_moderator.delete_rule(rule_id)
+    if success:
+        return {"ok": True, "message": "Rule deleted"}
+    else:
+        raise HTTPException(status_code=404, detail="Rule not found")
+
+
+@APP.get("/api/moderation/history")
+def get_moderation_history(limit: int = 100):
+    """Get recent moderation history."""
+    history = content_moderator.get_moderation_history(limit)
+    return {
+        "ok": True,
+        "history": [result.to_dict() for result in history],
+        "count": len(history)
+    }
+
+
+@APP.get("/api/moderation/statistics")
+def get_moderation_statistics():
+    """Get moderation statistics."""
+    stats = content_moderator.get_statistics()
+    return {
+        "ok": True,
+        "statistics": stats
+    }
+
+
+@APP.post("/api/moderation/block-hash")
+def block_file_hash(payload: dict):
+    """
+    Block a file hash.
+
+    Body:
+    {
+        "file_hash": "abc123..."
+    }
+    """
+    file_hash = payload.get("file_hash")
+    if not file_hash:
+        raise HTTPException(status_code=400, detail="file_hash required")
+
+    content_moderator.block_hash(file_hash)
+    return {"ok": True, "message": "Hash blocked"}
+
+
+@APP.post("/api/moderation/unblock-hash")
+def unblock_file_hash(payload: dict):
+    """
+    Unblock a file hash.
+
+    Body:
+    {
+        "file_hash": "abc123..."
+    }
+    """
+    file_hash = payload.get("file_hash")
+    if not file_hash:
+        raise HTTPException(status_code=400, detail="file_hash required")
+
+    content_moderator.unblock_hash(file_hash)
+    return {"ok": True, "message": "Hash unblocked"}
+
+
+@APP.get("/api/moderation/categories")
+def list_content_categories():
+    """List all content categories."""
+    categories = [
+        {"value": cat.value, "name": cat.value.replace("_", " ").title()}
+        for cat in ContentCategory
+    ]
+    return {
+        "ok": True,
+        "categories": categories
+    }
+
+
+@APP.get("/api/moderation/actions")
+def list_moderation_actions():
+    """List all possible moderation actions."""
+    actions = [
+        {"value": action.value, "name": action.value.title()}
+        for action in ModerationAction
+    ]
+    return {
+        "ok": True,
+        "actions": actions
+    }
 
 
 # Scheduled Tasks Endpoints
