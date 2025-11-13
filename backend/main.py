@@ -2483,3 +2483,159 @@ async def get_categories():
     except Exception as e:
         logger.error(f"Get categories error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# ============= Advanced Search API =============
+
+class AdvancedSearchRequest(BaseModel):
+    query: str
+    mode: Optional[str] = 'fuzzy'  # fuzzy, exact, regex, fulltext
+    filters: Optional[dict] = None
+    limit: Optional[int] = 100
+    offset: Optional[int] = 0
+    sort_by: Optional[str] = 'relevance'
+    sort_order: Optional[str] = 'desc'
+
+class SaveSearchRequest(BaseModel):
+    name: str
+    query: str
+    mode: str
+    filters: Optional[dict] = None
+
+class ImageSimilarityRequest(BaseModel):
+    reference_image_path: str
+    threshold: Optional[float] = 0.8
+    limit: Optional[int] = 50
+
+@APP.post("/api/search/advanced")
+async def advanced_search(request: AdvancedSearchRequest):
+    """Perform advanced search"""
+    try:
+        from api.search.advanced import get_search_engine
+
+        engine = get_search_engine(database=db)
+
+        options = {
+            'mode': request.mode,
+            'filters': request.filters or {},
+            'limit': request.limit,
+            'offset': request.offset,
+            'sort_by': request.sort_by,
+            'sort_order': request.sort_order
+        }
+
+        result = engine.search(request.query, options)
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Advanced search error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.get("/api/search/history")
+async def get_search_history(limit: int = 20):
+    """Get search history"""
+    try:
+        from api.search.advanced import get_search_engine
+
+        engine = get_search_engine()
+        history = engine.get_history(limit)
+
+        return {
+            'success': True,
+            'history': history
+        }
+
+    except Exception as e:
+        logger.error(f"Get history error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/search/history/clear")
+async def clear_search_history():
+    """Clear search history"""
+    try:
+        from api.search.advanced import get_search_engine
+
+        engine = get_search_engine()
+        engine.clear_history()
+
+        return {
+            'success': True,
+            'message': 'Search history cleared'
+        }
+
+    except Exception as e:
+        logger.error(f"Clear history error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/search/save")
+async def save_search(request: SaveSearchRequest):
+    """Save search for later use"""
+    try:
+        from api.search.advanced import get_search_engine
+
+        engine = get_search_engine()
+        engine.save_search(request.name, request.query, request.mode, request.filters or {})
+
+        return {
+            'success': True,
+            'message': f'Search saved as "{request.name}"'
+        }
+
+    except Exception as e:
+        logger.error(f"Save search error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.get("/api/search/saved")
+async def get_saved_searches():
+    """Get all saved searches"""
+    try:
+        from api.search.advanced import get_search_engine
+
+        engine = get_search_engine()
+        saved = engine.get_saved_searches()
+
+        return {
+            'success': True,
+            'saved_searches': saved
+        }
+
+    except Exception as e:
+        logger.error(f"Get saved searches error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.delete("/api/search/saved/{name}")
+async def delete_saved_search(name: str):
+    """Delete saved search"""
+    try:
+        from api.search.advanced import get_search_engine
+
+        engine = get_search_engine()
+        engine.delete_saved_search(name)
+
+        return {
+            'success': True,
+            'message': f'Search "{name}" deleted'
+        }
+
+    except Exception as e:
+        logger.error(f"Delete saved search error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/search/image-similarity")
+async def image_similarity_search(request: ImageSimilarityRequest):
+    """Search for similar images"""
+    try:
+        from api.search.advanced import get_search_engine
+
+        engine = get_search_engine()
+        result = engine.image_similarity_search(
+            request.reference_image_path,
+            request.threshold,
+            request.limit
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Image similarity search error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
