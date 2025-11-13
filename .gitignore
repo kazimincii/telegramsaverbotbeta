@@ -15,3 +15,7 @@ backend/scheduled_tasks.json
 
 # Node modules
 node_modules/
+
+# Build output
+frontend/build/
+desktop/dist/
