@@ -26,8 +26,12 @@ const CONFIG = {
   backendPort: 8000,
   frontendPort: 3000,
   isDev: !app.isPackaged,
-  backendPath: path.join(__dirname, '../backend/main.py'),
-  frontendPath: path.join(__dirname, '../frontend/build/index.html'),
+  backendPath: app.isPackaged
+    ? path.join(process.resourcesPath, 'backend', 'main.py')
+    : path.join(__dirname, '../backend/main.py'),
+  frontendPath: app.isPackaged
+    ? path.join(process.resourcesPath, 'app.asar.unpacked', 'frontend', 'build', 'index.html')
+    : path.join(__dirname, '../frontend/build/index.html'),
   pythonCommand: process.platform === 'win32' ? 'python' : 'python3'
 };
 
@@ -144,11 +148,13 @@ function startBackend() {
 
 // Create system tray
 function createTray() {
-  const iconPath = path.join(__dirname, 'assets', 'icon.png');
+  const iconPath = path.join(__dirname, 'resources', 'icon.png');
 
   // Create a simple icon if it doesn't exist
   if (!fs.existsSync(iconPath)) {
-    fs.mkdirSync(path.join(__dirname, 'assets'), { recursive: true });
+    logger.warn('Tray icon not found at:', iconPath);
+    // Try to use a fallback or skip tray creation
+    return;
   }
 
   tray = new Tray(iconPath);
