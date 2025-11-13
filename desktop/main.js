@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, dialog, shell, Notification } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const { spawn } = require('child_process');
 const path = require('path');
@@ -553,6 +553,195 @@ ipcMain.handle('check-for-updates', async () => {
     logger.error('Manual update check failed:', error);
     return { available: false, error: error.message };
   }
+});
+
+// ========================================
+// NOTIFICATION SYSTEM
+// ========================================
+
+// Notification settings (can be customized)
+const notificationSettings = {
+  enabled: true,
+  sound: true,
+  downloadComplete: true,
+  downloadError: true,
+  downloadProgress: true
+};
+
+// Show notification function
+function showNotification(options) {
+  if (!notificationSettings.enabled) {
+    return null;
+  }
+
+  // Check if notifications are supported
+  if (!Notification.isSupported()) {
+    logger.warn('Notifications are not supported on this system');
+    return null;
+  }
+
+  const notification = new Notification({
+    title: options.title || 'Telegram Saver',
+    body: options.body || '',
+    icon: options.icon || path.join(__dirname, 'resources', 'icon.png'),
+    sound: notificationSettings.sound ? options.sound : undefined,
+    silent: !notificationSettings.sound,
+    urgency: options.urgency || 'normal', // low, normal, critical
+    timeoutType: options.timeoutType || 'default', // default, never
+    actions: options.actions || []
+  });
+
+  // Handle notification click
+  notification.on('click', () => {
+    if (mainWindow) {
+      mainWindow.show();
+      mainWindow.focus();
+    }
+
+    if (options.onClick) {
+      options.onClick();
+    }
+  });
+
+  // Handle action buttons click
+  notification.on('action', (event, index) => {
+    logger.info('Notification action clicked:', index);
+    if (options.onAction) {
+      options.onAction(index);
+    }
+  });
+
+  notification.on('close', () => {
+    if (options.onClose) {
+      options.onClose();
+    }
+  });
+
+  notification.show();
+  logger.info('Notification shown:', options.title);
+
+  return notification;
+}
+
+// Download complete notification
+function notifyDownloadComplete(stats) {
+  showNotification({
+    title: '✅ Download Complete',
+    body: `Downloaded ${stats.count || 0} files from "${stats.chat || 'Unknown'}"`,
+    urgency: 'normal',
+    sound: 'default',
+    actions: [
+      { type: 'button', text: 'View Files' },
+      { type: 'button', text: 'Open Folder' }
+    ],
+    onClick: () => {
+      if (mainWindow) {
+        mainWindow.webContents.send('navigate', 'control');
+      }
+    },
+    onAction: (index) => {
+      if (index === 0) {
+        // View Files - show in app
+        if (mainWindow) {
+          mainWindow.show();
+          mainWindow.webContents.send('navigate', 'control');
+        }
+      } else if (index === 1) {
+        // Open Folder
+        if (stats.folder) {
+          shell.openPath(stats.folder);
+        }
+      }
+    }
+  });
+}
+
+// Download error notification
+function notifyDownloadError(error) {
+  showNotification({
+    title: '❌ Download Error',
+    body: error.message || 'An error occurred during download',
+    urgency: 'critical',
+    sound: 'default',
+    onClick: () => {
+      if (mainWindow) {
+        mainWindow.show();
+        mainWindow.webContents.send('navigate', 'control');
+        mainWindow.webContents.send('show-errors');
+      }
+    }
+  });
+}
+
+// Download progress notification (throttled)
+let lastProgressNotification = 0;
+function notifyDownloadProgress(progress) {
+  if (!notificationSettings.downloadProgress) {
+    return;
+  }
+
+  // Throttle: only show every 10 seconds
+  const now = Date.now();
+  if (now - lastProgressNotification < 10000) {
+    return;
+  }
+  lastProgressNotification = now;
+
+  showNotification({
+    title: '📥 Downloading...',
+    body: `${progress.downloaded || 0} files downloaded from "${progress.chat || 'Unknown'}"`,
+    urgency: 'low',
+    timeoutType: 'default',
+    silent: true // Don't play sound for progress notifications
+  });
+}
+
+// Generic info notification
+function notifyInfo(title, message) {
+  showNotification({
+    title: `ℹ️ ${title}`,
+    body: message,
+    urgency: 'normal'
+  });
+}
+
+// Generic warning notification
+function notifyWarning(title, message) {
+  showNotification({
+    title: `⚠️ ${title}`,
+    body: message,
+    urgency: 'normal'
+  });
+}
+
+// IPC handlers for notifications
+ipcMain.handle('show-notification', (event, options) => {
+  return showNotification(options);
+});
+
+ipcMain.handle('notify-download-complete', (event, stats) => {
+  notifyDownloadComplete(stats);
+  return { success: true };
+});
+
+ipcMain.handle('notify-download-error', (event, error) => {
+  notifyDownloadError(error);
+  return { success: true };
+});
+
+ipcMain.handle('notify-download-progress', (event, progress) => {
+  notifyDownloadProgress(progress);
+  return { success: true };
+});
+
+ipcMain.handle('get-notification-settings', () => {
+  return notificationSettings;
+});
+
+ipcMain.handle('update-notification-settings', (event, settings) => {
+  Object.assign(notificationSettings, settings);
+  logger.info('Notification settings updated:', notificationSettings);
+  return { success: true, settings: notificationSettings };
 });
 
 // Handle uncaught exceptions

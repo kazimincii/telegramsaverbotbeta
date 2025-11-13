@@ -16,12 +16,23 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Update operations
   checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
 
-  // Notifications
+  // Notification operations
+  showNotification: (options) => ipcRenderer.invoke('show-notification', options),
+  notifyDownloadComplete: (stats) => ipcRenderer.invoke('notify-download-complete', stats),
+  notifyDownloadError: (error) => ipcRenderer.invoke('notify-download-error', error),
+  notifyDownloadProgress: (progress) => ipcRenderer.invoke('notify-download-progress', progress),
+  getNotificationSettings: () => ipcRenderer.invoke('get-notification-settings'),
+  updateNotificationSettings: (settings) => ipcRenderer.invoke('update-notification-settings', settings),
+
+  // Event listeners
   onAction: (callback) => {
     ipcRenderer.on('action', (event, action) => callback(action));
   },
   onNavigate: (callback) => {
     ipcRenderer.on('navigate', (event, path) => callback(path));
+  },
+  onShowErrors: (callback) => {
+    ipcRenderer.on('show-errors', (event) => callback());
   },
 
   // Remove listeners
@@ -30,6 +41,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   removeNavigateListener: () => {
     ipcRenderer.removeAllListeners('navigate');
+  },
+  removeShowErrorsListener: () => {
+    ipcRenderer.removeAllListeners('show-errors');
   }
 });
 

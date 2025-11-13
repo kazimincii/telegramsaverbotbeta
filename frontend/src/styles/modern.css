@@ -1162,3 +1162,118 @@ body {
   width: 100%;
   padding: var(--spacing-lg);
 }
+
+/* Flexbox Utilities */
+.flex {
+  display: flex;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.gap-3 {
+  gap: var(--spacing-md);
+}
+
+/* Divider */
+.divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: var(--spacing-md) 0;
+}
+
+/* Alert */
+.alert {
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  border: 1px solid;
+}
+
+.alert-warning {
+  background: rgba(255, 152, 0, 0.1);
+  border-color: var(--warning);
+  color: var(--warning);
+}
+
+[data-theme="dark"] .alert-warning {
+  background: rgba(255, 152, 0, 0.15);
+}
+
+.alert strong {
+  display: block;
+  margin-bottom: var(--spacing-xs);
+}
+
+.alert p {
+  margin: 0;
+  font-size: 14px;
+}
+
+/* Form Checkbox */
+.form-checkbox {
+  width: 44px;
+  height: 24px;
+  appearance: none;
+  background: var(--bg-tertiary);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-full);
+  position: relative;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.form-checkbox:before {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: white;
+  top: 2px;
+  left: 2px;
+  transition: all var(--transition-fast);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.form-checkbox:checked {
+  background: var(--tg-primary);
+  border-color: var(--tg-primary);
+}
+
+.form-checkbox:checked:before {
+  left: 22px;
+}
+
+.form-checkbox:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Card Description */
+.card-description {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-top: var(--spacing-xs);
+}
+
+/* Card Footer */
+.card-footer {
+  padding: var(--spacing-md);
+  background: var(--bg-tertiary);
+  border-top: 1px solid var(--border-color);
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+}
+
+/* Text Utilities */
+.text-md {
+  font-size: 16px;
+}
+
+.font-semibold {
+  font-weight: 600;
+}
