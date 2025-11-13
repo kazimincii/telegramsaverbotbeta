@@ -16,8 +16,10 @@ from pydantic import BaseModel
 from telethon import TelegramClient, types as tl_types
 try:
     from . import contacts
+    from .database import Database
 except ImportError:
     import contacts
+    from database import Database
 
 # Load environment variables
 load_dotenv(Path(__file__).resolve().parent / ".env")
@@ -45,6 +47,10 @@ ROOT = Path(__file__).resolve().parent
 CFG_FILE = ROOT / "config.json"
 LOG_DIR = ROOT.parent / "log"
 LOG_DIR.mkdir(exist_ok=True)
+DB_FILE = ROOT / "downloads.db"
+
+# Initialize database
+db = Database(DB_FILE)
 
 # Configure logging with environment variable support
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -257,7 +263,9 @@ def make_media_filter(types_list: Optional[List[str]]):
     return None
 
 
-async def download_file(client: TelegramClient, msg, target_dir: Path) -> Path:
+async def download_file(client: TelegramClient, msg, target_dir: Path,
+                       chat_id: int = 0, chat_name: str = "") -> tuple[Path, int]:
+    """Download a file and return (path, size)."""
     target_dir.mkdir(parents=True, exist_ok=True)
     filename = getattr(getattr(msg, "file", None), "name", None)
     if not filename and getattr(msg, "document", None):
@@ -275,7 +283,8 @@ async def download_file(client: TelegramClient, msg, target_dir: Path) -> Path:
             getattr(msg, "media", None) or msg, f, offset=offset
         )
     temp.replace(final)
-    return final
+    file_size = final.stat().st_size if final.exists() else 0
+    return final, file_size
 
 
 async def download_worker(
@@ -289,84 +298,104 @@ async def download_worker(
         raise PermissionError("Telegram oturumu yetkili değil")
 
     media_types = media_types or cfg.types
-    out_base = Path(cfg.out or "C:/TelegramArchive")
+    out_base = Path(cfg.out or str(Path.home() / "TelegramArchive"))
     out_base.mkdir(parents=True, exist_ok=True)
     # reset progress counters for a new run
     STATE["progress"] = {"chat": "", "downloaded": 0, "skipped": 0}
+
+    # Start database session
+    import uuid
+    session_id = str(uuid.uuid4())
+    db.start_session(session_id)
+
     sem = asyncio.Semaphore(cfg.concurrency)
     chosen = set(str(x) for x in (chats or cfg.chats or []))
     flt = make_media_filter(media_types)
     tasks = []
     stop_event = STATE["stop"]
 
-    async for dialog in client.iter_dialogs():
-        if stop_event.is_set():
-            break
-        name = (
-            getattr(dialog, "name", None)
-            or getattr(getattr(dialog, "entity", None), "username", None)
-            or str(getattr(dialog, "id", ""))
-        )
-        if chosen and (
-            name not in chosen and str(getattr(dialog, "id", "")) not in chosen
-        ):
-            continue
-        # record current chat being processed
-        STATE["progress"]["chat"] = name
-        chat_dir = out_base / name
-        tasks = []
-        async for msg in client.iter_messages(dialog, reverse=True, filter=flt):
+    try:
+        async for dialog in client.iter_dialogs():
             if stop_event.is_set():
                 break
-            kind = None
-            if "photos" in media_types and getattr(msg, "photo", None):
-                kind = "photos"
-            elif "videos" in media_types and getattr(msg, "video", None):
-                kind = "videos"
-            elif "documents" in media_types and getattr(msg, "document", None):
-                kind = "documents"
-            else:
-                # ignored message does not match requested media types
-                STATE["progress"]["skipped"] += 1
+            name = (
+                getattr(dialog, "name", None)
+                or getattr(getattr(dialog, "entity", None), "username", None)
+                or str(getattr(dialog, "id", ""))
+            )
+            if chosen and (
+                name not in chosen and str(getattr(dialog, "id", "")) not in chosen
+            ):
                 continue
-            target_dir = chat_dir / kind / str(msg.date.year)
+            # record current chat being processed
+            STATE["progress"]["chat"] = name
+            chat_dir = out_base / name
+            tasks = []
+            async for msg in client.iter_messages(dialog, reverse=True, filter=flt):
+                if stop_event.is_set():
+                    break
+                kind = None
+                if "photos" in media_types and getattr(msg, "photo", None):
+                    kind = "photos"
+                elif "videos" in media_types and getattr(msg, "video", None):
+                    kind = "videos"
+                elif "documents" in media_types and getattr(msg, "document", None):
+                    kind = "documents"
+                else:
+                    # ignored message does not match requested media types
+                    STATE["progress"]["skipped"] += 1
+                    continue
+                target_dir = chat_dir / kind / str(msg.date.year)
 
-            async def runner(m=msg, dname=name, tdir=target_dir):
-                async with sem:
-                    for attempt in range(3):
-                        try:
-                            await download_file(client, m, tdir)
-                            STATE["progress"]["downloaded"] += 1
-                            return True
-                        except Exception as exc:
-                            if attempt == 2:
-                                log(f"[error] download failed for {dname}: {exc}")
-                                return False
-                            await asyncio.sleep(cfg.throttle)
+                # Skip if already downloaded (incremental backup)
+                chat_id = getattr(dialog, "id", 0)
+                if db.is_downloaded(msg.id, chat_id):
+                    STATE["progress"]["skipped"] += 1
+                    continue
 
-            tasks.append(asyncio.create_task(runner()))
-            if len(tasks) >= cfg.concurrency:
-                await asyncio.gather(*tasks)
+                async def runner(m=msg, dname=name, tdir=target_dir, cid=chat_id, knd=kind):
+                    async with sem:
+                        for attempt in range(3):
+                            try:
+                                file_path, file_size = await download_file(client, m, tdir, cid, dname)
+                                # Record successful download in database
+                                db.add_download(m.id, cid, dname, str(file_path), file_size, knd)
+                                STATE["progress"]["downloaded"] += 1
+                                db.update_session_progress(session_id,
+                                    STATE["progress"]["downloaded"],
+                                    STATE["progress"]["skipped"])
+                                return True
+                            except Exception as exc:
+                                if attempt == 2:
+                                    log(f"[error] download failed for {dname}: {exc}")
+                                    return False
+                                await asyncio.sleep(cfg.throttle)
+
+                tasks.append(asyncio.create_task(runner()))
+                if len(tasks) >= cfg.concurrency:
+                    await asyncio.gather(*tasks)
+                    tasks.clear()
+                if stop_event.is_set():
+                    break
+
+            if tasks:
+                if stop_event.is_set():
+                    for task in tasks:
+                        task.cancel()
+                    await asyncio.gather(*tasks, return_exceptions=True)
+                else:
+                    await asyncio.gather(*tasks)
                 tasks.clear()
             if stop_event.is_set():
                 break
 
+        # ensure no leftover tasks when loop exits
         if tasks:
-            if stop_event.is_set():
-                for task in tasks:
-                    task.cancel()
-                await asyncio.gather(*tasks, return_exceptions=True)
-            else:
-                await asyncio.gather(*tasks)
-            tasks.clear()
-        if stop_event.is_set():
-            break
-
-    # ensure no leftover tasks when loop exits
-    if tasks:
-        await asyncio.gather(*tasks)
-    await client.disconnect()
-    log("[*] Worker bitti.")
+            await asyncio.gather(*tasks)
+    finally:
+        db.end_session(session_id, "completed" if not stop_event.is_set() else "stopped")
+        await client.disconnect()
+        log("[*] Worker bitti.")
 
 
 def run_worker_sync(

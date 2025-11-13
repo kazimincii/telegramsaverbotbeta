@@ -5,6 +5,7 @@ __pycache__/
 
 backend/config.json
 backend/.env
+backend/downloads.db
 
 # Node modules
 node_modules/
