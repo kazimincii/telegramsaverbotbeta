@@ -2661,6 +2661,28 @@ class MergeQueueRequest(BaseModel):
     local_queue: List[dict]
     synced_queue: List[dict]
 
+# Browser Extension API Models
+class ExtensionSendLinkRequest(BaseModel):
+    url: str
+    source_url: Optional[str] = None
+    source_title: Optional[str] = None
+    is_telegram_link: Optional[bool] = False
+    timestamp: Optional[str] = None
+
+class ExtensionSendMediaRequest(BaseModel):
+    media_url: str
+    media_type: str  # 'image' or 'video'
+    source_url: Optional[str] = None
+    source_title: Optional[str] = None
+    timestamp: Optional[str] = None
+
+class ExtensionSendTextRequest(BaseModel):
+    text: str
+    source_url: Optional[str] = None
+    source_title: Optional[str] = None
+    telegram_links: Optional[List[str]] = []
+    timestamp: Optional[str] = None
+
 @APP.post("/api/sync/register-device")
 async def register_device(request: RegisterDeviceRequest):
     """Register a new device for sync"""
@@ -2816,4 +2838,168 @@ async def get_sync_status(device_id: str):
 
     except Exception as e:
         logger.error(f"Get sync status error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# =============================================================================
+# Browser Extension API
+# =============================================================================
+
+@APP.get("/api/ping")
+async def ping():
+    """Health check endpoint for browser extension"""
+    return {
+        'success': True,
+        'status': 'ok',
+        'timestamp': time.time()
+    }
+
+@APP.post("/api/extension/send-link")
+async def extension_send_link(request: ExtensionSendLinkRequest):
+    """Receive link from browser extension"""
+    try:
+        logger.info(f"Extension sent link: {request.url}")
+        
+        # Store link in extension_links file
+        extension_data_dir = Path('extension_data')
+        extension_data_dir.mkdir(exist_ok=True)
+        
+        links_file = extension_data_dir / 'received_links.jsonl'
+        
+        link_data = {
+            'url': request.url,
+            'source_url': request.source_url,
+            'source_title': request.source_title,
+            'is_telegram_link': request.is_telegram_link,
+            'timestamp': request.timestamp or time.time(),
+            'received_at': time.time()
+        }
+        
+        # Append to JSONL file
+        with open(links_file, 'a') as f:
+            f.write(json.dumps(link_data) + '\n')
+        
+        # If it's a Telegram link, we could automatically trigger download
+        # For now, just acknowledge receipt
+        
+        return {
+            'success': True,
+            'message': 'Link received successfully',
+            'link': request.url,
+            'is_telegram_link': request.is_telegram_link
+        }
+        
+    except Exception as e:
+        logger.error(f"Extension send link error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/extension/send-media")
+async def extension_send_media(request: ExtensionSendMediaRequest):
+    """Receive media URL from browser extension"""
+    try:
+        logger.info(f"Extension sent {request.media_type}: {request.media_url}")
+        
+        # Store media in extension_media file
+        extension_data_dir = Path('extension_data')
+        extension_data_dir.mkdir(exist_ok=True)
+        
+        media_file = extension_data_dir / 'received_media.jsonl'
+        
+        media_data = {
+            'media_url': request.media_url,
+            'media_type': request.media_type,
+            'source_url': request.source_url,
+            'source_title': request.source_title,
+            'timestamp': request.timestamp or time.time(),
+            'received_at': time.time()
+        }
+        
+        # Append to JSONL file
+        with open(media_file, 'a') as f:
+            f.write(json.dumps(media_data) + '\n')
+        
+        return {
+            'success': True,
+            'message': f'{request.media_type.capitalize()} URL received successfully',
+            'media_url': request.media_url,
+            'media_type': request.media_type
+        }
+        
+    except Exception as e:
+        logger.error(f"Extension send media error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/extension/send-text")
+async def extension_send_text(request: ExtensionSendTextRequest):
+    """Receive selected text from browser extension"""
+    try:
+        logger.info(f"Extension sent text ({len(request.text)} chars, {len(request.telegram_links)} Telegram links)")
+        
+        # Store text in extension_text file
+        extension_data_dir = Path('extension_data')
+        extension_data_dir.mkdir(exist_ok=True)
+        
+        text_file = extension_data_dir / 'received_text.jsonl'
+        
+        text_data = {
+            'text': request.text,
+            'source_url': request.source_url,
+            'source_title': request.source_title,
+            'telegram_links': request.telegram_links,
+            'timestamp': request.timestamp or time.time(),
+            'received_at': time.time()
+        }
+        
+        # Append to JSONL file
+        with open(text_file, 'a') as f:
+            f.write(json.dumps(text_data) + '\n')
+        
+        return {
+            'success': True,
+            'message': 'Text received successfully',
+            'text_length': len(request.text),
+            'telegram_links_count': len(request.telegram_links)
+        }
+        
+    except Exception as e:
+        logger.error(f"Extension send text error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.get("/api/extension/received-links")
+async def get_received_links(limit: int = 100, offset: int = 0):
+    """Get links received from browser extension"""
+    try:
+        extension_data_dir = Path('extension_data')
+        links_file = extension_data_dir / 'received_links.jsonl'
+        
+        if not links_file.exists():
+            return {
+                'success': True,
+                'links': [],
+                'total': 0
+            }
+        
+        # Read all links
+        links = []
+        with open(links_file, 'r') as f:
+            for line in f:
+                if line.strip():
+                    links.append(json.loads(line))
+        
+        # Sort by received_at (newest first)
+        links.sort(key=lambda x: x.get('received_at', 0), reverse=True)
+        
+        # Paginate
+        total = len(links)
+        links = links[offset:offset + limit]
+        
+        return {
+            'success': True,
+            'links': links,
+            'total': total,
+            'limit': limit,
+            'offset': offset
+        }
+        
+    except Exception as e:
+        logger.error(f"Get received links error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
