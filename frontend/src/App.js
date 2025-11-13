@@ -15,6 +15,7 @@ import TagManager from "./components/TagManager";
 import AdvancedSearch from "./components/AdvancedSearch";
 import MultiDeviceSync from "./components/MultiDeviceSync";
 import MediaPlayer from "./components/MediaPlayer/MediaPlayer";
+import DownloadManager from "./components/DownloadManager";
 import { AppProvider } from "./context/AppContext";
 import "./styles/modern.css";
 
@@ -64,6 +65,7 @@ export default function App(){
 
   const menuItems = [
     { id: 'control', label: 'Kontrol Paneli', icon: '🎛️' },
+    { id: 'downloads', label: 'İndirme Yöneticisi', icon: '📥' },
     { id: 'media-player', label: 'Medya Oynatıcı', icon: '🎬' },
     { id: 'ai', label: 'AI Asistan', icon: '🤖' },
     { id: 'summary', label: 'İçerik Özetleme', icon: '📝' },
@@ -122,6 +124,7 @@ export default function App(){
           <div className="main-content">
             <div className="content-wrapper">
               {activeView === 'control' && <ControlPanel />}
+              {activeView === 'downloads' && <DownloadManager />}
               {activeView === 'media-player' && <MediaPlayer />}
               {activeView === 'ai' && <AIAssistant />}
               {activeView === 'summary' && <ContentSummary />}

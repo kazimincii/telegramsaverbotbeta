@@ -3068,3 +3068,292 @@ async def list_media_files():
     except Exception as e:
         logger.error(f"List media files error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# =============================================================================
+# Advanced Download Manager API
+# =============================================================================
+
+# Download Manager Models
+class AddDownloadRequest(BaseModel):
+    url: str
+    destination: str
+    filename: str
+    priority: Optional[str] = "NORMAL"  # LOW, NORMAL, HIGH, URGENT
+    checksum: Optional[str] = None
+    speed_limit: Optional[int] = None  # bytes per second
+    connections: Optional[int] = 1
+
+class SetPriorityRequest(BaseModel):
+    task_id: str
+    priority: str  # LOW, NORMAL, HIGH, URGENT
+
+class SetSpeedLimitRequest(BaseModel):
+    task_id: str
+    speed_limit: Optional[int]  # bytes per second, None = unlimited
+
+@APP.post("/api/downloads/add")
+async def add_download(request: AddDownloadRequest):
+    """Add a new download to the queue"""
+    try:
+        from api.download.manager import get_download_manager, DownloadPriority
+        
+        manager = get_download_manager()
+        
+        # Parse priority
+        priority = DownloadPriority[request.priority.upper()]
+        
+        task_id = manager.add_download(
+            url=request.url,
+            destination=request.destination,
+            filename=request.filename,
+            priority=priority,
+            checksum=request.checksum,
+            speed_limit=request.speed_limit,
+            connections=request.connections
+        )
+        
+        return {
+            'success': True,
+            'task_id': task_id,
+            'message': f'Download added to queue: {request.filename}'
+        }
+        
+    except Exception as e:
+        logger.error(f"Add download error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.get("/api/downloads/list")
+async def list_downloads():
+    """Get all downloads"""
+    try:
+        from api.download.manager import get_download_manager
+        
+        manager = get_download_manager()
+        downloads = manager.get_all_downloads()
+        
+        return {
+            'success': True,
+            'downloads': downloads,
+            'count': len(downloads)
+        }
+        
+    except Exception as e:
+        logger.error(f"List downloads error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.get("/api/downloads/{task_id}")
+async def get_download(task_id: str):
+    """Get download details"""
+    try:
+        from api.download.manager import get_download_manager
+        
+        manager = get_download_manager()
+        download = manager.get_download(task_id)
+        
+        if not download:
+            raise HTTPException(status_code=404, detail="Download not found")
+        
+        return {
+            'success': True,
+            'download': download
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get download error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/downloads/{task_id}/pause")
+async def pause_download(task_id: str):
+    """Pause a download"""
+    try:
+        from api.download.manager import get_download_manager
+        
+        manager = get_download_manager()
+        success = manager.pause_download(task_id)
+        
+        if not success:
+            raise HTTPException(status_code=400, detail="Cannot pause download")
+        
+        return {
+            'success': True,
+            'message': 'Download paused'
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Pause download error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/downloads/{task_id}/resume")
+async def resume_download(task_id: str):
+    """Resume a paused download"""
+    try:
+        from api.download.manager import get_download_manager
+        
+        manager = get_download_manager()
+        success = manager.resume_download(task_id)
+        
+        if not success:
+            raise HTTPException(status_code=400, detail="Cannot resume download")
+        
+        return {
+            'success': True,
+            'message': 'Download resumed'
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Resume download error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/downloads/{task_id}/cancel")
+async def cancel_download(task_id: str):
+    """Cancel a download"""
+    try:
+        from api.download.manager import get_download_manager
+        
+        manager = get_download_manager()
+        success = manager.cancel_download(task_id)
+        
+        if not success:
+            raise HTTPException(status_code=400, detail="Cannot cancel download")
+        
+        return {
+            'success': True,
+            'message': 'Download cancelled'
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Cancel download error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/downloads/{task_id}/retry")
+async def retry_download(task_id: str):
+    """Retry a failed download"""
+    try:
+        from api.download.manager import get_download_manager
+        
+        manager = get_download_manager()
+        success = manager.retry_failed_download(task_id)
+        
+        if not success:
+            raise HTTPException(status_code=400, detail="Cannot retry download")
+        
+        return {
+            'success': True,
+            'message': 'Download retry initiated'
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Retry download error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/downloads/set-priority")
+async def set_download_priority(request: SetPriorityRequest):
+    """Set download priority"""
+    try:
+        from api.download.manager import get_download_manager, DownloadPriority
+        
+        manager = get_download_manager()
+        priority = DownloadPriority[request.priority.upper()]
+        success = manager.set_priority(request.task_id, priority)
+        
+        if not success:
+            raise HTTPException(status_code=400, detail="Cannot set priority")
+        
+        return {
+            'success': True,
+            'message': f'Priority set to {request.priority}'
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Set priority error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/downloads/set-speed-limit")
+async def set_download_speed_limit(request: SetSpeedLimitRequest):
+    """Set download speed limit"""
+    try:
+        from api.download.manager import get_download_manager
+        
+        manager = get_download_manager()
+        success = manager.set_speed_limit(request.task_id, request.speed_limit)
+        
+        if not success:
+            raise HTTPException(status_code=400, detail="Cannot set speed limit")
+        
+        return {
+            'success': True,
+            'message': 'Speed limit updated'
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Set speed limit error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.get("/api/downloads/history")
+async def get_download_history(limit: int = 100):
+    """Get download history"""
+    try:
+        from api.download.manager import get_download_manager
+        
+        manager = get_download_manager()
+        history = manager.get_download_history(limit)
+        
+        return {
+            'success': True,
+            'history': history,
+            'count': len(history)
+        }
+        
+    except Exception as e:
+        logger.error(f"Get download history error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.get("/api/downloads/statistics")
+async def get_download_statistics():
+    """Get download statistics"""
+    try:
+        from api.download.manager import get_download_manager
+        
+        manager = get_download_manager()
+        stats = manager.get_statistics()
+        
+        return {
+            'success': True,
+            'statistics': stats
+        }
+        
+    except Exception as e:
+        logger.error(f"Get download statistics error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.get("/api/downloads/{task_id}/speed-history")
+async def get_download_speed_history(task_id: str):
+    """Get speed history for a download"""
+    try:
+        from api.download.manager import get_download_manager
+        
+        manager = get_download_manager()
+        speed_history = manager.get_speed_history(task_id)
+        
+        return {
+            'success': True,
+            'speed_history': speed_history
+        }
+        
+    except Exception as e:
+        logger.error(f"Get speed history error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
