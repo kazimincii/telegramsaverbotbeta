@@ -22,6 +22,8 @@ try:
     from .cloud_sync import CloudSyncConfig, CloudSyncManager
     from .ai_classifier import AIClassifierConfig, AIClassificationManager
     from .scheduler import TaskScheduler, ScheduledTask, ScheduleType
+    from .clip_classifier import CLIPClassifier
+    from .duplicate_detector import DuplicateDetector
 except ImportError:
     import contacts
     from database import Database
@@ -29,6 +31,8 @@ except ImportError:
     from cloud_sync import CloudSyncConfig, CloudSyncManager
     from ai_classifier import AIClassifierConfig, AIClassificationManager
     from scheduler import TaskScheduler, ScheduledTask, ScheduleType
+    from clip_classifier import CLIPClassifier
+    from duplicate_detector import DuplicateDetector
 
 # Load environment variables
 load_dotenv(Path(__file__).resolve().parent / ".env")
@@ -81,6 +85,12 @@ ai_classification_manager = AIClassificationManager(ai_classifier_config, db)
 
 # Initialize task scheduler
 task_scheduler = TaskScheduler(SCHEDULED_TASKS_FILE)
+
+# Initialize CLIP classifier
+clip_classifier = CLIPClassifier(model_name="ViT-B/32", device="cpu")
+
+# Initialize duplicate detector
+duplicate_detector = DuplicateDetector(db)
 
 # Configure logging with environment variable support
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -750,6 +760,138 @@ async def classify_downloads():
         return result
     except Exception as e:
         log(f"[error] Classification failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# CLIP AI Endpoints
+
+@APP.post("/api/clip/initialize")
+async def initialize_clip():
+    """Initialize CLIP model."""
+    try:
+        success = await clip_classifier.initialize()
+        if success:
+            log("[*] CLIP model initialized successfully")
+            return {"ok": True, "message": "CLIP model loaded"}
+        else:
+            return {"ok": False, "error": "Failed to initialize CLIP model"}
+    except Exception as e:
+        log(f"[error] CLIP initialization failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/clip/classify-image")
+async def clip_classify_image(payload: dict):
+    """Classify a single image using CLIP."""
+    image_path = payload.get("image_path")
+    text_prompts = payload.get("text_prompts")
+    top_k = payload.get("top_k", 3)
+
+    if not image_path:
+        raise HTTPException(status_code=400, detail="image_path is required")
+
+    try:
+        result = await clip_classifier.classify_image(
+            Path(image_path),
+            text_prompts=text_prompts,
+            top_k=top_k
+        )
+
+        if "error" in result:
+            raise HTTPException(status_code=500, detail=result["error"])
+
+        return {"ok": True, **result}
+    except Exception as e:
+        log(f"[error] CLIP classification failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/clip/search")
+async def clip_search_images(payload: dict):
+    """Search images using natural language query."""
+    query = payload.get("query")
+    folder_path = payload.get("folder_path")
+    top_n = payload.get("top_n", 10)
+    threshold = payload.get("threshold", 0.2)
+
+    if not query:
+        raise HTTPException(status_code=400, detail="query is required")
+
+    cfg = load_cfg()
+    if not folder_path:
+        folder_path = Path(cfg.out or str(Path.home() / "TelegramArchive"))
+    else:
+        folder_path = Path(folder_path)
+
+    try:
+        results = await clip_classifier.search_images(
+            folder_path,
+            query=query,
+            top_n=top_n,
+            threshold=threshold
+        )
+
+        log(f"[*] CLIP search completed: {len(results)} results for '{query}'")
+        return {"ok": True, "results": results, "query": query, "count": len(results)}
+    except Exception as e:
+        log(f"[error] CLIP search failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/clip/find-similar")
+async def clip_find_similar(payload: dict):
+    """Find similar images to a reference image."""
+    reference_image = payload.get("reference_image")
+    folder_path = payload.get("folder_path")
+    top_n = payload.get("top_n", 5)
+    threshold = payload.get("threshold", 0.85)
+
+    if not reference_image:
+        raise HTTPException(status_code=400, detail="reference_image is required")
+
+    cfg = load_cfg()
+    if not folder_path:
+        folder_path = Path(cfg.out or str(Path.home() / "TelegramArchive"))
+    else:
+        folder_path = Path(folder_path)
+
+    try:
+        results = await clip_classifier.find_similar_images(
+            Path(reference_image),
+            folder_path,
+            top_n=top_n,
+            threshold=threshold
+        )
+
+        log(f"[*] Similar images found: {len(results)} matches")
+        return {"ok": True, "results": results, "count": len(results)}
+    except Exception as e:
+        log(f"[error] Similarity search failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Duplicate Detection Endpoints
+
+@APP.post("/api/duplicates/scan")
+async def scan_duplicates(payload: Optional[dict] = None):
+    """Scan for duplicate images."""
+    folder_path = payload.get("folder_path") if payload else None
+    threshold = payload.get("threshold", 5) if payload else 5
+
+    cfg = load_cfg()
+    if not folder_path:
+        folder_path = Path(cfg.out or str(Path.home() / "TelegramArchive"))
+    else:
+        folder_path = Path(folder_path)
+
+    try:
+        result = duplicate_detector.find_duplicates(folder_path, threshold=threshold)
+        if "error" not in result:
+            log(f"[*] Duplicate scan: {result.get('duplicate_groups', 0)} groups found, "
+                f"{result.get('potential_savings_mb', 0)}MB potential savings")
+        return {"ok": True, **result}
+    except Exception as e:
+        log(f"[error] Duplicate scan failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
