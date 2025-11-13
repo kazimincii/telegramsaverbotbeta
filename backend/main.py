@@ -3003,3 +3003,68 @@ async def get_received_links(limit: int = 100, offset: int = 0):
     except Exception as e:
         logger.error(f"Get received links error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# =============================================================================
+# Media Player API
+# =============================================================================
+
+@APP.get("/api/media/list")
+async def list_media_files():
+    """List all media files for preview"""
+    try:
+        # In a real implementation, this would query the database
+        # For now, return mock data structure
+        
+        media_files = {
+            'videos': [],
+            'audio': [],
+            'images': [],
+            'documents': []
+        }
+        
+        # Example: scan downloads directory if exists
+        import os
+        from pathlib import Path
+        
+        downloads_dir = Path('downloads')
+        if downloads_dir.exists():
+            for file_path in downloads_dir.rglob('*'):
+                if file_path.is_file():
+                    file_info = {
+                        'id': str(hash(str(file_path))),
+                        'name': file_path.name,
+                        'path': str(file_path),
+                        'url': f'/api/media/file/{file_path.name}',
+                        'size': file_path.stat().st_size,
+                        'date': file_path.stat().st_mtime
+                    }
+                    
+                    # Categorize by extension
+                    ext = file_path.suffix.lower()
+                    if ext in ['.mp4', '.mkv', '.avi', '.mov', '.webm']:
+                        file_info['type'] = 'video'
+                        media_files['videos'].append(file_info)
+                    elif ext in ['.mp3', '.wav', '.ogg', '.m4a', '.flac']:
+                        file_info['type'] = 'audio'
+                        media_files['audio'].append(file_info)
+                    elif ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']:
+                        file_info['type'] = 'image'
+                        media_files['images'].append(file_info)
+                    elif ext in ['.pdf', '.txt', '.md', '.doc', '.docx']:
+                        file_info['type'] = 'document'
+                        media_files['documents'].append(file_info)
+        
+        return {
+            'success': True,
+            'media': media_files['videos'] + media_files['audio'] + media_files['images'] + media_files['documents'],
+            'counts': {
+                'videos': len(media_files['videos']),
+                'audio': len(media_files['audio']),
+                'images': len(media_files['images']),
+                'documents': len(media_files['documents'])
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"List media files error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
