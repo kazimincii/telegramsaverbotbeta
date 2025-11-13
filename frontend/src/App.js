@@ -7,6 +7,7 @@ import CloudSyncSettings from "./components/CloudSyncSettings";
 import VideoProcessor from "./components/VideoProcessor";
 import AnalyticsDashboard from "./components/AnalyticsDashboard";
 import LanguageSelector, { LanguageProvider } from "./components/LanguageSelector";
+import EnterpriseManager from "./components/EnterpriseManager";
 import { AppProvider } from "./context/AppContext";
 
 export default function App(){
@@ -21,6 +22,7 @@ export default function App(){
         <WebhookManager />
         <CloudSyncSettings />
         <VideoProcessor />
+        <EnterpriseManager />
       </AppProvider>
     </LanguageProvider>
   );

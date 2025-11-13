@@ -29,6 +29,7 @@ try:
     from .ipfs_storage import IPFSStorage
     from .plugin_system import PluginManager, PluginHook
     from .i18n_manager import I18nManager
+    from .rbac_system import RBACManager, Permission, Role, User, Organization
 except ImportError:
     import contacts
     from database import Database
@@ -43,6 +44,7 @@ except ImportError:
     from ipfs_storage import IPFSStorage
     from plugin_system import PluginManager, PluginHook
     from i18n_manager import I18nManager
+    from rbac_system import RBACManager, Permission, Role, User, Organization
 
 # Load environment variables
 load_dotenv(Path(__file__).resolve().parent / ".env")
@@ -83,6 +85,7 @@ PLUGINS_DIR = ROOT.parent / "plugins"
 PLUGINS_DIR.mkdir(exist_ok=True)
 TRANSLATIONS_DIR = ROOT.parent / "translations"
 TRANSLATIONS_DIR.mkdir(exist_ok=True)
+RBAC_FILE = ROOT / "rbac_data.json"
 
 # Initialize database
 db = Database(DB_FILE)
@@ -124,6 +127,9 @@ plugin_manager = PluginManager(PLUGINS_DIR)
 
 # Initialize i18n manager
 i18n_manager = I18nManager(TRANSLATIONS_DIR)
+
+# Initialize RBAC manager
+rbac_manager = RBACManager(RBAC_FILE)
 
 # Configure logging with environment variable support
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -1397,6 +1403,309 @@ def add_translation(payload: dict):
         return {"ok": True, "message": "Translation added successfully"}
     else:
         raise HTTPException(status_code=400, detail="Failed to add translation")
+
+
+# RBAC (Role-Based Access Control) & Multi-Tenant Endpoints
+
+@APP.get("/api/rbac/organizations")
+def list_organizations():
+    """List all organizations."""
+    orgs = rbac_manager.list_organizations()
+    return {
+        "ok": True,
+        "organizations": [org.to_dict() for org in orgs],
+        "count": len(orgs)
+    }
+
+
+@APP.post("/api/rbac/organizations")
+def create_organization(payload: dict):
+    """
+    Create new organization.
+
+    Body:
+    {
+        "name": "Acme Corp",
+        "plan": "pro"  # free, pro, enterprise
+    }
+    """
+    name = payload.get("name")
+    plan = payload.get("plan", "free")
+
+    if not name:
+        raise HTTPException(status_code=400, detail="Organization name required")
+
+    org = rbac_manager.create_organization(name, plan)
+    return {"ok": True, "organization": org.to_dict()}
+
+
+@APP.get("/api/rbac/organizations/{org_id}")
+def get_organization(org_id: str):
+    """Get organization details."""
+    org = rbac_manager.get_organization(org_id)
+    if org:
+        # Get org users
+        users = rbac_manager.list_users(org_id)
+        org_dict = org.to_dict()
+        org_dict["users"] = [u.to_dict() for u in users]
+        org_dict["user_count"] = len(users)
+        return {"ok": True, "organization": org_dict}
+    else:
+        raise HTTPException(status_code=404, detail="Organization not found")
+
+
+@APP.delete("/api/rbac/organizations/{org_id}")
+def delete_organization(org_id: str):
+    """Delete organization and all its users."""
+    success = rbac_manager.delete_organization(org_id)
+    if success:
+        return {"ok": True, "message": "Organization deleted"}
+    else:
+        raise HTTPException(status_code=404, detail="Organization not found")
+
+
+@APP.get("/api/rbac/users")
+def list_users(org_id: Optional[str] = None):
+    """List users, optionally filtered by organization."""
+    users = rbac_manager.list_users(org_id)
+    return {
+        "ok": True,
+        "users": [user.to_dict() for user in users],
+        "count": len(users)
+    }
+
+
+@APP.post("/api/rbac/users")
+def create_user(payload: dict):
+    """
+    Create new user.
+
+    Body:
+    {
+        "username": "john_doe",
+        "email": "john@example.com",
+        "organization_id": "org_xxx",
+        "role_ids": ["admin", "manager"]
+    }
+    """
+    username = payload.get("username")
+    email = payload.get("email")
+    organization_id = payload.get("organization_id")
+    role_ids = payload.get("role_ids", [])
+
+    if not all([username, email, organization_id]):
+        raise HTTPException(status_code=400, detail="Missing required fields")
+
+    user = rbac_manager.create_user(username, email, organization_id, role_ids)
+    if user:
+        return {"ok": True, "user": user.to_dict()}
+    else:
+        raise HTTPException(status_code=400, detail="Failed to create user")
+
+
+@APP.get("/api/rbac/users/{user_id}")
+def get_user(user_id: str):
+    """Get user details."""
+    user = rbac_manager.get_user(user_id)
+    if user:
+        user_dict = user.to_dict()
+        # Add role details
+        roles = [rbac_manager.get_role(rid).to_dict() for rid in user.roles if rbac_manager.get_role(rid)]
+        user_dict["role_details"] = roles
+        return {"ok": True, "user": user_dict}
+    else:
+        raise HTTPException(status_code=404, detail="User not found")
+
+
+@APP.delete("/api/rbac/users/{user_id}")
+def delete_user(user_id: str):
+    """Delete user."""
+    success = rbac_manager.delete_user(user_id)
+    if success:
+        return {"ok": True, "message": "User deleted"}
+    else:
+        raise HTTPException(status_code=404, detail="User not found")
+
+
+@APP.post("/api/rbac/users/{user_id}/roles")
+def assign_role_to_user(user_id: str, payload: dict):
+    """
+    Assign role to user.
+
+    Body:
+    {
+        "role_id": "admin"
+    }
+    """
+    role_id = payload.get("role_id")
+    if not role_id:
+        raise HTTPException(status_code=400, detail="role_id required")
+
+    user = rbac_manager.get_user(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    role = rbac_manager.get_role(role_id)
+    if not role:
+        raise HTTPException(status_code=404, detail="Role not found")
+
+    user.add_role(role_id)
+    rbac_manager._save_data()
+
+    return {"ok": True, "message": f"Role {role_id} assigned to user"}
+
+
+@APP.delete("/api/rbac/users/{user_id}/roles/{role_id}")
+def remove_role_from_user(user_id: str, role_id: str):
+    """Remove role from user."""
+    user = rbac_manager.get_user(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.remove_role(role_id)
+    rbac_manager._save_data()
+
+    return {"ok": True, "message": f"Role {role_id} removed from user"}
+
+
+@APP.get("/api/rbac/roles")
+def list_roles():
+    """List all roles."""
+    roles = rbac_manager.list_roles()
+    return {
+        "ok": True,
+        "roles": [role.to_dict() for role in roles],
+        "count": len(roles)
+    }
+
+
+@APP.post("/api/rbac/roles")
+def create_role(payload: dict):
+    """
+    Create custom role.
+
+    Body:
+    {
+        "name": "Content Manager",
+        "description": "Can manage media and downloads",
+        "permissions": ["media.view", "media.upload", "download.start"]
+    }
+    """
+    name = payload.get("name")
+    description = payload.get("description", "")
+    permission_strings = payload.get("permissions", [])
+
+    if not name:
+        raise HTTPException(status_code=400, detail="Role name required")
+
+    # Convert permission strings to Permission enums
+    try:
+        permissions = [Permission(p) for p in permission_strings]
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid permission: {e}")
+
+    role = rbac_manager.create_role(name, description, permissions)
+    return {"ok": True, "role": role.to_dict()}
+
+
+@APP.get("/api/rbac/roles/{role_id}")
+def get_role(role_id: str):
+    """Get role details."""
+    role = rbac_manager.get_role(role_id)
+    if role:
+        return {"ok": True, "role": role.to_dict()}
+    else:
+        raise HTTPException(status_code=404, detail="Role not found")
+
+
+@APP.delete("/api/rbac/roles/{role_id}")
+def delete_role(role_id: str):
+    """Delete custom role (cannot delete system roles)."""
+    success = rbac_manager.delete_role(role_id)
+    if success:
+        return {"ok": True, "message": "Role deleted"}
+    else:
+        raise HTTPException(status_code=400, detail="Cannot delete system role or role not found")
+
+
+@APP.get("/api/rbac/permissions")
+def list_permissions():
+    """List all available permissions."""
+    permissions = [
+        {"name": p.value, "category": p.value.split(".")[0]}
+        for p in Permission
+    ]
+
+    # Group by category
+    categories = {}
+    for perm in permissions:
+        cat = perm["category"]
+        if cat not in categories:
+            categories[cat] = []
+        categories[cat].append(perm["name"])
+
+    return {
+        "ok": True,
+        "permissions": permissions,
+        "categories": categories
+    }
+
+
+@APP.post("/api/rbac/check-permission")
+def check_permission(payload: dict):
+    """
+    Check if user has a specific permission.
+
+    Body:
+    {
+        "user_id": "user_xxx",
+        "permission": "media.delete"
+    }
+    """
+    user_id = payload.get("user_id")
+    permission_str = payload.get("permission")
+
+    if not all([user_id, permission_str]):
+        raise HTTPException(status_code=400, detail="Missing required fields")
+
+    try:
+        permission = Permission(permission_str)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid permission")
+
+    has_perm = rbac_manager.user_has_permission(user_id, permission)
+
+    return {
+        "ok": True,
+        "user_id": user_id,
+        "permission": permission_str,
+        "has_permission": has_perm
+    }
+
+
+@APP.post("/api/rbac/authenticate")
+def authenticate_api_key(payload: dict):
+    """
+    Authenticate using API key.
+
+    Body:
+    {
+        "api_key": "tk_xxx"
+    }
+    """
+    api_key = payload.get("api_key")
+    if not api_key:
+        raise HTTPException(status_code=400, detail="api_key required")
+
+    user = rbac_manager.check_api_key(api_key)
+    if user:
+        return {
+            "ok": True,
+            "authenticated": True,
+            "user": user.to_dict()
+        }
+    else:
+        raise HTTPException(status_code=401, detail="Invalid API key")
 
 
 # Scheduled Tasks Endpoints
