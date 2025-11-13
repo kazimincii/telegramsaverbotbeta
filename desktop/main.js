@@ -45,7 +45,7 @@ function checkBackend(callback) {
     host: 'localhost',
     port: CONFIG.backendPort,
     path: '/api/status',
-    timeout: 2000
+    timeout: 5000 // Increased from 2000 for slower systems
   };
 
   const req = http.get(options, (res) => {
