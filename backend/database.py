@@ -23,6 +23,13 @@ class Database:
         self.conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
         self.conn.row_factory = sqlite3.Row  # Enable dict-like access
 
+        # Enable WAL mode for better concurrent access (performance optimization)
+        self.conn.execute("PRAGMA journal_mode=WAL")
+        # Set synchronous to NORMAL for better performance
+        self.conn.execute("PRAGMA synchronous=NORMAL")
+        # Increase cache size (default is 2MB, set to 10MB)
+        self.conn.execute("PRAGMA cache_size=-10000")
+
         cursor = self.conn.cursor()
 
         # Downloads table - track all downloaded files
@@ -140,6 +147,58 @@ class Database:
             'total_downloads': row['total'] or 0,
             'total_size_bytes': row['total_size'] or 0
         }
+
+    def batch_add_downloads(self, downloads: list) -> int:
+        """Batch insert multiple downloads (performance optimization).
+
+        Args:
+            downloads: List of tuples (message_id, chat_id, chat_name, file_path, file_size, media_type)
+
+        Returns:
+            Number of records inserted
+        """
+        try:
+            cursor = self.conn.cursor()
+            cursor.executemany('''
+                INSERT OR REPLACE INTO downloads
+                (message_id, chat_id, chat_name, file_path, file_size, media_type, status)
+                VALUES (?, ?, ?, ?, ?, ?, 'completed')
+            ''', downloads)
+            self.conn.commit()
+            logger.info(f"Batch inserted {cursor.rowcount} downloads")
+            return cursor.rowcount
+        except Exception as e:
+            logger.error(f"Batch insert failed: {e}")
+            return 0
+
+    def batch_check_downloaded(self, message_chat_pairs: list) -> set:
+        """Check multiple message/chat pairs in one query (performance optimization).
+
+        Args:
+            message_chat_pairs: List of tuples (message_id, chat_id)
+
+        Returns:
+            Set of (message_id, chat_id) tuples that are already downloaded
+        """
+        if not message_chat_pairs:
+            return set()
+
+        try:
+            cursor = self.conn.cursor()
+            placeholders = ','.join(['(?,?)'] * len(message_chat_pairs))
+            flat_params = [item for pair in message_chat_pairs for item in pair]
+
+            query = f'''
+                SELECT message_id, chat_id FROM downloads
+                WHERE (message_id, chat_id) IN (VALUES {placeholders})
+                AND status = 'completed'
+            '''
+
+            cursor.execute(query, flat_params)
+            return {(row['message_id'], row['chat_id']) for row in cursor.fetchall()}
+        except Exception as e:
+            logger.error(f"Batch check failed: {e}")
+            return set()
 
     def close(self):
         """Close database connection."""

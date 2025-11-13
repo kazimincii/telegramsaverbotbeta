@@ -6,20 +6,29 @@ import logging
 import os
 from collections import deque
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Set
 
 from dotenv import load_dotenv
-from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from telethon import TelegramClient, types as tl_types
 try:
     from . import contacts
     from .database import Database
+    from .account_manager import AccountManager
+    from .cloud_sync import CloudSyncConfig, CloudSyncManager
+    from .ai_classifier import AIClassifierConfig, AIClassificationManager
+    from .scheduler import TaskScheduler, ScheduledTask, ScheduleType
 except ImportError:
     import contacts
     from database import Database
+    from account_manager import AccountManager
+    from cloud_sync import CloudSyncConfig, CloudSyncManager
+    from ai_classifier import AIClassifierConfig, AIClassificationManager
+    from scheduler import TaskScheduler, ScheduledTask, ScheduleType
 
 # Load environment variables
 load_dotenv(Path(__file__).resolve().parent / ".env")
@@ -43,14 +52,35 @@ APP.add_middleware(
     allow_headers=["Content-Type", "Authorization"],
 )
 
+# Add GZip compression for responses > 1KB (performance optimization)
+APP.add_middleware(GZipMiddleware, minimum_size=1000)
+
 ROOT = Path(__file__).resolve().parent
 CFG_FILE = ROOT / "config.json"
 LOG_DIR = ROOT.parent / "log"
 LOG_DIR.mkdir(exist_ok=True)
 DB_FILE = ROOT / "downloads.db"
+ACCOUNTS_FILE = ROOT / "accounts.json"
+CLOUD_SYNC_FILE = ROOT / "cloud_sync.json"
+AI_CLASSIFIER_FILE = ROOT / "ai_classifier.json"
+SCHEDULED_TASKS_FILE = ROOT / "scheduled_tasks.json"
 
 # Initialize database
 db = Database(DB_FILE)
+
+# Initialize account manager
+account_manager = AccountManager(ACCOUNTS_FILE)
+
+# Initialize cloud sync
+cloud_sync_config = CloudSyncConfig(CLOUD_SYNC_FILE)
+cloud_sync_manager = CloudSyncManager(cloud_sync_config)
+
+# Initialize AI classifier
+ai_classifier_config = AIClassifierConfig(AI_CLASSIFIER_FILE)
+ai_classification_manager = AIClassificationManager(ai_classifier_config, db)
+
+# Initialize task scheduler
+task_scheduler = TaskScheduler(SCHEDULED_TASKS_FILE)
 
 # Configure logging with environment variable support
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -63,6 +93,25 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+
+
+@APP.on_event("startup")
+async def startup_event():
+    """Initialize scheduler on app startup."""
+    logger.info("Starting scheduled task scheduler...")
+    # Start scheduler with download worker callback
+    async def scheduled_download_callback(chats, media_types):
+        cfg = load_cfg()
+        await download_worker(cfg, chats=chats, media_types=media_types)
+
+    task_scheduler.start(scheduled_download_callback)
+
+
+@APP.on_event("shutdown")
+async def shutdown_event():
+    """Stop scheduler on app shutdown."""
+    logger.info("Stopping scheduled task scheduler...")
+    task_scheduler.stop()
 
 
 class Config(BaseModel):
@@ -89,6 +138,9 @@ STATE = {
     "stop": asyncio.Event(),  # Use asyncio.Event instead of threading.Event
     "worker": None,
     "config": None,
+    "websocket_clients": set(),  # WebSocket connections for real-time updates
+    "cache": {},  # Simple in-memory cache for API responses
+    "cache_ttl": {},  # Cache TTL timestamps
 }
 
 
@@ -98,18 +150,56 @@ def log(msg: str) -> None:
     STATE["log"].append(msg)  # deque automatically removes old items when maxlen is reached
 
 
+def cache_get(key: str, ttl: int = 60):
+    """Get cached value if not expired."""
+    if key in STATE["cache"]:
+        cache_time = STATE["cache_ttl"].get(key, 0)
+        if time.time() - cache_time < ttl:
+            return STATE["cache"][key]
+        else:
+            # Expired, remove from cache
+            del STATE["cache"][key]
+            del STATE["cache_ttl"][key]
+    return None
+
+
+def cache_set(key: str, value):
+    """Set cached value with timestamp."""
+    STATE["cache"][key] = value
+    STATE["cache_ttl"][key] = time.time()
+
+
 @APP.middleware("http")
 async def timing_middleware(request: Request, call_next):
+    """Performance monitoring middleware with detailed timing."""
     start = time.perf_counter()
+    start_memory = 0
+    try:
+        # Get memory usage if available (optional)
+        import psutil
+        process = psutil.Process()
+        start_memory = process.memory_info().rss / 1024 / 1024  # MB
+    except ImportError:
+        pass
+
     try:
         response = await call_next(request)
     except Exception:
         duration = time.perf_counter() - start
         log(f"{request.method} {request.url.path} failed in {duration:.4f}s")
         raise
+
     duration = time.perf_counter() - start
-    log(f"{request.method} {request.url.path} completed in {duration:.4f}s")
+
+    # Add performance headers
     response.headers["X-Process-Time"] = f"{duration:.4f}"
+
+    # Log slow requests (> 1 second)
+    if duration > 1.0:
+        log(f"[slow] {request.method} {request.url.path} took {duration:.4f}s")
+    else:
+        log(f"{request.method} {request.url.path} completed in {duration:.4f}s")
+
     return response
 
 
@@ -140,6 +230,14 @@ def load_cfg() -> Config:
             raise HTTPException(status_code=500, detail="Failed to load config") from exc
     else:
         data = {}
+
+    # Merge active account credentials if available (takes precedence)
+    active_account = account_manager.get_active_account()
+    if active_account:
+        data["api_id"] = active_account.api_id
+        data["api_hash"] = active_account.api_hash
+        data["session"] = active_account.session
+
     cfg = Config(**data)
     STATE["config"] = cfg
     return cfg
@@ -364,6 +462,8 @@ async def download_worker(
                                 db.update_session_progress(session_id,
                                     STATE["progress"]["downloaded"],
                                     STATE["progress"]["skipped"])
+                                # Broadcast progress to WebSocket clients
+                                await broadcast_progress()
                                 return True
                             except Exception as exc:
                                 if attempt == 2:
@@ -441,7 +541,362 @@ async def stop(background_tasks: BackgroundTasks):
     return {"ok": True}
 
 
+@APP.post("/api/export/html")
+async def export_to_html():
+    """Export all downloaded chats to browsable HTML format."""
+    try:
+        from .html_export import export_all_chats_to_html
+    except ImportError:
+        from html_export import export_all_chats_to_html
+
+    cfg = load_cfg()
+    output_path = Path(cfg.out or str(Path.home() / "TelegramArchive"))
+
+    # Generate HTML exports for all chats
+    html_files = await export_all_chats_to_html(output_path, db)
+
+    log(f"[*] HTML export completed: {len(html_files)} files generated")
+
+    return {
+        "ok": True,
+        "files": [str(f) for f in html_files],
+        "count": len(html_files)
+    }
+
+
 @APP.get("/api/status")
 def status():
     tail = STATE["log"][-50:]
     return {"running": STATE["running"], "progress": STATE.get("progress"), "logTail": tail}
+
+
+# Account Management Endpoints
+
+@APP.get("/api/accounts")
+def list_accounts():
+    """List all configured accounts."""
+    accounts = account_manager.list_accounts()
+    return {
+        "ok": True,
+        "accounts": [acc.model_dump() for acc in accounts]
+    }
+
+
+@APP.post("/api/accounts")
+def add_account(payload: dict):
+    """Add a new Telegram account."""
+    import uuid
+    account_id = payload.get("id") or str(uuid.uuid4())
+    name = payload.get("name")
+    api_id = payload.get("api_id")
+    api_hash = payload.get("api_hash")
+    phone = payload.get("phone")
+
+    if not all([name, api_id, api_hash]):
+        raise HTTPException(status_code=400, detail="Name, API ID and API Hash are required")
+
+    try:
+        account = account_manager.add_account(account_id, name, int(api_id), api_hash, phone)
+        log(f"[*] Added account: {name}")
+        return {"ok": True, "account": account.model_dump()}
+    except Exception as e:
+        log(f"[error] Failed to add account: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.delete("/api/accounts/{account_id}")
+def remove_account(account_id: str):
+    """Remove an account."""
+    success = account_manager.remove_account(account_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Account not found")
+    log(f"[*] Removed account: {account_id}")
+    return {"ok": True}
+
+
+@APP.post("/api/accounts/{account_id}/activate")
+def activate_account(account_id: str):
+    """Switch to a different account."""
+    success = account_manager.switch_account(account_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Account not found")
+    account = account_manager.get_account(account_id)
+    log(f"[*] Switched to account: {account.name}")
+    return {"ok": True, "account": account.model_dump()}
+
+
+@APP.get("/api/accounts/active")
+def get_active_account():
+    """Get the currently active account."""
+    account = account_manager.get_active_account()
+    if not account:
+        return {"ok": True, "account": None}
+    return {"ok": True, "account": account.model_dump()}
+
+
+# Cloud Sync Endpoints
+
+@APP.get("/api/cloud-sync/config")
+def get_cloud_sync_config():
+    """Get current cloud sync configuration."""
+    return {
+        "ok": True,
+        "provider": cloud_sync_config.provider.value,
+        "auto_sync": cloud_sync_config.auto_sync,
+        "remote_folder": cloud_sync_config.remote_folder,
+        "has_credentials": bool(cloud_sync_config.credentials)
+    }
+
+
+@APP.post("/api/cloud-sync/config")
+def set_cloud_sync_config(payload: dict):
+    """Configure cloud sync settings."""
+    try:
+        provider = payload.get("provider", "disabled")
+        auto_sync = payload.get("auto_sync", False)
+        credentials = payload.get("credentials")
+        remote_folder = payload.get("remote_folder")
+
+        cloud_sync_config.configure(
+            provider=provider,
+            auto_sync=auto_sync,
+            credentials=credentials,
+            remote_folder=remote_folder
+        )
+
+        log(f"[*] Cloud sync configured: {provider}")
+        return {"ok": True}
+    except Exception as e:
+        log(f"[error] Failed to configure cloud sync: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/cloud-sync/sync")
+async def manual_sync():
+    """Manually trigger cloud sync for all downloaded files."""
+    if cloud_sync_config.provider.value == "disabled":
+        raise HTTPException(status_code=400, detail="Cloud sync is not configured")
+
+    cfg = load_cfg()
+    output_path = Path(cfg.out or str(Path.home() / "TelegramArchive"))
+
+    if not output_path.exists():
+        raise HTTPException(status_code=404, detail="No downloads folder found")
+
+    try:
+        result = await cloud_sync_manager.sync_folder(output_path)
+        if result.get("ok"):
+            log(f"[*] Cloud sync completed: {result.get('uploaded')} files")
+        return result
+    except Exception as e:
+        log(f"[error] Cloud sync failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# AI Classification Endpoints
+
+@APP.get("/api/ai-classify/config")
+def get_ai_classifier_config():
+    """Get AI classification configuration."""
+    return {
+        "ok": True,
+        "enabled": ai_classifier_config.enabled,
+        "model": ai_classifier_config.model.value,
+        "auto_classify": ai_classifier_config.auto_classify,
+        "confidence_threshold": ai_classifier_config.confidence_threshold,
+        "categories": ai_classifier_config.categories
+    }
+
+
+@APP.post("/api/ai-classify/config")
+def set_ai_classifier_config(payload: dict):
+    """Configure AI classification settings."""
+    try:
+        ai_classifier_config.enabled = payload.get("enabled", ai_classifier_config.enabled)
+        ai_classifier_config.model = payload.get("model", ai_classifier_config.model)
+        ai_classifier_config.auto_classify = payload.get("auto_classify", ai_classifier_config.auto_classify)
+        ai_classifier_config.confidence_threshold = payload.get("confidence_threshold", ai_classifier_config.confidence_threshold)
+        if "categories" in payload:
+            ai_classifier_config.categories = payload["categories"]
+
+        ai_classifier_config.save_config()
+        log(f"[*] AI classifier configured: {ai_classifier_config.model}")
+        return {"ok": True}
+    except Exception as e:
+        log(f"[error] Failed to configure AI classifier: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/ai-classify/classify")
+async def classify_downloads():
+    """Classify all downloaded media files."""
+    if not ai_classifier_config.enabled:
+        raise HTTPException(status_code=400, detail="AI classification is not enabled")
+
+    cfg = load_cfg()
+    output_path = Path(cfg.out or str(Path.home() / "TelegramArchive"))
+
+    if not output_path.exists():
+        raise HTTPException(status_code=404, detail="No downloads folder found")
+
+    try:
+        await ai_classification_manager.initialize()
+        result = await ai_classification_manager.classify_folder(output_path)
+
+        if result.get("ok"):
+            stats = result.get("stats", {})
+            log(f"[*] Classification completed: {stats.get('classified')}/{stats.get('total')} files")
+
+        return result
+    except Exception as e:
+        log(f"[error] Classification failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Scheduled Tasks Endpoints
+
+@APP.get("/api/scheduled-tasks")
+def list_scheduled_tasks():
+    """List all scheduled tasks."""
+    tasks = task_scheduler.list_tasks()
+    return {
+        "ok": True,
+        "tasks": [task.to_dict() for task in tasks]
+    }
+
+
+@APP.post("/api/scheduled-tasks")
+def create_scheduled_task(payload: dict):
+    """Create a new scheduled task."""
+    import uuid
+    try:
+        task_id = payload.get("task_id") or str(uuid.uuid4())
+        name = payload.get("name")
+        schedule_type = payload.get("schedule_type")
+
+        if not all([name, schedule_type]):
+            raise HTTPException(status_code=400, detail="Name and schedule_type are required")
+
+        task = ScheduledTask(
+            task_id=task_id,
+            name=name,
+            schedule_type=ScheduleType(schedule_type),
+            chats=payload.get("chats"),
+            media_types=payload.get("media_types"),
+            enabled=payload.get("enabled", True),
+            hour=payload.get("hour", 0),
+            minute=payload.get("minute", 0),
+            day_of_week=payload.get("day_of_week", 0),
+            interval_hours=payload.get("interval_hours", 24),
+            run_date=payload.get("run_date")
+        )
+
+        if task_scheduler.add_task(task):
+            log(f"[*] Created scheduled task: {name}")
+            return {"ok": True, "task": task.to_dict()}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to create task")
+
+    except Exception as e:
+        log(f"[error] Failed to create scheduled task: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.delete("/api/scheduled-tasks/{task_id}")
+def delete_scheduled_task(task_id: str):
+    """Delete a scheduled task."""
+    if task_scheduler.remove_task(task_id):
+        log(f"[*] Deleted scheduled task: {task_id}")
+        return {"ok": True}
+    else:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+
+@APP.post("/api/scheduled-tasks/{task_id}/enable")
+def enable_scheduled_task(task_id: str):
+    """Enable a scheduled task."""
+    if task_scheduler.enable_task(task_id):
+        log(f"[*] Enabled scheduled task: {task_id}")
+        return {"ok": True}
+    else:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+
+@APP.post("/api/scheduled-tasks/{task_id}/disable")
+def disable_scheduled_task(task_id: str):
+    """Disable a scheduled task."""
+    if task_scheduler.disable_task(task_id):
+        log(f"[*] Disabled scheduled task: {task_id}")
+        return {"ok": True}
+    else:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+
+@APP.get("/api/scheduled-tasks/{task_id}")
+def get_scheduled_task(task_id: str):
+    """Get details of a specific scheduled task."""
+    task = task_scheduler.get_task(task_id)
+    if task:
+        return {"ok": True, "task": task.to_dict()}
+    else:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+
+async def broadcast_progress():
+    """Broadcast progress updates to all connected WebSocket clients."""
+    if not STATE["websocket_clients"]:
+        return
+
+    message = json.dumps({
+        "type": "progress",
+        "data": {
+            "running": STATE["running"],
+            "progress": STATE["progress"],
+            "timestamp": time.time()
+        }
+    })
+
+    # Remove disconnected clients
+    disconnected = set()
+    for client in STATE["websocket_clients"]:
+        try:
+            await client.send_text(message)
+        except Exception:
+            disconnected.add(client)
+
+    STATE["websocket_clients"] -= disconnected
+
+
+@APP.websocket("/ws/progress")
+async def websocket_progress(websocket: WebSocket):
+    """WebSocket endpoint for real-time progress updates."""
+    await websocket.accept()
+    STATE["websocket_clients"].add(websocket)
+    logger.info(f"WebSocket client connected. Total clients: {len(STATE['websocket_clients'])}")
+
+    try:
+        # Send initial state
+        await websocket.send_json({
+            "type": "initial",
+            "data": {
+                "running": STATE["running"],
+                "progress": STATE["progress"]
+            }
+        })
+
+        # Keep connection alive and handle ping/pong
+        while True:
+            try:
+                data = await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
+                # Echo back ping messages
+                if data == "ping":
+                    await websocket.send_text("pong")
+            except asyncio.TimeoutError:
+                # Send keepalive ping
+                await websocket.send_text("ping")
+    except WebSocketDisconnect:
+        logger.info("WebSocket client disconnected")
+    except Exception as e:
+        logger.error(f"WebSocket error: {e}")
+    finally:
+        STATE["websocket_clients"].discard(websocket)
