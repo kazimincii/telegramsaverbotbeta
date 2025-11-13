@@ -6,18 +6,22 @@ import WebhookManager from "./components/WebhookManager";
 import CloudSyncSettings from "./components/CloudSyncSettings";
 import VideoProcessor from "./components/VideoProcessor";
 import AnalyticsDashboard from "./components/AnalyticsDashboard";
+import LanguageSelector, { LanguageProvider } from "./components/LanguageSelector";
 import { AppProvider } from "./context/AppContext";
 
 export default function App(){
   return (
-    <AppProvider>
-      <ThemeToggle />
-      <ControlPanel />
-      <AnalyticsDashboard />
-      <CLIPSearchPanel />
-      <WebhookManager />
-      <CloudSyncSettings />
-      <VideoProcessor />
-    </AppProvider>
+    <LanguageProvider>
+      <AppProvider>
+        <LanguageSelector />
+        <ThemeToggle />
+        <ControlPanel />
+        <AnalyticsDashboard />
+        <CLIPSearchPanel />
+        <WebhookManager />
+        <CloudSyncSettings />
+        <VideoProcessor />
+      </AppProvider>
+    </LanguageProvider>
   );
 }

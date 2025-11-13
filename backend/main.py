@@ -28,6 +28,7 @@ try:
     from .video_processor import VideoProcessor
     from .ipfs_storage import IPFSStorage
     from .plugin_system import PluginManager, PluginHook
+    from .i18n_manager import I18nManager
 except ImportError:
     import contacts
     from database import Database
@@ -41,6 +42,7 @@ except ImportError:
     from video_processor import VideoProcessor
     from ipfs_storage import IPFSStorage
     from plugin_system import PluginManager, PluginHook
+    from i18n_manager import I18nManager
 
 # Load environment variables
 load_dotenv(Path(__file__).resolve().parent / ".env")
@@ -79,6 +81,8 @@ SCHEDULED_TASKS_FILE = ROOT / "scheduled_tasks.json"
 WEBHOOKS_FILE = ROOT / "webhooks.json"
 PLUGINS_DIR = ROOT.parent / "plugins"
 PLUGINS_DIR.mkdir(exist_ok=True)
+TRANSLATIONS_DIR = ROOT.parent / "translations"
+TRANSLATIONS_DIR.mkdir(exist_ok=True)
 
 # Initialize database
 db = Database(DB_FILE)
@@ -117,6 +121,9 @@ ipfs_storage = IPFSStorage(
 
 # Initialize plugin manager
 plugin_manager = PluginManager(PLUGINS_DIR)
+
+# Initialize i18n manager
+i18n_manager = I18nManager(TRANSLATIONS_DIR)
 
 # Configure logging with environment variable support
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -1319,6 +1326,77 @@ def get_plugin_info(plugin_name: str):
         return {"ok": True, "plugin": plugin.get_info()}
     else:
         raise HTTPException(status_code=404, detail="Plugin not found")
+
+
+# i18n (Internationalization) Endpoints
+
+@APP.get("/api/i18n/languages")
+def get_supported_languages():
+    """Get list of supported languages."""
+    languages = i18n_manager.get_supported_languages()
+    return {
+        "ok": True,
+        "languages": languages,
+        "default": i18n_manager.default_language
+    }
+
+
+@APP.get("/api/i18n/translations/{lang_code}")
+def get_translations(lang_code: str):
+    """Get all translations for a specific language."""
+    translations = i18n_manager.get_all_translations(lang_code)
+    if translations:
+        return {
+            "ok": True,
+            "lang_code": lang_code,
+            "translations": translations
+        }
+    else:
+        raise HTTPException(status_code=404, detail="Language not found")
+
+
+@APP.get("/api/i18n/translate")
+def translate(lang: str, key: str):
+    """
+    Get a specific translation.
+
+    Query params:
+    - lang: Language code (en, tr, es, etc.)
+    - key: Translation key in dot notation (e.g., "common.start")
+    """
+    translation = i18n_manager.get_translation(lang, key)
+    return {
+        "ok": True,
+        "lang": lang,
+        "key": key,
+        "translation": translation
+    }
+
+
+@APP.post("/api/i18n/add-translation")
+def add_translation(payload: dict):
+    """
+    Add or update a translation.
+
+    Body:
+    {
+        "lang_code": "en",
+        "key": "custom.message",
+        "value": "Hello World"
+    }
+    """
+    lang_code = payload.get("lang_code")
+    key = payload.get("key")
+    value = payload.get("value")
+
+    if not all([lang_code, key, value]):
+        raise HTTPException(status_code=400, detail="Missing required fields")
+
+    success = i18n_manager.add_translation(lang_code, key, value)
+    if success:
+        return {"ok": True, "message": "Translation added successfully"}
+    else:
+        raise HTTPException(status_code=400, detail="Failed to add translation")
 
 
 # Scheduled Tasks Endpoints
