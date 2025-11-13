@@ -1,6 +1,7 @@
 import React, { createContext, useEffect, useState, useRef } from 'react';
 import { fetchConfig, saveConfig, startRun, stopRun, fetchStatus } from '../services/api';
 import notificationService from '../services/notificationService';
+import offlineStorage from '../services/offlineStorage';
 
 // Global application context used by the control panel components
 export const AppContext = createContext();
@@ -105,6 +106,20 @@ export function AppProvider({ children }) {
               chat: prevProgress.current.chat || 'Unknown',
               folder: cfg.out
             });
+
+            // Save download record to offline storage
+            if (prevProgress.current.downloaded > 0) {
+              offlineStorage.addDownload({
+                chatId: prevProgress.current.chat,
+                fileCount: prevProgress.current.downloaded,
+                skipped: prevProgress.current.skipped || 0,
+                folder: cfg.out,
+                types: cfg.types,
+                completedAt: Date.now()
+              }).catch(err => {
+                console.error('Failed to save download record:', err);
+              });
+            }
           }
 
           // Check if download is in progress and downloaded count increased

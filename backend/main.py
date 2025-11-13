@@ -2058,3 +2058,152 @@ async def websocket_progress(websocket: WebSocket):
         logger.error(f"WebSocket error: {e}")
     finally:
         STATE["websocket_clients"].discard(websocket)
+
+# ============= AI Assistant API =============
+
+# AI Assistant configuration
+AI_ASSISTANT_CONFIG_FILE = ROOT / "ai_assistant_config.json"
+
+def load_ai_config():
+    """Load AI assistant configuration"""
+    if AI_ASSISTANT_CONFIG_FILE.exists():
+        with open(AI_ASSISTANT_CONFIG_FILE, 'r') as f:
+            return json.load(f)
+    return {'api_key': '', 'enabled': False}
+
+def save_ai_config(config: dict):
+    """Save AI assistant configuration"""
+    with open(AI_ASSISTANT_CONFIG_FILE, 'w') as f:
+        json.dump(config, f, indent=2)
+
+class AIChatRequest(BaseModel):
+    message: str
+    context: Optional[dict] = None
+
+class AIConfigRequest(BaseModel):
+    api_key: str
+    enabled: bool
+
+@APP.get("/api/ai/config")
+async def get_ai_config():
+    """Get AI assistant configuration (without exposing API key)"""
+    config = load_ai_config()
+    return {
+        'enabled': config.get('enabled', False),
+        'has_api_key': bool(config.get('api_key', ''))
+    }
+
+@APP.post("/api/ai/config")
+async def update_ai_config(request: AIConfigRequest):
+    """Update AI assistant configuration"""
+    try:
+        config = {
+            'api_key': request.api_key,
+            'enabled': request.enabled
+        }
+        save_ai_config(config)
+
+        # Reinitialize assistant with new config
+        from api.ai.assistant import get_assistant
+        get_assistant(api_key=request.api_key if request.enabled else None)
+
+        return {'success': True, 'message': 'AI configuration updated'}
+    except Exception as e:
+        logger.error(f"Failed to update AI config: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/ai/chat")
+async def ai_chat(request: AIChatRequest):
+    """Chat with AI assistant"""
+    try:
+        from api.ai.assistant import get_assistant
+
+        # Load config
+        config = load_ai_config()
+        if not config.get('enabled'):
+            return {
+                'success': False,
+                'error': 'AI assistant is not enabled'
+            }
+
+        # Get assistant instance
+        assistant = get_assistant(api_key=config.get('api_key'))
+
+        if not assistant.is_enabled():
+            return {
+                'success': False,
+                'error': 'AI assistant is not properly configured'
+            }
+
+        # Process chat
+        response = await assistant.chat(request.message, request.context)
+
+        return response
+
+    except Exception as e:
+        logger.error(f"AI chat error: {e}")
+        return {
+            'success': False,
+            'error': str(e),
+            'response': f'Sorry, I encountered an error: {str(e)}'
+        }
+
+@APP.post("/api/ai/parse-command")
+async def parse_command(request: AIChatRequest):
+    """Parse natural language command"""
+    try:
+        from api.ai.assistant import get_assistant
+
+        config = load_ai_config()
+        assistant = get_assistant(api_key=config.get('api_key'))
+
+        # Use rule-based parser (doesn't require API key)
+        result = assistant.parse_natural_language_command(request.message)
+
+        if result:
+            return {'success': True, 'result': result}
+        else:
+            return {'success': False, 'error': 'Could not parse command'}
+
+    except Exception as e:
+        logger.error(f"Command parsing error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.get("/api/ai/suggestions")
+async def get_suggestions(context: Optional[str] = None):
+    """Get AI-powered suggestions"""
+    try:
+        from api.ai.assistant import get_assistant
+
+        config = load_ai_config()
+        assistant = get_assistant(api_key=config.get('api_key'))
+
+        context_dict = json.loads(context) if context else None
+        suggestions = assistant.get_suggestions(context_dict)
+
+        return {'success': True, 'suggestions': suggestions}
+
+    except Exception as e:
+        logger.error(f"Suggestions error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/ai/clear-history")
+async def clear_history():
+    """Clear conversation history"""
+    try:
+        from api.ai.assistant import get_assistant
+
+        config = load_ai_config()
+        assistant = get_assistant(api_key=config.get('api_key'))
+        assistant.clear_history()
+
+        return {'success': True, 'message': 'History cleared'}
+
+    except Exception as e:
+        logger.error(f"Clear history error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.get("/api/ping")
+async def ping():
+    """Simple ping endpoint for connection checking"""
+    return {'status': 'ok', 'timestamp': time.time()}

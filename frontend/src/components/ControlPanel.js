@@ -9,6 +9,7 @@ import MinimalButton from './MinimalButton';
 import ProfilePanel from './ProfilePanel';
 import GroupsPanel from './GroupsPanel';
 import BatchImport from './BatchImport';
+import OfflineMediaBrowser from './OfflineMediaBrowser';
 import panelIcon from '../assets/panel.svg';
 import faqIcon from '../assets/faq.svg';
 import settingsIcon from '../assets/settings.svg';
@@ -144,6 +145,13 @@ export default function ControlPanel(){
               📥
               <span style={{ marginLeft: '8px' }}>Toplu İçe Aktar</span>
             </button>
+            <button
+              className={`tab ${subTab === 'offline' ? 'active' : ''}`}
+              onClick={() => setSubTab('offline')}
+            >
+              📦
+              <span style={{ marginLeft: '8px' }}>Offline Tarayıcı</span>
+            </button>
           </div>
 
           <div className="animate-fadeIn">
@@ -155,6 +163,7 @@ export default function ControlPanel(){
             {subTab === 'errors' && <ErrorViewer />}
             {subTab === 'contacts' && <ContactsPanel />}
             {subTab === 'import' && <BatchImport onImport={handleBatchImport} />}
+            {subTab === 'offline' && <OfflineMediaBrowser />}
           </div>
         </>
       ) : (

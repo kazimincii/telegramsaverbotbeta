@@ -8,6 +8,8 @@ import VideoProcessor from "./components/VideoProcessor";
 import AnalyticsDashboard from "./components/AnalyticsDashboard";
 import LanguageSelector, { LanguageProvider } from "./components/LanguageSelector";
 import EnterpriseManager from "./components/EnterpriseManager";
+import OfflineIndicator from "./components/OfflineIndicator";
+import AIAssistant from "./components/AIAssistant";
 import { AppProvider } from "./context/AppContext";
 import "./styles/modern.css";
 
@@ -57,6 +59,7 @@ export default function App(){
 
   const menuItems = [
     { id: 'control', label: 'Kontrol Paneli', icon: '🎛️' },
+    { id: 'ai', label: 'AI Asistan', icon: '🤖' },
     { id: 'analytics', label: 'Analitik', icon: '📊' },
     { id: 'search', label: 'AI Arama', icon: '🔍' },
     { id: 'webhook', label: 'Webhook', icon: '🔗' },
@@ -109,6 +112,7 @@ export default function App(){
           <div className="main-content">
             <div className="content-wrapper">
               {activeView === 'control' && <ControlPanel />}
+              {activeView === 'ai' && <AIAssistant />}
               {activeView === 'analytics' && <AnalyticsDashboard />}
               {activeView === 'search' && <CLIPSearchPanel />}
               {activeView === 'webhook' && <WebhookManager />}
@@ -117,6 +121,9 @@ export default function App(){
               {activeView === 'enterprise' && <EnterpriseManager />}
             </div>
           </div>
+
+          {/* Offline Indicator */}
+          <OfflineIndicator />
         </div>
       </AppProvider>
     </LanguageProvider>
