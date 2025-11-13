@@ -1,0 +1,63 @@
+{
+  "app": {
+    "name": "Telegram Saver Bot",
+    "description": "Enregistrez, organisez et recherchez vos médias Telegram",
+    "version": "1.0.0"
+  },
+  "common": {
+    "start": "Démarrer",
+    "stop": "Arrêter",
+    "pause": "Pause",
+    "resume": "Reprendre",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "search": "Rechercher",
+    "upload": "Téléverser",
+    "download": "Télécharger",
+    "loading": "Chargement...",
+    "success": "Succès",
+    "error": "Erreur",
+    "warning": "Avertissement",
+    "info": "Information"
+  },
+  "status": {
+    "connected": "Connecté",
+    "disconnected": "Déconnecté",
+    "running": "En cours d'exécution",
+    "stopped": "Arrêté",
+    "paused": "En pause",
+    "idle": "Inactif",
+    "processing": "Traitement"
+  },
+  "messages": {
+    "download_started": "Téléchargement démarré",
+    "download_completed": "Téléchargement terminé avec succès",
+    "download_failed": "Échec du téléchargement: {error}",
+    "upload_started": "Téléversement démarré",
+    "upload_completed": "Téléversement terminé avec succès",
+    "webhook_created": "Webhook créé avec succès",
+    "plugin_loaded": "Plugin chargé: {name}",
+    "sync_completed": "Synchronisation cloud terminée",
+    "no_data": "Aucune donnée disponible"
+  },
+  "sections": {
+    "control_panel": "Panneau de Contrôle",
+    "analytics": "Tableau de Bord Analytique",
+    "clip_search": "Recherche d'Images IA",
+    "webhooks": "Gestion des Webhooks",
+    "cloud_sync": "Paramètres de Synchronisation Cloud",
+    "video_processing": "Traitement Vidéo",
+    "plugins": "Gestionnaire de Plugins",
+    "settings": "Paramètres"
+  },
+  "stats": {
+    "total_downloads": "Téléchargements Totaux",
+    "total_size": "Taille Totale",
+    "media_types": "Types de Médias",
+    "active_chats": "Discussions Actives",
+    "hourly_activity": "Activité Horaire",
+    "top_chats": "Principales Discussions"
+  }
+}

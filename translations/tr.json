@@ -1,0 +1,101 @@
+{
+  "app": {
+    "name": "Telegram Saver Bot",
+    "description": "Telegram medyanızı kaydedin, organize edin ve arayın",
+    "version": "1.0.0"
+  },
+  "common": {
+    "start": "Başlat",
+    "stop": "Durdur",
+    "pause": "Duraklat",
+    "resume": "Devam Et",
+    "save": "Kaydet",
+    "cancel": "İptal",
+    "delete": "Sil",
+    "edit": "Düzenle",
+    "search": "Ara",
+    "upload": "Yükle",
+    "download": "İndir",
+    "loading": "Yükleniyor...",
+    "success": "Başarılı",
+    "error": "Hata",
+    "warning": "Uyarı",
+    "info": "Bilgi"
+  },
+  "status": {
+    "connected": "Bağlı",
+    "disconnected": "Bağlantı Kesildi",
+    "running": "Çalışıyor",
+    "stopped": "Durduruldu",
+    "paused": "Duraklatıldı",
+    "idle": "Boşta",
+    "processing": "İşleniyor"
+  },
+  "messages": {
+    "download_started": "İndirme başladı",
+    "download_completed": "İndirme başarıyla tamamlandı",
+    "download_failed": "İndirme başarısız: {error}",
+    "upload_started": "Yükleme başladı",
+    "upload_completed": "Yükleme başarıyla tamamlandı",
+    "webhook_created": "Webhook başarıyla oluşturuldu",
+    "plugin_loaded": "Plugin yüklendi: {name}",
+    "sync_completed": "Bulut senkronizasyonu tamamlandı",
+    "no_data": "Veri yok"
+  },
+  "sections": {
+    "control_panel": "Kontrol Paneli",
+    "analytics": "Analitik Panosu",
+    "clip_search": "AI Destekli Görsel Arama",
+    "webhooks": "Webhook Yönetimi",
+    "cloud_sync": "Bulut Senkronizasyonu",
+    "video_processing": "Video İşleme",
+    "plugins": "Plugin Yöneticisi",
+    "settings": "Ayarlar"
+  },
+  "stats": {
+    "total_downloads": "Toplam İndirmeler",
+    "total_size": "Toplam Boyut",
+    "media_types": "Medya Türleri",
+    "active_chats": "Aktif Sohbetler",
+    "hourly_activity": "Saatlik Aktivite",
+    "top_chats": "En Çok İndirilen Sohbetler"
+  },
+  "video": {
+    "generate_thumbnail": "Önizleme Oluştur",
+    "compress_video": "Video Sıkıştır",
+    "transcribe_audio": "Ses Transkripti",
+    "quality": "Kalite",
+    "processing": "Video işleniyor..."
+  },
+  "webhook": {
+    "create_webhook": "Webhook Oluştur",
+    "webhook_url": "Webhook URL",
+    "events": "Olaylar",
+    "test_webhook": "Webhook Test Et",
+    "webhook_name": "Webhook Adı"
+  },
+  "cloud": {
+    "provider": "Bulut Sağlayıcı",
+    "google_drive": "Google Drive",
+    "dropbox": "Dropbox",
+    "auto_sync": "Otomatik Senkronizasyon",
+    "manual_sync": "Manuel Senkronizasyon",
+    "remote_folder": "Uzak Klasör",
+    "credentials": "Kimlik Bilgileri"
+  },
+  "ipfs": {
+    "upload_to_ipfs": "IPFS'e Yükle",
+    "ipfs_cid": "IPFS CID",
+    "pin_file": "Dosyayı Sabitle",
+    "unpin_file": "Sabitlemeden Çıkar",
+    "gateway_url": "Gateway URL"
+  },
+  "plugins": {
+    "available_plugins": "Mevcut Pluginler",
+    "loaded_plugins": "Yüklenmiş Pluginler",
+    "load_plugin": "Plugin Yükle",
+    "unload_plugin": "Plugin Kaldır",
+    "enable_plugin": "Plugin Etkinleştir",
+    "disable_plugin": "Plugin Devre Dışı Bırak"
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "app": {
+    "name": "Telegram Saver Bot",
+    "description": "Speichern, organisieren und durchsuchen Sie Ihre Telegram-Medien",
+    "version": "1.0.0"
+  },
+  "common": {
+    "start": "Starten",
+    "stop": "Stoppen",
+    "pause": "Pausieren",
+    "resume": "Fortsetzen",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "search": "Suchen",
+    "upload": "Hochladen",
+    "download": "Herunterladen",
+    "loading": "Laden...",
+    "success": "Erfolg",
+    "error": "Fehler",
+    "warning": "Warnung",
+    "info": "Information"
+  },
+  "status": {
+    "connected": "Verbunden",
+    "disconnected": "Getrennt",
+    "running": "Läuft",
+    "stopped": "Gestoppt",
+    "paused": "Pausiert",
+    "idle": "Leerlauf",
+    "processing": "Verarbeitung"
+  },
+  "messages": {
+    "download_started": "Download gestartet",
+    "download_completed": "Download erfolgreich abgeschlossen",
+    "download_failed": "Download fehlgeschlagen: {error}",
+    "upload_started": "Upload gestartet",
+    "upload_completed": "Upload erfolgreich abgeschlossen",
+    "webhook_created": "Webhook erfolgreich erstellt",
+    "plugin_loaded": "Plugin geladen: {name}",
+    "sync_completed": "Cloud-Synchronisierung abgeschlossen",
+    "no_data": "Keine Daten verfügbar"
+  },
+  "sections": {
+    "control_panel": "Kontrollpanel",
+    "analytics": "Analyse-Dashboard",
+    "clip_search": "KI-gestützte Bildsuche",
+    "webhooks": "Webhook-Verwaltung",
+    "cloud_sync": "Cloud-Sync-Einstellungen",
+    "video_processing": "Videoverarbeitung",
+    "plugins": "Plugin-Manager",
+    "settings": "Einstellungen"
+  },
+  "stats": {
+    "total_downloads": "Gesamt-Downloads",
+    "total_size": "Gesamtgröße",
+    "media_types": "Medientypen",
+    "active_chats": "Aktive Chats",
+    "hourly_activity": "Stündliche Aktivität",
+    "top_chats": "Top-Chats"
+  }
+}

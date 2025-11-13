@@ -1,0 +1,63 @@
+{
+  "app": {
+    "name": "Telegram Saver Bot",
+    "description": "Сохраняйте, организуйте и ищите медиа из Telegram",
+    "version": "1.0.0"
+  },
+  "common": {
+    "start": "Запустить",
+    "stop": "Остановить",
+    "pause": "Пауза",
+    "resume": "Продолжить",
+    "save": "Сохранить",
+    "cancel": "Отменить",
+    "delete": "Удалить",
+    "edit": "Редактировать",
+    "search": "Поиск",
+    "upload": "Загрузить",
+    "download": "Скачать",
+    "loading": "Загрузка...",
+    "success": "Успешно",
+    "error": "Ошибка",
+    "warning": "Предупреждение",
+    "info": "Информация"
+  },
+  "status": {
+    "connected": "Подключено",
+    "disconnected": "Отключено",
+    "running": "Работает",
+    "stopped": "Остановлено",
+    "paused": "Приостановлено",
+    "idle": "Простой",
+    "processing": "Обработка"
+  },
+  "messages": {
+    "download_started": "Загрузка начата",
+    "download_completed": "Загрузка успешно завершена",
+    "download_failed": "Ошибка загрузки: {error}",
+    "upload_started": "Отправка начата",
+    "upload_completed": "Отправка успешно завершена",
+    "webhook_created": "Webhook успешно создан",
+    "plugin_loaded": "Плагин загружен: {name}",
+    "sync_completed": "Синхронизация с облаком завершена",
+    "no_data": "Нет данных"
+  },
+  "sections": {
+    "control_panel": "Панель управления",
+    "analytics": "Панель аналитики",
+    "clip_search": "ИИ-поиск изображений",
+    "webhooks": "Управление Webhooks",
+    "cloud_sync": "Настройки облачной синхронизации",
+    "video_processing": "Обработка видео",
+    "plugins": "Менеджер плагинов",
+    "settings": "Настройки"
+  },
+  "stats": {
+    "total_downloads": "Всего загрузок",
+    "total_size": "Общий размер",
+    "media_types": "Типы медиа",
+    "active_chats": "Активные чаты",
+    "hourly_activity": "Почасовая активность",
+    "top_chats": "Топ чаты"
+  }
+}

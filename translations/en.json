@@ -1,0 +1,101 @@
+{
+  "app": {
+    "name": "Telegram Saver Bot",
+    "description": "Save, organize, and search your Telegram media",
+    "version": "1.0.0"
+  },
+  "common": {
+    "start": "Start",
+    "stop": "Stop",
+    "pause": "Pause",
+    "resume": "Resume",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "search": "Search",
+    "upload": "Upload",
+    "download": "Download",
+    "loading": "Loading...",
+    "success": "Success",
+    "error": "Error",
+    "warning": "Warning",
+    "info": "Information"
+  },
+  "status": {
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "running": "Running",
+    "stopped": "Stopped",
+    "paused": "Paused",
+    "idle": "Idle",
+    "processing": "Processing"
+  },
+  "messages": {
+    "download_started": "Download started",
+    "download_completed": "Download completed successfully",
+    "download_failed": "Download failed: {error}",
+    "upload_started": "Upload started",
+    "upload_completed": "Upload completed successfully",
+    "webhook_created": "Webhook created successfully",
+    "plugin_loaded": "Plugin loaded: {name}",
+    "sync_completed": "Cloud sync completed",
+    "no_data": "No data available"
+  },
+  "sections": {
+    "control_panel": "Control Panel",
+    "analytics": "Analytics Dashboard",
+    "clip_search": "AI-Powered Image Search",
+    "webhooks": "Webhook Management",
+    "cloud_sync": "Cloud Sync Settings",
+    "video_processing": "Video Processing",
+    "plugins": "Plugin Manager",
+    "settings": "Settings"
+  },
+  "stats": {
+    "total_downloads": "Total Downloads",
+    "total_size": "Total Size",
+    "media_types": "Media Types",
+    "active_chats": "Active Chats",
+    "hourly_activity": "Hourly Activity",
+    "top_chats": "Top Chats"
+  },
+  "video": {
+    "generate_thumbnail": "Generate Thumbnail",
+    "compress_video": "Compress Video",
+    "transcribe_audio": "Transcribe Audio",
+    "quality": "Quality",
+    "processing": "Processing video..."
+  },
+  "webhook": {
+    "create_webhook": "Create Webhook",
+    "webhook_url": "Webhook URL",
+    "events": "Events",
+    "test_webhook": "Test Webhook",
+    "webhook_name": "Webhook Name"
+  },
+  "cloud": {
+    "provider": "Cloud Provider",
+    "google_drive": "Google Drive",
+    "dropbox": "Dropbox",
+    "auto_sync": "Auto Sync",
+    "manual_sync": "Manual Sync",
+    "remote_folder": "Remote Folder",
+    "credentials": "Credentials"
+  },
+  "ipfs": {
+    "upload_to_ipfs": "Upload to IPFS",
+    "ipfs_cid": "IPFS CID",
+    "pin_file": "Pin File",
+    "unpin_file": "Unpin File",
+    "gateway_url": "Gateway URL"
+  },
+  "plugins": {
+    "available_plugins": "Available Plugins",
+    "loaded_plugins": "Loaded Plugins",
+    "load_plugin": "Load Plugin",
+    "unload_plugin": "Unload Plugin",
+    "enable_plugin": "Enable Plugin",
+    "disable_plugin": "Disable Plugin"
+  }
+}
