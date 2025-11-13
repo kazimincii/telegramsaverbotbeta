@@ -24,6 +24,8 @@ try:
     from .scheduler import TaskScheduler, ScheduledTask, ScheduleType
     from .clip_classifier import CLIPClassifier
     from .duplicate_detector import DuplicateDetector
+    from .webhook_manager import WebhookManager, WEBHOOK_EVENTS
+    from .video_processor import VideoProcessor
 except ImportError:
     import contacts
     from database import Database
@@ -33,6 +35,8 @@ except ImportError:
     from scheduler import TaskScheduler, ScheduledTask, ScheduleType
     from clip_classifier import CLIPClassifier
     from duplicate_detector import DuplicateDetector
+    from webhook_manager import WebhookManager, WEBHOOK_EVENTS
+    from video_processor import VideoProcessor
 
 # Load environment variables
 load_dotenv(Path(__file__).resolve().parent / ".env")
@@ -68,6 +72,7 @@ ACCOUNTS_FILE = ROOT / "accounts.json"
 CLOUD_SYNC_FILE = ROOT / "cloud_sync.json"
 AI_CLASSIFIER_FILE = ROOT / "ai_classifier.json"
 SCHEDULED_TASKS_FILE = ROOT / "scheduled_tasks.json"
+WEBHOOKS_FILE = ROOT / "webhooks.json"
 
 # Initialize database
 db = Database(DB_FILE)
@@ -91,6 +96,12 @@ clip_classifier = CLIPClassifier(model_name="ViT-B/32", device="cpu")
 
 # Initialize duplicate detector
 duplicate_detector = DuplicateDetector(db)
+
+# Initialize webhook manager
+webhook_manager = WebhookManager(WEBHOOKS_FILE)
+
+# Initialize video processor
+video_processor = VideoProcessor()
 
 # Configure logging with environment variable support
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -893,6 +904,182 @@ async def scan_duplicates(payload: Optional[dict] = None):
     except Exception as e:
         log(f"[error] Duplicate scan failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# Webhook Management Endpoints
+
+@APP.get("/api/webhooks")
+def list_webhooks():
+    """List all registered webhooks."""
+    return {
+        "ok": True,
+        "webhooks": webhook_manager.webhooks,
+        "supported_events": WEBHOOK_EVENTS
+    }
+
+
+@APP.post("/api/webhooks")
+def create_webhook(payload: dict):
+    """Create a new webhook subscription."""
+    url = payload.get("url")
+    events = payload.get("events", [])
+    name = payload.get("name", "Unnamed Webhook")
+
+    if not url:
+        raise HTTPException(status_code=400, detail="URL is required")
+
+    if not events:
+        raise HTTPException(status_code=400, detail="At least one event is required")
+
+    # Validate events
+    invalid_events = [e for e in events if e not in WEBHOOK_EVENTS]
+    if invalid_events:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid events: {invalid_events}. Supported: {WEBHOOK_EVENTS}"
+        )
+
+    webhook = webhook_manager.add_webhook(url, events, name)
+    log(f"[*] Created webhook: {name} for {len(events)} events")
+    return {"ok": True, "webhook": webhook}
+
+
+@APP.delete("/api/webhooks/{webhook_id}")
+def delete_webhook(webhook_id: str):
+    """Delete a webhook subscription."""
+    if webhook_manager.remove_webhook(webhook_id):
+        log(f"[*] Deleted webhook: {webhook_id}")
+        return {"ok": True}
+    else:
+        raise HTTPException(status_code=404, detail="Webhook not found")
+
+
+@APP.post("/api/webhooks/test")
+async def test_webhook(payload: dict):
+    """Test a webhook by sending a test event."""
+    url = payload.get("url")
+    if not url:
+        raise HTTPException(status_code=400, detail="URL is required")
+
+    # Create temporary webhook for testing
+    test_webhook = {
+        "id": "test",
+        "name": "Test Webhook",
+        "url": url,
+        "events": ["test.event"],
+        "enabled": True
+    }
+
+    test_data = {
+        "timestamp": time.time(),
+        "message": "This is a test webhook from Telegram Saver Bot"
+    }
+
+    try:
+        await webhook_manager._send_webhook(test_webhook, "test.event", test_data)
+        log(f"[*] Test webhook sent to: {url}")
+        return {"ok": True, "message": "Test webhook sent successfully"}
+    except Exception as e:
+        log(f"[error] Test webhook failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Video Processing Endpoints
+
+@APP.post("/api/video/thumbnail")
+async def generate_video_thumbnail(payload: dict):
+    """Generate thumbnail from video file."""
+    video_path = payload.get("video_path")
+    output_path = payload.get("output_path")
+
+    if not video_path:
+        raise HTTPException(status_code=400, detail="video_path is required")
+
+    try:
+        result = await video_processor.generate_thumbnail(
+            Path(video_path),
+            Path(output_path) if output_path else None
+        )
+
+        if result:
+            log(f"[*] Thumbnail generated: {result}")
+            return {"ok": True, "thumbnail_path": str(result)}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to generate thumbnail. OpenCV may not be installed.")
+    except Exception as e:
+        log(f"[error] Thumbnail generation failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/video/compress")
+async def compress_video_file(payload: dict):
+    """Compress video file using ffmpeg."""
+    video_path = payload.get("video_path")
+    output_path = payload.get("output_path")
+    quality = payload.get("quality", 23)  # CRF value: 0-51 (lower = better)
+
+    if not video_path:
+        raise HTTPException(status_code=400, detail="video_path is required")
+
+    try:
+        result = await video_processor.compress_video(
+            Path(video_path),
+            Path(output_path) if output_path else None
+        )
+
+        if result:
+            original_size = Path(video_path).stat().st_size
+            compressed_size = result.stat().st_size
+            savings_percent = ((original_size - compressed_size) / original_size) * 100
+
+            log(f"[*] Video compressed: {result} ({savings_percent:.1f}% smaller)")
+            return {
+                "ok": True,
+                "compressed_path": str(result),
+                "original_size": original_size,
+                "compressed_size": compressed_size,
+                "savings_percent": round(savings_percent, 1)
+            }
+        else:
+            raise HTTPException(status_code=500, detail="Failed to compress video. ffmpeg may not be installed.")
+    except Exception as e:
+        log(f"[error] Video compression failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/video/transcribe")
+async def transcribe_video_audio(payload: dict):
+    """Transcribe audio from video using Whisper AI."""
+    video_path = payload.get("video_path")
+
+    if not video_path:
+        raise HTTPException(status_code=400, detail="video_path is required")
+
+    try:
+        result = await video_processor.transcribe_audio(Path(video_path))
+
+        if result:
+            log(f"[*] Video transcribed: {video_path}")
+            return {"ok": True, "transcription": result}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to transcribe video. Whisper AI may not be installed.")
+    except Exception as e:
+        log(f"[error] Video transcription failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/video/status")
+def get_video_processor_status():
+    """Check video processor availability."""
+    return {
+        "ok": True,
+        "available": video_processor.available,
+        "features": {
+            "thumbnails": video_processor.available,
+            "compression": True,  # ffmpeg checked at runtime
+            "transcription": True  # whisper checked at runtime
+        }
+    }
 
 
 # Scheduled Tasks Endpoints
