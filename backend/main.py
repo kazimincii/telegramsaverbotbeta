@@ -621,7 +621,7 @@ async def export_to_html():
 
 @APP.get("/api/status")
 def status():
-    tail = STATE["log"][-50:]
+    tail = list(STATE["log"])[-50:]  # Convert deque to list before slicing
     return {"running": STATE["running"], "progress": STATE.get("progress"), "logTail": tail}
 
 
