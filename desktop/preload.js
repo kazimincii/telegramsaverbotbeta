@@ -24,6 +24,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getNotificationSettings: () => ipcRenderer.invoke('get-notification-settings'),
   updateNotificationSettings: (settings) => ipcRenderer.invoke('update-notification-settings', settings),
 
+  // Keyboard shortcuts operations
+  getShortcuts: () => ipcRenderer.invoke('get-shortcuts'),
+  updateShortcuts: (shortcuts) => ipcRenderer.invoke('update-shortcuts', shortcuts),
+  resetShortcuts: () => ipcRenderer.invoke('reset-shortcuts'),
+
   // Event listeners
   onAction: (callback) => {
     ipcRenderer.on('action', (event, action) => callback(action));
@@ -33,6 +38,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   onShowErrors: (callback) => {
     ipcRenderer.on('show-errors', (event) => callback());
+  },
+  onShortcutAction: (callback) => {
+    ipcRenderer.on('shortcut-action', (event, action) => callback(action));
   },
 
   // Remove listeners
@@ -44,6 +52,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   removeShowErrorsListener: () => {
     ipcRenderer.removeAllListeners('show-errors');
+  },
+  removeShortcutActionListener: () => {
+    ipcRenderer.removeAllListeners('shortcut-action');
   }
 });
 

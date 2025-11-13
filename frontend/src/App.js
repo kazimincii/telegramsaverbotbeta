@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import ControlPanel from "./components/ControlPanel";
 import ThemeToggle from "./components/ThemeToggle";
 import CLIPSearchPanel from "./components/CLIPSearchPanel";
@@ -20,6 +20,40 @@ export default function App(){
     setTheme(newTheme);
     document.documentElement.setAttribute('data-theme', newTheme);
   };
+
+  // Setup keyboard shortcut listeners
+  useEffect(() => {
+    if (window.electronAPI && window.electronAPI.onShortcutAction) {
+      const handleShortcut = (action) => {
+        console.log('Shortcut action received:', action);
+
+        switch (action) {
+          case 'start-download':
+            setActiveView('control');
+            break;
+
+          case 'open-settings':
+            setActiveView('control');
+            break;
+
+          case 'refresh':
+            window.location.reload();
+            break;
+
+          default:
+            console.log('Unknown shortcut action:', action);
+        }
+      };
+
+      window.electronAPI.onShortcutAction(handleShortcut);
+
+      return () => {
+        if (window.electronAPI.removeShortcutActionListener) {
+          window.electronAPI.removeShortcutActionListener();
+        }
+      };
+    }
+  }, []);
 
   const menuItems = [
     { id: 'control', label: 'Kontrol Paneli', icon: '🎛️' },

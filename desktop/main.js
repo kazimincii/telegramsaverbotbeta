@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, ipcMain, dialog, shell, Notification } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, dialog, shell, Notification, globalShortcut } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const { spawn } = require('child_process');
 const path = require('path');
@@ -742,6 +742,166 @@ ipcMain.handle('update-notification-settings', (event, settings) => {
   Object.assign(notificationSettings, settings);
   logger.info('Notification settings updated:', notificationSettings);
   return { success: true, settings: notificationSettings };
+});
+
+// ========================================
+// KEYBOARD SHORTCUTS
+// ========================================
+
+// Default keyboard shortcuts
+const defaultShortcuts = {
+  'startDownload': 'CommandOrControl+D',
+  'pauseResume': 'CommandOrControl+P',
+  'openFolder': 'CommandOrControl+O',
+  'settings': 'CommandOrControl+,',
+  'refresh': 'CommandOrControl+R',
+  'quit': 'CommandOrControl+Q',
+  'devTools': 'CommandOrControl+Shift+I',
+  'toggleFullscreen': 'F11'
+};
+
+// User-customizable shortcuts (can be loaded from config)
+let customShortcuts = { ...defaultShortcuts };
+
+// Register all keyboard shortcuts
+function registerKeyboardShortcuts() {
+  logger.info('Registering keyboard shortcuts...');
+
+  try {
+    // Ctrl+D / Cmd+D - Start Download
+    globalShortcut.register(customShortcuts.startDownload, () => {
+      logger.info('Shortcut triggered: Start Download');
+      if (mainWindow) {
+        mainWindow.webContents.send('shortcut-action', 'start-download');
+        mainWindow.show();
+      }
+    });
+
+    // Ctrl+P / Cmd+P - Pause/Resume
+    globalShortcut.register(customShortcuts.pauseResume, () => {
+      logger.info('Shortcut triggered: Pause/Resume');
+      if (mainWindow) {
+        mainWindow.webContents.send('shortcut-action', 'pause-resume');
+      }
+    });
+
+    // Ctrl+O / Cmd+O - Open Download Folder
+    globalShortcut.register(customShortcuts.openFolder, () => {
+      logger.info('Shortcut triggered: Open Folder');
+      if (mainWindow) {
+        mainWindow.webContents.send('shortcut-action', 'open-folder');
+      }
+    });
+
+    // Ctrl+, / Cmd+, - Settings
+    globalShortcut.register(customShortcuts.settings, () => {
+      logger.info('Shortcut triggered: Settings');
+      if (mainWindow) {
+        mainWindow.show();
+        mainWindow.webContents.send('shortcut-action', 'open-settings');
+      }
+    });
+
+    // Ctrl+R / Cmd+R - Refresh
+    globalShortcut.register(customShortcuts.refresh, () => {
+      logger.info('Shortcut triggered: Refresh');
+      if (mainWindow) {
+        mainWindow.webContents.send('shortcut-action', 'refresh');
+      }
+    });
+
+    // Ctrl+Q / Cmd+Q - Quit (only on non-Mac platforms)
+    if (process.platform !== 'darwin') {
+      globalShortcut.register(customShortcuts.quit, () => {
+        logger.info('Shortcut triggered: Quit');
+        isQuitting = true;
+        app.quit();
+      });
+    }
+
+    // Ctrl+Shift+I / Cmd+Shift+I - Toggle Dev Tools
+    if (CONFIG.isDev) {
+      globalShortcut.register(customShortcuts.devTools, () => {
+        logger.info('Shortcut triggered: Dev Tools');
+        if (mainWindow) {
+          mainWindow.webContents.toggleDevTools();
+        }
+      });
+    }
+
+    // F11 - Toggle Fullscreen
+    globalShortcut.register(customShortcuts.toggleFullscreen, () => {
+      logger.info('Shortcut triggered: Toggle Fullscreen');
+      if (mainWindow) {
+        mainWindow.setFullScreen(!mainWindow.isFullScreen());
+      }
+    });
+
+    logger.info('All keyboard shortcuts registered successfully');
+  } catch (error) {
+    logger.error('Failed to register keyboard shortcuts:', error);
+  }
+}
+
+// Unregister all keyboard shortcuts
+function unregisterKeyboardShortcuts() {
+  logger.info('Unregistering all keyboard shortcuts...');
+  globalShortcut.unregisterAll();
+}
+
+// Update custom shortcuts
+function updateShortcuts(newShortcuts) {
+  // Unregister old shortcuts
+  unregisterKeyboardShortcuts();
+
+  // Update custom shortcuts
+  customShortcuts = { ...defaultShortcuts, ...newShortcuts };
+
+  // Re-register with new shortcuts
+  registerKeyboardShortcuts();
+
+  logger.info('Keyboard shortcuts updated');
+}
+
+// IPC handlers for shortcuts
+ipcMain.handle('get-shortcuts', () => {
+  return {
+    defaults: defaultShortcuts,
+    current: customShortcuts
+  };
+});
+
+ipcMain.handle('update-shortcuts', (event, shortcuts) => {
+  try {
+    updateShortcuts(shortcuts);
+    return { success: true, shortcuts: customShortcuts };
+  } catch (error) {
+    logger.error('Failed to update shortcuts:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('reset-shortcuts', () => {
+  try {
+    updateShortcuts(defaultShortcuts);
+    return { success: true, shortcuts: customShortcuts };
+  } catch (error) {
+    logger.error('Failed to reset shortcuts:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Register shortcuts when app is ready
+app.on('ready', () => {
+  // Register shortcuts after a short delay to ensure window is created
+  setTimeout(() => {
+    registerKeyboardShortcuts();
+  }, 1000);
+});
+
+// Unregister shortcuts when app quits
+app.on('will-quit', () => {
+  unregisterKeyboardShortcuts();
 });
 
 // Handle uncaught exceptions
