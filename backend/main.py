@@ -30,6 +30,7 @@ try:
     from .plugin_system import PluginManager, PluginHook
     from .i18n_manager import I18nManager
     from .rbac_system import RBACManager, Permission, Role, User, Organization
+    from .content_moderator import ContentModerator, ModerationAction, ContentCategory
 except ImportError:
     import contacts
     from database import Database
@@ -45,6 +46,7 @@ except ImportError:
     from plugin_system import PluginManager, PluginHook
     from i18n_manager import I18nManager
     from rbac_system import RBACManager, Permission, Role, User, Organization
+    from content_moderator import ContentModerator, ModerationAction, ContentCategory
 
 # Load environment variables
 load_dotenv(Path(__file__).resolve().parent / ".env")
@@ -86,6 +88,7 @@ PLUGINS_DIR.mkdir(exist_ok=True)
 TRANSLATIONS_DIR = ROOT.parent / "translations"
 TRANSLATIONS_DIR.mkdir(exist_ok=True)
 RBAC_FILE = ROOT / "rbac_data.json"
+MODERATION_FILE = ROOT / "moderation_config.json"
 
 # Initialize database
 db = Database(DB_FILE)
@@ -130,6 +133,9 @@ i18n_manager = I18nManager(TRANSLATIONS_DIR)
 
 # Initialize RBAC manager
 rbac_manager = RBACManager(RBAC_FILE)
+
+# Initialize content moderator
+content_moderator = ContentModerator(MODERATION_FILE)
 
 # Configure logging with environment variable support
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -1706,6 +1712,203 @@ def authenticate_api_key(payload: dict):
         }
     else:
         raise HTTPException(status_code=401, detail="Invalid API key")
+
+
+# Content Moderation Endpoints
+
+@APP.post("/api/moderation/moderate")
+async def moderate_file(payload: dict):
+    """
+    Moderate a file for inappropriate content.
+
+    Body:
+    {
+        "file_path": "/path/to/file.jpg",
+        "metadata": {"caption": "Optional text"}
+    }
+    """
+    file_path_str = payload.get("file_path")
+    metadata = payload.get("metadata", {})
+
+    if not file_path_str:
+        raise HTTPException(status_code=400, detail="file_path required")
+
+    file_path = Path(file_path_str)
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    result = await content_moderator.moderate_content(file_path, metadata)
+
+    return {
+        "ok": True,
+        "result": result.to_dict()
+    }
+
+
+@APP.get("/api/moderation/rules")
+def list_moderation_rules():
+    """List all moderation rules."""
+    rules = content_moderator.list_rules()
+    return {
+        "ok": True,
+        "rules": [rule.to_dict() for rule in rules],
+        "count": len(rules)
+    }
+
+
+@APP.post("/api/moderation/rules")
+def create_moderation_rule(payload: dict):
+    """
+    Create custom moderation rule.
+
+    Body:
+    {
+        "name": "Strict Violence Filter",
+        "category": "violence",
+        "action": "block",
+        "threshold": 0.5
+    }
+    """
+    name = payload.get("name")
+    category_str = payload.get("category")
+    action_str = payload.get("action")
+    threshold = payload.get("threshold", 0.5)
+
+    if not all([name, category_str, action_str]):
+        raise HTTPException(status_code=400, detail="Missing required fields")
+
+    try:
+        category = ContentCategory(category_str)
+        action = ModerationAction(action_str)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid category or action: {e}")
+
+    rule = content_moderator.create_rule(name, category, action, threshold)
+
+    return {"ok": True, "rule": rule.to_dict()}
+
+
+@APP.get("/api/moderation/rules/{rule_id}")
+def get_moderation_rule(rule_id: str):
+    """Get moderation rule details."""
+    rule = content_moderator.get_rule(rule_id)
+    if rule:
+        return {"ok": True, "rule": rule.to_dict()}
+    else:
+        raise HTTPException(status_code=404, detail="Rule not found")
+
+
+@APP.put("/api/moderation/rules/{rule_id}")
+def update_moderation_rule(rule_id: str, payload: dict):
+    """
+    Update moderation rule.
+
+    Body:
+    {
+        "name": "Updated name",
+        "threshold": 0.7,
+        "action": "warn",
+        "enabled": true
+    }
+    """
+    success = content_moderator.update_rule(rule_id, **payload)
+    if success:
+        return {"ok": True, "message": "Rule updated"}
+    else:
+        raise HTTPException(status_code=404, detail="Rule not found")
+
+
+@APP.delete("/api/moderation/rules/{rule_id}")
+def delete_moderation_rule(rule_id: str):
+    """Delete moderation rule."""
+    success = content_moderator.delete_rule(rule_id)
+    if success:
+        return {"ok": True, "message": "Rule deleted"}
+    else:
+        raise HTTPException(status_code=404, detail="Rule not found")
+
+
+@APP.get("/api/moderation/history")
+def get_moderation_history(limit: int = 100):
+    """Get recent moderation history."""
+    history = content_moderator.get_moderation_history(limit)
+    return {
+        "ok": True,
+        "history": [result.to_dict() for result in history],
+        "count": len(history)
+    }
+
+
+@APP.get("/api/moderation/statistics")
+def get_moderation_statistics():
+    """Get moderation statistics."""
+    stats = content_moderator.get_statistics()
+    return {
+        "ok": True,
+        "statistics": stats
+    }
+
+
+@APP.post("/api/moderation/block-hash")
+def block_file_hash(payload: dict):
+    """
+    Block a file hash.
+
+    Body:
+    {
+        "file_hash": "abc123..."
+    }
+    """
+    file_hash = payload.get("file_hash")
+    if not file_hash:
+        raise HTTPException(status_code=400, detail="file_hash required")
+
+    content_moderator.block_hash(file_hash)
+    return {"ok": True, "message": "Hash blocked"}
+
+
+@APP.post("/api/moderation/unblock-hash")
+def unblock_file_hash(payload: dict):
+    """
+    Unblock a file hash.
+
+    Body:
+    {
+        "file_hash": "abc123..."
+    }
+    """
+    file_hash = payload.get("file_hash")
+    if not file_hash:
+        raise HTTPException(status_code=400, detail="file_hash required")
+
+    content_moderator.unblock_hash(file_hash)
+    return {"ok": True, "message": "Hash unblocked"}
+
+
+@APP.get("/api/moderation/categories")
+def list_content_categories():
+    """List all content categories."""
+    categories = [
+        {"value": cat.value, "name": cat.value.replace("_", " ").title()}
+        for cat in ContentCategory
+    ]
+    return {
+        "ok": True,
+        "categories": categories
+    }
+
+
+@APP.get("/api/moderation/actions")
+def list_moderation_actions():
+    """List all possible moderation actions."""
+    actions = [
+        {"value": action.value, "name": action.value.title()}
+        for action in ModerationAction
+    ]
+    return {
+        "ok": True,
+        "actions": actions
+    }
 
 
 # Scheduled Tasks Endpoints
