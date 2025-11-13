@@ -2345,3 +2345,141 @@ async def summarize_video(request: SummarizeVideoRequest):
     except Exception as e:
         logger.error(f"Video summarization error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# ============= Auto-Tagging API =============
+
+class TagImageRequest(BaseModel):
+    image_path: str
+    use_clip: Optional[bool] = True
+    use_vit: Optional[bool] = True
+    custom_labels: Optional[List[str]] = None
+    confidence_threshold: Optional[float] = 0.3
+
+class BatchTagRequest(BaseModel):
+    image_paths: List[str]
+    use_clip: Optional[bool] = True
+    use_vit: Optional[bool] = True
+    confidence_threshold: Optional[float] = 0.3
+
+class SuggestTagsRequest(BaseModel):
+    existing_tags: List[str]
+    context: Optional[dict] = None
+
+@APP.post("/api/tagging/initialize")
+async def initialize_tagging():
+    """Initialize auto-tagging models"""
+    try:
+        from api.ai.tagging import get_tagging_engine
+
+        engine = get_tagging_engine()
+
+        if not engine.is_available():
+            raise HTTPException(
+                status_code=400,
+                detail="Auto-tagging is not available. Required libraries not installed."
+            )
+
+        result = await engine.initialize_models()
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Tagging initialization error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/tagging/tag-image")
+async def tag_image(request: TagImageRequest):
+    """Auto-tag a single image"""
+    try:
+        from api.ai.tagging import get_tagging_engine
+
+        engine = get_tagging_engine()
+
+        if not engine.is_available():
+            raise HTTPException(
+                status_code=400,
+                detail="Auto-tagging is not available"
+            )
+
+        # Check if image exists
+        if not Path(request.image_path).exists():
+            raise HTTPException(status_code=404, detail="Image not found")
+
+        options = {
+            'use_clip': request.use_clip,
+            'use_vit': request.use_vit,
+            'custom_labels': request.custom_labels or [],
+            'confidence_threshold': request.confidence_threshold
+        }
+
+        result = await engine.tag_image(request.image_path, options)
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Image tagging error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/tagging/batch-tag")
+async def batch_tag_images(request: BatchTagRequest):
+    """Auto-tag multiple images"""
+    try:
+        from api.ai.tagging import get_tagging_engine
+
+        engine = get_tagging_engine()
+
+        if not engine.is_available():
+            raise HTTPException(
+                status_code=400,
+                detail="Auto-tagging is not available"
+            )
+
+        options = {
+            'use_clip': request.use_clip,
+            'use_vit': request.use_vit,
+            'confidence_threshold': request.confidence_threshold
+        }
+
+        result = await engine.batch_tag_images(request.image_paths, options)
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Batch tagging error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/tagging/suggest")
+async def suggest_tags(request: SuggestTagsRequest):
+    """Get tag suggestions based on existing tags"""
+    try:
+        from api.ai.tagging import get_tagging_engine
+
+        engine = get_tagging_engine()
+        suggestions = await engine.suggest_tags(request.existing_tags, request.context)
+
+        return {
+            'success': True,
+            'suggestions': suggestions
+        }
+
+    except Exception as e:
+        logger.error(f"Tag suggestion error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.get("/api/tagging/categories")
+async def get_categories():
+    """Get available tagging categories"""
+    try:
+        from api.ai.tagging import get_tagging_engine
+
+        engine = get_tagging_engine()
+        categories = engine.get_available_categories()
+
+        return {
+            'success': True,
+            'categories': categories
+        }
+
+    except Exception as e:
+        logger.error(f"Get categories error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
