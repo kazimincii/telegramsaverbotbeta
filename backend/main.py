@@ -2207,3 +2207,141 @@ async def clear_history():
 async def ping():
     """Simple ping endpoint for connection checking"""
     return {'status': 'ok', 'timestamp': time.time()}
+
+# ============= Content Summarization API =============
+
+class SummarizeTextRequest(BaseModel):
+    text: str
+    style: Optional[str] = 'concise'
+    max_length: Optional[int] = 500
+    extract_keywords: Optional[bool] = True
+
+class SummarizeMessagesRequest(BaseModel):
+    messages: List[dict]
+    style: Optional[str] = 'concise'
+
+class TranscribeAudioRequest(BaseModel):
+    file_path: str
+    language: Optional[str] = None
+    translate: Optional[bool] = False
+
+class SummarizeVideoRequest(BaseModel):
+    file_path: str
+    style: Optional[str] = 'concise'
+
+@APP.post("/api/summarize/text")
+async def summarize_text(request: SummarizeTextRequest):
+    """Summarize text content"""
+    try:
+        from api.ai.summarization import get_engine
+        from api.ai.assistant import get_assistant
+
+        # Get AI config
+        config = load_ai_config()
+        if not config.get('enabled'):
+            raise HTTPException(status_code=400, detail="AI features are not enabled")
+
+        # Get engine
+        engine = get_engine(api_key=config.get('api_key'))
+
+        if not engine.is_enabled():
+            raise HTTPException(status_code=400, detail="Summarization engine is not configured")
+
+        # Summarize
+        options = {
+            'style': request.style,
+            'max_length': request.max_length,
+            'extract_keywords': request.extract_keywords
+        }
+
+        result = await engine.summarize_text(request.text, options)
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Text summarization error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/summarize/messages")
+async def summarize_messages(request: SummarizeMessagesRequest):
+    """Summarize chat messages"""
+    try:
+        from api.ai.summarization import get_engine
+
+        config = load_ai_config()
+        if not config.get('enabled'):
+            raise HTTPException(status_code=400, detail="AI features are not enabled")
+
+        engine = get_engine(api_key=config.get('api_key'))
+
+        if not engine.is_enabled():
+            raise HTTPException(status_code=400, detail="Summarization engine is not configured")
+
+        options = {'style': request.style}
+        result = await engine.summarize_messages(request.messages, options)
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Message summarization error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/summarize/audio")
+async def transcribe_audio(request: TranscribeAudioRequest):
+    """Transcribe audio file to text"""
+    try:
+        from api.ai.summarization import get_engine
+
+        config = load_ai_config()
+        if not config.get('enabled'):
+            raise HTTPException(status_code=400, detail="AI features are not enabled")
+
+        engine = get_engine(api_key=config.get('api_key'))
+
+        if not engine.is_enabled():
+            raise HTTPException(status_code=400, detail="Transcription is not configured")
+
+        # Check if file exists
+        if not Path(request.file_path).exists():
+            raise HTTPException(status_code=404, detail="Audio file not found")
+
+        options = {
+            'language': request.language,
+            'translate': request.translate
+        }
+
+        result = await engine.transcribe_audio(request.file_path, options)
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Audio transcription error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@APP.post("/api/summarize/video")
+async def summarize_video(request: SummarizeVideoRequest):
+    """Summarize video (transcript + summary)"""
+    try:
+        from api.ai.summarization import get_engine
+
+        config = load_ai_config()
+        if not config.get('enabled'):
+            raise HTTPException(status_code=400, detail="AI features are not enabled")
+
+        engine = get_engine(api_key=config.get('api_key'))
+
+        if not engine.is_enabled():
+            raise HTTPException(status_code=400, detail="Video summarization is not configured")
+
+        # Check if file exists
+        if not Path(request.file_path).exists():
+            raise HTTPException(status_code=404, detail="Video file not found")
+
+        options = {'style': request.style}
+        result = await engine.summarize_video(request.file_path, options)
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Video summarization error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

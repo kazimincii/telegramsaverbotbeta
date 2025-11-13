@@ -10,6 +10,7 @@ import LanguageSelector, { LanguageProvider } from "./components/LanguageSelecto
 import EnterpriseManager from "./components/EnterpriseManager";
 import OfflineIndicator from "./components/OfflineIndicator";
 import AIAssistant from "./components/AIAssistant";
+import ContentSummary from "./components/ContentSummary";
 import { AppProvider } from "./context/AppContext";
 import "./styles/modern.css";
 
@@ -60,6 +61,7 @@ export default function App(){
   const menuItems = [
     { id: 'control', label: 'Kontrol Paneli', icon: '🎛️' },
     { id: 'ai', label: 'AI Asistan', icon: '🤖' },
+    { id: 'summary', label: 'İçerik Özetleme', icon: '📝' },
     { id: 'analytics', label: 'Analitik', icon: '📊' },
     { id: 'search', label: 'AI Arama', icon: '🔍' },
     { id: 'webhook', label: 'Webhook', icon: '🔗' },
@@ -113,6 +115,7 @@ export default function App(){
             <div className="content-wrapper">
               {activeView === 'control' && <ControlPanel />}
               {activeView === 'ai' && <AIAssistant />}
+              {activeView === 'summary' && <ContentSummary />}
               {activeView === 'analytics' && <AnalyticsDashboard />}
               {activeView === 'search' && <CLIPSearchPanel />}
               {activeView === 'webhook' && <WebhookManager />}
