@@ -8,6 +8,7 @@ import FaqSection from './FaqSection';
 import MinimalButton from './MinimalButton';
 import ProfilePanel from './ProfilePanel';
 import GroupsPanel from './GroupsPanel';
+import BatchImport from './BatchImport';
 import panelIcon from '../assets/panel.svg';
 import faqIcon from '../assets/faq.svg';
 import settingsIcon from '../assets/settings.svg';
@@ -17,9 +18,10 @@ import errorIcon from '../assets/error.svg';
 import contactsIcon from '../assets/contacts.svg';
 import { AppContext } from '../context/AppContext';
 import { fetchDialogs } from '../services/api';
+import notificationService from '../services/notificationService';
 
 export default function ControlPanel(){
-  const { setDialogs } = useContext(AppContext);
+  const { setDialogs, cfg, setField } = useContext(AppContext);
   const [mainTab, setMainTab] = useState('panel');
   const [subTab, setSubTab] = useState('profile');
 
@@ -32,6 +34,32 @@ export default function ControlPanel(){
       })
       .catch(err => window.alert(err.message || 'Diyaloglar alınamadı'));
   }, [setDialogs]);
+
+  const handleBatchImport = async (items) => {
+    // Extract chat identifiers from import items
+    const chatIds = [];
+    const usernames = [];
+
+    items.forEach(item => {
+      if (item.type === 'chat-id') {
+        chatIds.push(item.data.chatId);
+      } else if (item.type === 'telegram-link' && item.data.username) {
+        usernames.push(item.data.username);
+      }
+    });
+
+    // Combine with existing chats (avoid duplicates)
+    const existingChats = cfg.chats || [];
+    const allChats = [...new Set([...existingChats, ...chatIds, ...usernames])];
+
+    // Update chats in config
+    setField('chats', allChats);
+
+    notificationService.notifySuccess(
+      'Chats Added',
+      `Added ${items.length} chats to download queue. Don't forget to save settings!`
+    );
+  };
 
   return (
     <div className="container-fluid">
@@ -109,6 +137,13 @@ export default function ControlPanel(){
               <img src={contactsIcon} alt="" width="16" height="16" style={{ marginRight: '8px' }} />
               Kişiler
             </button>
+            <button
+              className={`tab ${subTab === 'import' ? 'active' : ''}`}
+              onClick={() => setSubTab('import')}
+            >
+              📥
+              <span style={{ marginLeft: '8px' }}>Toplu İçe Aktar</span>
+            </button>
           </div>
 
           <div className="animate-fadeIn">
@@ -119,6 +154,7 @@ export default function ControlPanel(){
             {subTab === 'log' && <LogViewer />}
             {subTab === 'errors' && <ErrorViewer />}
             {subTab === 'contacts' && <ContactsPanel />}
+            {subTab === 'import' && <BatchImport onImport={handleBatchImport} />}
           </div>
         </>
       ) : (
