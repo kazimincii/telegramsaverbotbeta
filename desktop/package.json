@@ -14,7 +14,9 @@
     "pack": "electron-builder --dir"
   },
   "dependencies": {
-    "electron": "^28.0.0"
+    "electron": "^28.0.0",
+    "electron-log": "^5.4.3",
+    "electron-updater": "^6.6.2"
   },
   "devDependencies": {
     "electron-builder": "^24.9.1"
@@ -23,6 +25,14 @@
     "appId": "com.telegramsaver.desktop",
     "productName": "Telegram Saver",
     "copyright": "Copyright © 2025 Telegram Saver Team",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "kazimincii",
+        "repo": "telegramsaverbotbeta",
+        "releaseType": "release"
+      }
+    ],
     "directories": {
       "output": "dist",
       "buildResources": "resources"
@@ -44,18 +54,27 @@
       {
         "from": "../backend",
         "to": "backend",
-        "filter": ["**/*", "!__pycache__", "!*.pyc"]
+        "filter": [
+          "**/*",
+          "!__pycache__",
+          "!*.pyc"
+        ]
       }
     ],
     "win": {
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64", "ia32"]
+          "arch": [
+            "x64",
+            "ia32"
+          ]
         },
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "resources/icon.ico",
@@ -74,11 +93,17 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         },
         {
           "target": "zip",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         }
       ],
       "icon": "resources/icon.icns",
@@ -114,19 +139,30 @@
       "target": [
         {
           "target": "AppImage",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         },
         {
           "target": "deb",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         },
         {
           "target": "rpm",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "tar.gz",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         }
       ],
       "icon": "resources/icon.png",
@@ -136,10 +172,16 @@
       "artifactName": "${productName}-${version}-${os}-${arch}.${ext}"
     },
     "deb": {
-      "depends": ["python3", "python3-pip"]
+      "depends": [
+        "python3",
+        "python3-pip"
+      ]
     },
     "rpm": {
-      "depends": ["python3", "python3-pip"]
+      "depends": [
+        "python3",
+        "python3-pip"
+      ]
     }
   }
 }

@@ -1,13 +1,23 @@
 const { app, BrowserWindow, Tray, Menu, ipcMain, dialog, shell } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
+const logger = require('./logger');
+const CrashReporter = require('./crash-reporter');
 
 let mainWindow;
 let backendProcess;
 let tray = null;
 let isQuitting = false;
+
+// Initialize crash reporter
+const crashReporter = new CrashReporter();
+crashReporter.setupProcessHandlers();
+
+// Clean old logs on startup
+logger.cleanOldLogs(7); // Keep logs for 7 days
 
 // Configuration
 const CONFIG = {
@@ -19,9 +29,9 @@ const CONFIG = {
   pythonCommand: process.platform === 'win32' ? 'python' : 'python3'
 };
 
-console.log('Telegram Saver Bot - Starting...');
-console.log('Environment:', CONFIG.isDev ? 'Development' : 'Production');
-console.log('Backend Path:', CONFIG.backendPath);
+logger.info('Telegram Saver Bot - Starting...');
+logger.info('Environment:', CONFIG.isDev ? 'Development' : 'Production');
+logger.info('Backend Path:', CONFIG.backendPath);
 
 // Check if backend is running
 function checkBackend(callback) {
@@ -408,13 +418,129 @@ ipcMain.handle('restart-backend', async () => {
   return { success: true };
 });
 
+// Auto-updater configuration
+autoUpdater.logger = logger;
+autoUpdater.autoDownload = false; // Don't auto-download, ask user first
+
+// Auto-updater events
+autoUpdater.on('checking-for-update', () => {
+  logger.info('Checking for updates...');
+});
+
+autoUpdater.on('update-available', (info) => {
+  logger.info('Update available:', info.version);
+
+  dialog.showMessageBox(mainWindow, {
+    type: 'info',
+    title: 'Update Available',
+    message: `A new version (${info.version}) is available. Do you want to download it now?`,
+    buttons: ['Download', 'Later'],
+    defaultId: 0,
+    cancelId: 1
+  }).then(result => {
+    if (result.response === 0) {
+      autoUpdater.downloadUpdate();
+
+      // Show download progress
+      let progressWin = new BrowserWindow({
+        width: 400,
+        height: 150,
+        parent: mainWindow,
+        modal: true,
+        show: false,
+        frame: false,
+        resizable: false
+      });
+
+      progressWin.loadURL(`data:text/html,
+        <html>
+          <body style="font-family: Arial; padding: 20px; text-align: center;">
+            <h3>Downloading Update...</h3>
+            <progress id="progress" value="0" max="100" style="width: 300px;"></progress>
+            <p id="status">0%</p>
+          </body>
+        </html>
+      `);
+
+      progressWin.once('ready-to-show', () => {
+        progressWin.show();
+      });
+
+      autoUpdater.on('download-progress', (progressObj) => {
+        logger.info('Download progress:', progressObj.percent);
+        progressWin.webContents.executeJavaScript(`
+          document.getElementById('progress').value = ${progressObj.percent};
+          document.getElementById('status').textContent = '${Math.round(progressObj.percent)}%';
+        `);
+      });
+
+      autoUpdater.on('update-downloaded', () => {
+        progressWin.close();
+      });
+    }
+  });
+});
+
+autoUpdater.on('update-not-available', () => {
+  logger.info('No updates available');
+});
+
+autoUpdater.on('error', (err) => {
+  logger.error('Auto-updater error:', err);
+});
+
+autoUpdater.on('download-progress', (progressObj) => {
+  logger.info(`Download speed: ${progressObj.bytesPerSecond} - Downloaded ${progressObj.percent}%`);
+});
+
+autoUpdater.on('update-downloaded', (info) => {
+  logger.info('Update downloaded:', info.version);
+
+  dialog.showMessageBox(mainWindow, {
+    type: 'info',
+    title: 'Update Ready',
+    message: 'Update has been downloaded. Restart the application to apply the update?',
+    buttons: ['Restart Now', 'Later'],
+    defaultId: 0,
+    cancelId: 1
+  }).then(result => {
+    if (result.response === 0) {
+      autoUpdater.quitAndInstall(false, true);
+    }
+  });
+});
+
+// Check for updates on startup (in production only)
+app.on('ready', () => {
+  if (!CONFIG.isDev) {
+    setTimeout(() => {
+      autoUpdater.checkForUpdates();
+    }, 5000); // Check after 5 seconds
+  }
+});
+
+// IPC handler for manual update check
+ipcMain.handle('check-for-updates', async () => {
+  if (CONFIG.isDev) {
+    return { available: false, message: 'Updates are disabled in development mode' };
+  }
+
+  try {
+    const result = await autoUpdater.checkForUpdates();
+    return { available: true, version: result.updateInfo.version };
+  } catch (error) {
+    logger.error('Manual update check failed:', error);
+    return { available: false, error: error.message };
+  }
+});
+
 // Handle uncaught exceptions
 process.on('uncaughtException', (error) => {
-  console.error('Uncaught exception:', error);
+  logger.error('Uncaught exception:', error);
   dialog.showErrorBox(
     'Application Error',
     'An unexpected error occurred:\n\n' + error.message
   );
 });
 
-console.log('Main process initialized');
+logger.info('Main process initialized');

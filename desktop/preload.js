@@ -13,6 +13,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Backend operations
   restartBackend: () => ipcRenderer.invoke('restart-backend'),
 
+  // Update operations
+  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+
   // Notifications
   onAction: (callback) => {
     ipcRenderer.on('action', (event, action) => callback(action));

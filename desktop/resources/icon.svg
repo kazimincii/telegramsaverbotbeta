@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Circle -->
+  <circle cx="256" cy="256" r="240" fill="#0088cc"/>
+
+  <!-- Telegram Paper Plane -->
+  <path d="M 256 128 L 256 384 M 128 256 L 384 256" stroke="#ffffff" stroke-width="32" stroke-linecap="round"/>
+  <path d="M 320 192 L 384 256 L 320 320" stroke="#ffffff" stroke-width="32" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+  <!-- Download Arrow -->
+  <circle cx="256" cy="256" r="100" fill="rgba(255,255,255,0.2)"/>
+  <path d="M 256 220 L 256 292 M 230 266 L 256 292 L 282 266" stroke="#ffffff" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+  <!-- Border Circle -->
+  <circle cx="256" cy="256" r="240" fill="none" stroke="rgba(0,0,0,0.1)" stroke-width="8"/>
+</svg>
