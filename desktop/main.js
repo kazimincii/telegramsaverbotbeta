@@ -6,6 +6,8 @@ const fs = require('fs');
 const http = require('http');
 const logger = require('./logger');
 const CrashReporter = require('./crash-reporter');
+const analytics = require('./analytics');
+const { createDevMenu } = require('./dev-menu');
 
 let mainWindow;
 let backendProcess;
@@ -331,14 +333,24 @@ function createWindow() {
 app.on('ready', async () => {
   console.log('App ready, starting backend...');
 
+  // Track app start
+  analytics.trackAppStart();
+
   try {
     await startBackend();
     console.log('Backend started, creating window...');
     createWindow();
     createTray();
+
+    // Create dev menu (in development mode)
+    if (CONFIG.isDev) {
+      createDevMenu(mainWindow, crashReporter);
+    }
+
     console.log('Application started successfully!');
   } catch (error) {
     console.error('Failed to start application:', error);
+    analytics.trackError(error, { phase: 'startup' });
     dialog.showErrorBox(
       'Startup Failed',
       'Failed to start the application.\n\n' +
@@ -359,6 +371,9 @@ app.on('before-quit', () => {
 });
 
 app.on('will-quit', () => {
+  // Track app quit
+  analytics.trackAppQuit();
+
   // Kill backend process
   if (backendProcess) {
     console.log('Stopping backend...');
