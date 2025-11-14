@@ -6,7 +6,13 @@ import logging
 import json
 from pathlib import Path
 from typing import Optional, Dict, Any, List
-import requests
+
+# ``requests`` might be unavailable in the minimal test environment.  Importing
+# it lazily keeps the module importable when the dependency is missing.
+try:  # pragma: no cover - the real network code isn't exercised in tests
+    import requests  # type: ignore
+except ModuleNotFoundError:  # pragma: no cover - triggered during tests
+    requests = None  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +27,10 @@ class IPFSStorage:
 
     def _check_connection(self) -> bool:
         """Check if IPFS daemon is running."""
+        if requests is None:
+            logger.debug("requests is not installed; skipping IPFS connection check")
+            return False
+
         try:
             response = requests.get(f"{self.ipfs_api_url}/api/v0/version", timeout=2)
             if response.status_code == 200:
@@ -38,7 +48,7 @@ class IPFSStorage:
         Returns:
             Dict with 'cid' (Content Identifier) and metadata
         """
-        if not self.available:
+        if not self.available or requests is None:
             logger.error("IPFS daemon not available")
             return None
 
@@ -81,7 +91,7 @@ class IPFSStorage:
         """
         Download file from IPFS using CID.
         """
-        if not self.available:
+        if not self.available or requests is None:
             logger.error("IPFS daemon not available")
             return None
 
@@ -112,6 +122,10 @@ class IPFSStorage:
         """
         Pin file to local IPFS node (prevent garbage collection).
         """
+        if requests is None:
+            logger.error("requests is not installed; cannot pin file")
+            return False
+
         try:
             response = requests.post(
                 f"{self.ipfs_api_url}/api/v0/pin/add",
@@ -128,6 +142,10 @@ class IPFSStorage:
         """
         Unpin file from local IPFS node.
         """
+        if requests is None:
+            logger.error("requests is not installed; cannot unpin file")
+            return False
+
         try:
             response = requests.post(
                 f"{self.ipfs_api_url}/api/v0/pin/rm",
@@ -144,6 +162,10 @@ class IPFSStorage:
         """
         Get metadata about a file stored on IPFS.
         """
+        if requests is None:
+            logger.error("requests is not installed; cannot fetch file info")
+            return None
+
         try:
             response = requests.post(
                 f"{self.ipfs_api_url}/api/v0/object/stat",
@@ -159,6 +181,10 @@ class IPFSStorage:
         """
         List all pinned CIDs on local node.
         """
+        if requests is None:
+            logger.error("requests is not installed; cannot list pins")
+            return []
+
         try:
             response = requests.post(f"{self.ipfs_api_url}/api/v0/pin/ls")
             if response.status_code == 200:
