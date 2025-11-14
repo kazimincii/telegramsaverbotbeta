@@ -27,6 +27,7 @@ import RealtimeCollaboration from "./components/RealtimeCollaboration";
 import SecurityManager from "./components/SecurityManager";
 import MLManager from "./components/MLManager";
 import PluginManager from "./components/PluginManager";
+import MediaProcessor from "./components/MediaProcessor";
 import { AppProvider } from "./context/AppContext";
 import "./styles/modern.css";
 
@@ -88,6 +89,7 @@ export default function App(){
     { id: 'security', label: 'Güvenlik & Şifreleme', icon: '🔐' },
     { id: 'ml', label: 'Machine Learning', icon: '🤖' },
     { id: 'plugins', label: 'Pluginler', icon: '🔌' },
+    { id: 'media-processing', label: 'Gelişmiş Medya İşleme', icon: '🎬' },
     { id: 'ai', label: 'AI Asistan', icon: '🦾' },
     { id: 'summary', label: 'İçerik Özetleme', icon: '📝' },
     { id: 'tagging', label: 'Otomatik Etiketleme', icon: '🏷️' },
@@ -157,6 +159,7 @@ export default function App(){
               {activeView === 'security' && <SecurityManager />}
               {activeView === 'ml' && <MLManager />}
               {activeView === 'plugins' && <PluginManager />}
+              {activeView === 'media-processing' && <MediaProcessor />}
               {activeView === 'ai' && <AIAssistant />}
               {activeView === 'summary' && <ContentSummary />}
               {activeView === 'tagging' && <TagManager />}
