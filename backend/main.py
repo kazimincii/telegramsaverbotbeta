@@ -5989,3 +5989,290 @@ async def get_media_statistics():
     except Exception as e:
         logger.error(f"Get media statistics error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== BUSINESS INTELLIGENCE ENDPOINTS ====================
+
+class CreateDashboardRequest(BaseModel):
+    name: str
+    description: str
+    user_id: str
+    widgets: Optional[List[Dict]] = None
+    layout: Optional[Dict] = None
+    filters: Optional[Dict] = None
+    refresh_interval: Optional[int] = 300
+    is_public: Optional[bool] = False
+    tags: Optional[List[str]] = None
+
+
+class UpdateDashboardRequest(BaseModel):
+    dashboard_id: str
+    user_id: str
+    name: Optional[str] = None
+    description: Optional[str] = None
+    widgets: Optional[List[Dict]] = None
+    layout: Optional[Dict] = None
+    filters: Optional[Dict] = None
+    refresh_interval: Optional[int] = None
+    is_public: Optional[bool] = None
+    tags: Optional[List[str]] = None
+
+
+class CreateKPIRequest(BaseModel):
+    name: str
+    description: str
+    metric: str
+    kpi_type: str
+    user_id: str
+    target_value: Optional[float] = None
+    current_value: Optional[float] = 0.0
+    previous_value: Optional[float] = None
+    unit: Optional[str] = ""
+    time_range: Optional[str] = "this_month"
+
+
+class UpdateKPIRequest(BaseModel):
+    kpi_id: str
+    name: Optional[str] = None
+    description: Optional[str] = None
+    target_value: Optional[float] = None
+    current_value: Optional[float] = None
+    unit: Optional[str] = None
+    time_range: Optional[str] = None
+
+
+class CreateReportRequest(BaseModel):
+    name: str
+    description: str
+    user_id: str
+    template: str
+    data_sources: List[str]
+    filters: Optional[Dict] = None
+    columns: Optional[List[Dict]] = None
+    sorting: Optional[Dict] = None
+    grouping: Optional[List[str]] = None
+    aggregations: Optional[Dict] = None
+    charts: Optional[List[Dict]] = None
+    schedule: Optional[Dict] = None
+    recipients: Optional[List[str]] = None
+    format: Optional[str] = "pdf"
+
+
+class QueryDataRequest(BaseModel):
+    name: str
+    filters: Dict
+    user_id: str
+    sql: Optional[str] = None
+
+
+@APP.post("/api/bi/dashboards")
+async def create_dashboard(request: CreateDashboardRequest):
+    """Create a new BI dashboard"""
+    try:
+        from api.bi.bi_manager import bi_manager
+        result = bi_manager.create_dashboard(
+            name=request.name,
+            description=request.description,
+            user_id=request.user_id,
+            widgets=request.widgets,
+            layout=request.layout,
+            filters=request.filters,
+            refresh_interval=request.refresh_interval,
+            is_public=request.is_public,
+            tags=request.tags
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Create dashboard error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/bi/dashboards/{dashboard_id}")
+async def get_dashboard(dashboard_id: str, user_id: str):
+    """Get dashboard by ID"""
+    try:
+        from api.bi.bi_manager import bi_manager
+        result = bi_manager.get_dashboard(dashboard_id, user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get dashboard error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/bi/dashboards")
+async def list_dashboards(user_id: str, include_public: bool = True):
+    """List all dashboards for a user"""
+    try:
+        from api.bi.bi_manager import bi_manager
+        result = bi_manager.list_dashboards(user_id, include_public)
+        return result
+    except Exception as e:
+        logger.error(f"List dashboards error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.put("/api/bi/dashboards/{dashboard_id}")
+async def update_dashboard(dashboard_id: str, request: UpdateDashboardRequest):
+    """Update dashboard configuration"""
+    try:
+        from api.bi.bi_manager import bi_manager
+        updates = {k: v for k, v in request.dict().items()
+                  if v is not None and k not in ['dashboard_id', 'user_id']}
+        result = bi_manager.update_dashboard(dashboard_id, request.user_id, **updates)
+        return result
+    except Exception as e:
+        logger.error(f"Update dashboard error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.delete("/api/bi/dashboards/{dashboard_id}")
+async def delete_dashboard(dashboard_id: str, user_id: str):
+    """Delete a dashboard"""
+    try:
+        from api.bi.bi_manager import bi_manager
+        result = bi_manager.delete_dashboard(dashboard_id, user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Delete dashboard error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/bi/kpis")
+async def create_kpi(request: CreateKPIRequest):
+    """Create a new KPI"""
+    try:
+        from api.bi.bi_manager import bi_manager
+        result = bi_manager.create_kpi(
+            name=request.name,
+            description=request.description,
+            metric=request.metric,
+            kpi_type=request.kpi_type,
+            user_id=request.user_id,
+            target_value=request.target_value,
+            current_value=request.current_value,
+            previous_value=request.previous_value,
+            unit=request.unit,
+            time_range=request.time_range
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Create KPI error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/bi/kpis/{kpi_id}")
+async def get_kpi(kpi_id: str):
+    """Get KPI by ID"""
+    try:
+        from api.bi.bi_manager import bi_manager
+        result = bi_manager.get_kpi(kpi_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get KPI error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/bi/kpis")
+async def list_kpis(user_id: str):
+    """List all KPIs for a user"""
+    try:
+        from api.bi.bi_manager import bi_manager
+        result = bi_manager.list_kpis(user_id)
+        return result
+    except Exception as e:
+        logger.error(f"List KPIs error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.put("/api/bi/kpis/{kpi_id}")
+async def update_kpi(kpi_id: str, request: UpdateKPIRequest):
+    """Update KPI values"""
+    try:
+        from api.bi.bi_manager import bi_manager
+        updates = {k: v for k, v in request.dict().items()
+                  if v is not None and k != 'kpi_id'}
+        result = bi_manager.update_kpi(kpi_id, **updates)
+        return result
+    except Exception as e:
+        logger.error(f"Update KPI error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/bi/reports")
+async def create_report(request: CreateReportRequest):
+    """Create a custom report"""
+    try:
+        from api.bi.bi_manager import bi_manager
+        result = bi_manager.create_report(
+            name=request.name,
+            description=request.description,
+            user_id=request.user_id,
+            template=request.template,
+            data_sources=request.data_sources,
+            filters=request.filters,
+            columns=request.columns,
+            sorting=request.sorting,
+            grouping=request.grouping,
+            aggregations=request.aggregations,
+            charts=request.charts,
+            schedule=request.schedule,
+            recipients=request.recipients,
+            format=request.format
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Create report error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/bi/reports/{report_id}/generate")
+async def generate_report(report_id: str, user_id: str):
+    """Generate a report"""
+    try:
+        from api.bi.bi_manager import bi_manager
+        result = bi_manager.generate_report(report_id, user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Generate report error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/bi/query")
+async def query_data(request: QueryDataRequest):
+    """Execute a data query"""
+    try:
+        from api.bi.bi_manager import bi_manager
+        result = bi_manager.query_data(
+            name=request.name,
+            filters=request.filters,
+            user_id=request.user_id,
+            sql=request.sql
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Query data error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/bi/metrics/{metric_type}")
+async def get_metrics(metric_type: str, time_range: str, user_id: str):
+    """Get aggregated metrics"""
+    try:
+        from api.bi.bi_manager import bi_manager
+        result = bi_manager.get_metrics(metric_type, time_range, user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get metrics error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/bi/dashboards/{dashboard_id}/export")
+async def export_dashboard(dashboard_id: str, format: str, user_id: str):
+    """Export dashboard to file"""
+    try:
+        from api.bi.bi_manager import bi_manager
+        result = bi_manager.export_dashboard(dashboard_id, format, user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Export dashboard error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
