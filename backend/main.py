@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 import json
 import time
 import base64
@@ -286,7 +287,18 @@ async def global_exception_handler(request: Request, exc: Exception):
     if is_dev:
         content["error_type"] = type(exc).__name__
 
+codex/test-and-fix-all-databases
+    content = {"detail": detail}
+    if is_dev:
+        content["error_type"] = type(exc).__name__
+
+    return JSONResponse(
+        status_code=500,
+        content=content,
+    )
+
     return JSONResponse(status_code=500, content=content)
+main
 
 
 def load_cfg() -> Config:
@@ -479,6 +491,8 @@ async def download_worker(
     flt = make_media_filter(media_types)
     tasks = []
     stop_event = STATE["stop"]
+    download_params = inspect.signature(download_file).parameters
+    supports_chat_args = "chat_id" in download_params or len(download_params) >= 5
 
     try:
         async for dialog in client.iter_dialogs():
@@ -523,6 +537,23 @@ async def download_worker(
                     async with sem:
                         for attempt in range(3):
                             try:
+codex/test-and-fix-all-databases
+                                if supports_chat_args:
+                                    result = await download_file(client, m, tdir, cid, dname)
+                                else:
+                                    result = await download_file(client, m, tdir)
+
+                                if isinstance(result, tuple):
+                                    file_path, file_size = result
+                                elif result is None:
+                                    file_path = tdir / str(getattr(m, "id", "file"))
+                                    file_size = file_path.stat().st_size if file_path.exists() else 0
+                                else:
+                                    file_path = Path(result)
+                                    file_size = file_path.stat().st_size if file_path.exists() else 0
+                                # Record successful download in database
+                                db.add_download(m.id, cid, dname, str(file_path), file_size, knd)
+
                                 result = await download_file(client, m, tdir)
                                 file_path: Optional[Path]
                                 file_size: int
@@ -545,6 +576,7 @@ async def download_worker(
                                         file_size,
                                         knd,
                                     )
+main
                                 STATE["progress"]["downloaded"] += 1
                                 db.update_session_progress(
                                     session_id,
