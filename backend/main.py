@@ -5752,3 +5752,240 @@ async def get_plugin_statistics():
     except Exception as e:
         logger.error(f"Get plugin statistics error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== Advanced Media Processing Endpoints =====
+
+class TranscodeVideoRequest(BaseModel):
+    input_file: str
+    profile_id: str
+    user_id: str
+    input_size_mb: Optional[float] = 100.0
+
+
+class GenerateThumbnailRequest(BaseModel):
+    video_file: str
+    timestamp: float
+    user_id: str
+
+
+class OptimizeImageRequest(BaseModel):
+    input_file: str
+    optimization_id: str
+    user_id: str
+
+
+class CreateImageOptimizationRequest(BaseModel):
+    name: str
+    format: str
+    quality: int
+    max_width: Optional[int] = 1920
+    max_height: Optional[int] = 1080
+    strip_metadata: Optional[bool] = True
+    progressive: Optional[bool] = True
+
+
+class ConvertAudioRequest(BaseModel):
+    input_file: str
+    codec: str
+    bitrate: int
+    user_id: str
+
+
+class CreateBatchOperationRequest(BaseModel):
+    name: str
+    media_type: str
+    files: List[str]
+    operation: str
+    settings: Dict
+    user_id: str
+
+
+@APP.post("/api/media/video/transcode")
+async def transcode_video(request: TranscodeVideoRequest):
+    """Transcode video"""
+    try:
+        from api.media_processing.media_processor import media_processor
+        result = media_processor.transcode_video(
+            input_file=request.input_file,
+            profile_id=request.profile_id,
+            user_id=request.user_id,
+            input_size_mb=request.input_size_mb
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Transcode video error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/media/video/thumbnail")
+async def generate_thumbnail(request: GenerateThumbnailRequest):
+    """Generate video thumbnail"""
+    try:
+        from api.media_processing.media_processor import media_processor
+        result = media_processor.generate_thumbnail(
+            video_file=request.video_file,
+            timestamp=request.timestamp,
+            user_id=request.user_id
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Generate thumbnail error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/media/image/optimize")
+async def optimize_image(request: OptimizeImageRequest):
+    """Optimize image"""
+    try:
+        from api.media_processing.media_processor import media_processor
+        result = media_processor.optimize_image(
+            input_file=request.input_file,
+            optimization_id=request.optimization_id,
+            user_id=request.user_id
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Optimize image error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/media/image/optimizations")
+async def create_image_optimization(request: CreateImageOptimizationRequest):
+    """Create image optimization profile"""
+    try:
+        from api.media_processing.media_processor import media_processor
+        result = media_processor.create_image_optimization(
+            name=request.name,
+            format=request.format,
+            quality=request.quality,
+            max_width=request.max_width,
+            max_height=request.max_height,
+            strip_metadata=request.strip_metadata,
+            progressive=request.progressive
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Create image optimization error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/media/image/optimizations")
+async def list_image_optimizations():
+    """List image optimization profiles"""
+    try:
+        from api.media_processing.media_processor import media_processor
+        result = media_processor.list_image_optimizations()
+        return result
+    except Exception as e:
+        logger.error(f"List image optimizations error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/media/audio/convert")
+async def convert_audio(request: ConvertAudioRequest):
+    """Convert audio format"""
+    try:
+        from api.media_processing.media_processor import media_processor
+        result = media_processor.convert_audio(
+            input_file=request.input_file,
+            codec=request.codec,
+            bitrate=request.bitrate,
+            user_id=request.user_id
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Convert audio error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/media/batch")
+async def create_batch_operation(request: CreateBatchOperationRequest):
+    """Create batch processing operation"""
+    try:
+        from api.media_processing.media_processor import media_processor
+        result = media_processor.create_batch_operation(
+            name=request.name,
+            media_type=request.media_type,
+            files=request.files,
+            operation=request.operation,
+            settings=request.settings,
+            user_id=request.user_id
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Create batch operation error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/media/batch/{batch_id}/start")
+async def start_batch_operation(batch_id: str):
+    """Start batch operation"""
+    try:
+        from api.media_processing.media_processor import media_processor
+        result = media_processor.start_batch_operation(batch_id)
+        return result
+    except Exception as e:
+        logger.error(f"Start batch operation error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/media/jobs/{job_id}")
+async def get_processing_job(job_id: str):
+    """Get processing job details"""
+    try:
+        from api.media_processing.media_processor import media_processor
+        result = media_processor.get_job(job_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get processing job error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/media/jobs")
+async def list_processing_jobs(media_type: Optional[str] = None,
+                              status: Optional[str] = None):
+    """List processing jobs"""
+    try:
+        from api.media_processing.media_processor import media_processor
+        result = media_processor.list_jobs(media_type=media_type, status=status)
+        return result
+    except Exception as e:
+        logger.error(f"List processing jobs error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/media/jobs/{job_id}/cancel")
+async def cancel_processing_job(job_id: str):
+    """Cancel processing job"""
+    try:
+        from api.media_processing.media_processor import media_processor
+        result = media_processor.cancel_job(job_id)
+        return result
+    except Exception as e:
+        logger.error(f"Cancel processing job error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/media/video/profiles")
+async def list_video_profiles():
+    """List video encoding profiles"""
+    try:
+        from api.media_processing.media_processor import media_processor
+        result = media_processor.list_video_profiles()
+        return result
+    except Exception as e:
+        logger.error(f"List video profiles error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/media/statistics")
+async def get_media_statistics():
+    """Get media processing statistics"""
+    try:
+        from api.media_processing.media_processor import media_processor
+        result = media_processor.get_statistics()
+        return result
+    except Exception as e:
+        logger.error(f"Get media statistics error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
