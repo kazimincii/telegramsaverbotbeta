@@ -10,10 +10,7 @@ import os
 from pathlib import Path
 from typing import Optional, Dict, List
 from datetime import datetime
-import base64
 from cryptography.fernet import Fernet
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2
 from telethon import TelegramClient, types as tl_types, functions, errors
 from telethon.sessions import StringSession
 
