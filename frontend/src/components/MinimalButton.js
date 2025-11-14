@@ -17,7 +17,7 @@ export default function MinimalButton({ icon, children, style, ...props }) {
       }}
     >
       {icon && <img src={icon} alt="" style={{width:16,height:16}} />}
-      <span>{children}</span>
+      {children}
     </button>
   );
 }
