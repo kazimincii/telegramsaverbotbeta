@@ -19,6 +19,7 @@ import MediaPlayer from "./components/MediaPlayer/MediaPlayer";
 import DownloadManager from "./components/DownloadManager";
 import CollaborativeWorkspace from "./components/CollaborativeWorkspace";
 import AutomationManager from "./components/AutomationManager";
+import OCRProcessor from "./components/OCRProcessor";
 import { AppProvider } from "./context/AppContext";
 import "./styles/modern.css";
 
@@ -73,6 +74,7 @@ export default function App(){
     { id: 'collaboration', label: 'İş Birliği', icon: '👥' },
     { id: 'advanced-analytics', label: 'Gelişmiş Analitik', icon: '📈' },
     { id: 'automation', label: 'Otomasyon', icon: '⚙️' },
+    { id: 'ocr', label: 'OCR & Belge İşleme', icon: '📄' },
     { id: 'ai', label: 'AI Asistan', icon: '🤖' },
     { id: 'summary', label: 'İçerik Özetleme', icon: '📝' },
     { id: 'tagging', label: 'Otomatik Etiketleme', icon: '🏷️' },
@@ -135,6 +137,7 @@ export default function App(){
               {activeView === 'collaboration' && <CollaborativeWorkspace />}
               {activeView === 'advanced-analytics' && <AdvancedAnalytics />}
               {activeView === 'automation' && <AutomationManager />}
+              {activeView === 'ocr' && <OCRProcessor />}
               {activeView === 'ai' && <AIAssistant />}
               {activeView === 'summary' && <ContentSummary />}
               {activeView === 'tagging' && <TagManager />}

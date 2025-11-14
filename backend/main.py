@@ -3835,3 +3835,141 @@ async def get_automation_scripts():
     except Exception as e:
         logger.error(f"Get scripts error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===================================
+# OCR & Document Processing API Endpoints
+# ===================================
+
+class ProcessDocumentRequest(BaseModel):
+    """Request model for document processing"""
+    file_path: str
+    language: str = "eng"
+    options: Optional[dict] = None
+
+
+class BatchProcessRequest(BaseModel):
+    """Request model for batch processing"""
+    file_paths: List[str]
+    language: str = "eng"
+    options: Optional[dict] = None
+
+
+@APP.post("/api/ocr/process")
+async def process_document(request: ProcessDocumentRequest):
+    """Process a document and extract text"""
+    try:
+        from api.ocr.ocr_processor import ocr_processor
+
+        result = ocr_processor.process_document(
+            file_path=request.file_path,
+            language=request.language,
+            options=request.options
+        )
+
+        return result
+    except Exception as e:
+        logger.error(f"Process document error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/ocr/batch")
+async def batch_process_documents(request: BatchProcessRequest):
+    """Process multiple documents in batch"""
+    try:
+        from api.ocr.ocr_processor import ocr_processor
+
+        result = ocr_processor.batch_process(
+            file_paths=request.file_paths,
+            language=request.language,
+            options=request.options
+        )
+
+        return result
+    except Exception as e:
+        logger.error(f"Batch process error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/ocr/analyze/{file_path:path}")
+async def analyze_document(file_path: str):
+    """Analyze document structure"""
+    try:
+        from api.ocr.ocr_processor import ocr_processor
+
+        result = ocr_processor.analyze_document(file_path)
+
+        return result
+    except Exception as e:
+        logger.error(f"Analyze document error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/ocr/results")
+async def get_ocr_results(limit: int = 100):
+    """Get all OCR results"""
+    try:
+        from api.ocr.ocr_processor import ocr_processor
+
+        result = ocr_processor.get_all_results(limit=limit)
+
+        return result
+    except Exception as e:
+        logger.error(f"Get OCR results error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/ocr/result/{result_id}")
+async def get_ocr_result(result_id: str):
+    """Get a specific OCR result"""
+    try:
+        from api.ocr.ocr_processor import ocr_processor
+
+        result = ocr_processor.get_result(result_id)
+
+        return result
+    except Exception as e:
+        logger.error(f"Get OCR result error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.delete("/api/ocr/result/{result_id}")
+async def delete_ocr_result(result_id: str):
+    """Delete an OCR result"""
+    try:
+        from api.ocr.ocr_processor import ocr_processor
+
+        result = ocr_processor.delete_result(result_id)
+
+        return result
+    except Exception as e:
+        logger.error(f"Delete OCR result error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/ocr/search")
+async def search_ocr_results(query: str, limit: int = 50):
+    """Search in OCR extracted text"""
+    try:
+        from api.ocr.ocr_processor import ocr_processor
+
+        result = ocr_processor.search_in_results(query=query, limit=limit)
+
+        return result
+    except Exception as e:
+        logger.error(f"Search OCR results error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/ocr/statistics")
+async def get_ocr_statistics():
+    """Get OCR processing statistics"""
+    try:
+        from api.ocr.ocr_processor import ocr_processor
+
+        result = ocr_processor.get_statistics()
+
+        return result
+    except Exception as e:
+        logger.error(f"Get OCR statistics error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
