@@ -3,12 +3,16 @@ import TelegramSplash from './TelegramSplash';
 import PhoneInput from './PhoneInput';
 import CodeInput from './CodeInput';
 import TwoFactorAuth from './TwoFactorAuth';
+import BiometricSetup from '../BiometricAuth/BiometricSetup';
+import BiometricLogin from '../BiometricAuth/BiometricLogin';
 
 const LoginStage = {
   SPLASH: 'splash',
   PHONE: 'phone',
+  BIOMETRIC_LOGIN: 'biometric_login',
   CODE: 'code',
   TWO_FACTOR: 'two_factor',
+  BIOMETRIC_SETUP: 'biometric_setup',
   SUCCESS: 'success'
 };
 
@@ -19,6 +23,7 @@ const TelegramLogin = ({ onLoginSuccess, apiBaseUrl = 'http://localhost:8000' })
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [splashProgress, setSplashProgress] = useState(0);
+  const [loggedInUser, setLoggedInUser] = useState(null);
 
   useEffect(() => {
     // Check if already logged in
@@ -104,9 +109,9 @@ const TelegramLogin = ({ onLoginSuccess, apiBaseUrl = 'http://localhost:8000' })
         throw new Error(data.detail || 'Invalid code');
       }
 
-      // Login successful
-      setStage(LoginStage.SUCCESS);
-      onLoginSuccess && onLoginSuccess(data);
+      // Login successful - store user and offer biometric setup
+      setLoggedInUser(data.user);
+      setStage(LoginStage.BIOMETRIC_SETUP);
     } catch (err) {
       console.error('Code submit error:', err);
       setError(err.message || 'Invalid verification code. Please try again.');
@@ -134,9 +139,9 @@ const TelegramLogin = ({ onLoginSuccess, apiBaseUrl = 'http://localhost:8000' })
         throw new Error(data.detail || 'Invalid password');
       }
 
-      // Login successful
-      setStage(LoginStage.SUCCESS);
-      onLoginSuccess && onLoginSuccess(data);
+      // Login successful - store user and offer biometric setup
+      setLoggedInUser(data.user);
+      setStage(LoginStage.BIOMETRIC_SETUP);
     } catch (err) {
       console.error('2FA submit error:', err);
       setError(err.message || 'Invalid password. Please try again.');
@@ -156,6 +161,33 @@ const TelegramLogin = ({ onLoginSuccess, apiBaseUrl = 'http://localhost:8000' })
     setError('');
   };
 
+  const handleBiometricSetupComplete = () => {
+    // Biometric setup done - complete login
+    setStage(LoginStage.SUCCESS);
+    onLoginSuccess && onLoginSuccess({ user: loggedInUser });
+  };
+
+  const handleBiometricSetupSkip = () => {
+    // Skip biometric - complete login anyway
+    setStage(LoginStage.SUCCESS);
+    onLoginSuccess && onLoginSuccess({ user: loggedInUser });
+  };
+
+  const handleBiometricLoginSuccess = (data) => {
+    // Biometric login successful
+    setLoggedInUser(data.user);
+    setStage(LoginStage.SUCCESS);
+    onLoginSuccess && onLoginSuccess(data);
+  };
+
+  const handleBackFromBiometric = () => {
+    setStage(LoginStage.PHONE);
+  };
+
+  const handleUseBiometric = () => {
+    setStage(LoginStage.BIOMETRIC_LOGIN);
+  };
+
   // Render based on current stage
   switch (stage) {
     case LoginStage.SPLASH:
@@ -165,8 +197,18 @@ const TelegramLogin = ({ onLoginSuccess, apiBaseUrl = 'http://localhost:8000' })
       return (
         <PhoneInput
           onSubmit={handlePhoneSubmit}
+          onUseBiometric={handleUseBiometric}
           loading={loading}
           error={error}
+        />
+      );
+
+    case LoginStage.BIOMETRIC_LOGIN:
+      return (
+        <BiometricLogin
+          apiBaseUrl={apiBaseUrl}
+          onSuccess={handleBiometricLoginSuccess}
+          onBack={handleBackFromBiometric}
         />
       );
 
@@ -188,6 +230,16 @@ const TelegramLogin = ({ onLoginSuccess, apiBaseUrl = 'http://localhost:8000' })
           onBack={handleBackToCode}
           loading={loading}
           error={error}
+        />
+      );
+
+    case LoginStage.BIOMETRIC_SETUP:
+      return (
+        <BiometricSetup
+          user={loggedInUser}
+          apiBaseUrl={apiBaseUrl}
+          onComplete={handleBiometricSetupComplete}
+          onSkip={handleBiometricSetupSkip}
         />
       );
 

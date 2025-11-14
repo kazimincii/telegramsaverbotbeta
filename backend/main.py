@@ -6774,3 +6774,10 @@ async def get_performance_metrics():
 # Register Telegram API routes
 register_telegram_routes(APP)
 
+# Register Biometric API routes
+try:
+    from biometric_api import register_biometric_routes
+    register_biometric_routes(APP)
+except Exception as e:
+    logger.warning(f"Biometric API routes not loaded: {e}")
+

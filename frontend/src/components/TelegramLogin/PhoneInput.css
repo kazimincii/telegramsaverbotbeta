@@ -182,8 +182,63 @@
   animation: spin 0.8s linear infinite;
 }
 
+.biometric-option {
+  margin-top: 20px;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 20px 0;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.divider span {
+  padding: 0 15px;
+  font-size: 13px;
+  color: #888;
+  font-weight: 500;
+}
+
+.biometric-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 24px;
+  background: white;
+  color: #2AABEE;
+  border: 2px solid #2AABEE;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.biometric-button:hover:not(:disabled) {
+  background: #2AABEE;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(42, 171, 238, 0.3);
+}
+
+.biometric-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .phone-input-footer {
   text-align: center;
+  margin-top: 20px;
 }
 
 .help-text {

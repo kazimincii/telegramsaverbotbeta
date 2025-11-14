@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './PhoneInput.css';
 
-const PhoneInput = ({ onSubmit, loading, error }) => {
+const PhoneInput = ({ onSubmit, onUseBiometric, loading, error }) => {
   const [countryCode, setCountryCode] = useState('+90');
   const [phoneNumber, setPhoneNumber] = useState('');
 
@@ -123,6 +123,25 @@ const PhoneInput = ({ onSubmit, loading, error }) => {
             )}
           </button>
         </form>
+
+        {onUseBiometric && (
+          <div className="biometric-option">
+            <div className="divider">
+              <span>or</span>
+            </div>
+            <button
+              type="button"
+              className="biometric-button"
+              onClick={onUseBiometric}
+              disabled={loading}
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M10 2C5.58 2 2 5.58 2 10s3.58 8 8 8 8-3.58 8-8-3.58-8-8-8zm0 3c1.38 0 2.5 1.12 2.5 2.5S11.38 10 10 10s-2.5-1.12-2.5-2.5S8.62 5 10 5zm0 11.6c-2.08 0-3.93-1.07-5-2.69.03-1.66 3.33-2.57 5-2.57 1.66 0 4.97.91 5 2.57-1.07 1.62-2.92 2.69-5 2.69z" fill="currentColor"/>
+              </svg>
+              Use Biometric Authentication
+            </button>
+          </div>
+        )}
 
         <div className="phone-input-footer">
           <p className="help-text">
