@@ -6,6 +6,7 @@ import WebhookManager from "./components/WebhookManager";
 import CloudSyncSettings from "./components/CloudSyncSettings";
 import VideoProcessor from "./components/VideoProcessor";
 import AnalyticsDashboard from "./components/AnalyticsDashboard";
+import AdvancedAnalytics from "./components/AdvancedAnalytics";
 import LanguageSelector, { LanguageProvider } from "./components/LanguageSelector";
 import EnterpriseManager from "./components/EnterpriseManager";
 import OfflineIndicator from "./components/OfflineIndicator";
@@ -69,6 +70,7 @@ export default function App(){
     { id: 'downloads', label: 'İndirme Yöneticisi', icon: '📥' },
     { id: 'media-player', label: 'Medya Oynatıcı', icon: '🎬' },
     { id: 'collaboration', label: 'İş Birliği', icon: '👥' },
+    { id: 'advanced-analytics', label: 'Gelişmiş Analitik', icon: '📈' },
     { id: 'ai', label: 'AI Asistan', icon: '🤖' },
     { id: 'summary', label: 'İçerik Özetleme', icon: '📝' },
     { id: 'tagging', label: 'Otomatik Etiketleme', icon: '🏷️' },
@@ -129,6 +131,7 @@ export default function App(){
               {activeView === 'downloads' && <DownloadManager />}
               {activeView === 'media-player' && <MediaPlayer />}
               {activeView === 'collaboration' && <CollaborativeWorkspace />}
+              {activeView === 'advanced-analytics' && <AdvancedAnalytics />}
               {activeView === 'ai' && <AIAssistant />}
               {activeView === 'summary' && <ContentSummary />}
               {activeView === 'tagging' && <TagManager />}

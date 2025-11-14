@@ -3548,10 +3548,10 @@ async def get_activity_feed(workspace_id: str, limit: int = 50):
     """Get workspace activity feed"""
     try:
         from api.collaboration.workspace_manager import get_workspace_manager
-        
+
         manager = get_workspace_manager()
         activities = manager.get_activity_feed(workspace_id, limit)
-        
+
         return {
             'success': True,
             'activities': activities,
@@ -3559,4 +3559,112 @@ async def get_activity_feed(workspace_id: str, limit: int = 50):
         }
     except Exception as e:
         logger.error(f"Get activity feed error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===================================
+# Advanced Analytics API Endpoints
+# ===================================
+
+class TrackEventRequest(BaseModel):
+    """Request model for tracking analytics event"""
+    metric_type: str
+    user_id: str
+    value: float = 1.0
+    metadata: Optional[dict] = None
+    tags: Optional[List[str]] = None
+
+
+@APP.post("/api/analytics/track")
+async def track_analytics_event(request: TrackEventRequest):
+    """Track a new analytics event"""
+    try:
+        from api.analytics.analytics_manager import analytics_manager
+
+        result = analytics_manager.track_event(
+            metric_type=request.metric_type,
+            user_id=request.user_id,
+            value=request.value,
+            metadata=request.metadata,
+            tags=request.tags
+        )
+
+        return result
+    except Exception as e:
+        logger.error(f"Track event error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/analytics/events")
+async def get_analytics_events(
+    time_range: Optional[str] = None,
+    metric_type: Optional[str] = None,
+    user_id: Optional[str] = None,
+    limit: int = 1000
+):
+    """Get filtered analytics events"""
+    try:
+        from api.analytics.analytics_manager import analytics_manager
+
+        result = analytics_manager.get_events(
+            time_range=time_range,
+            metric_type=metric_type,
+            user_id=user_id,
+            limit=limit
+        )
+
+        return result
+    except Exception as e:
+        logger.error(f"Get events error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/analytics/report")
+async def generate_analytics_report(
+    time_range: str = "last_week",
+    include_insights: bool = True
+):
+    """Generate comprehensive analytics report"""
+    try:
+        from api.analytics.analytics_manager import analytics_manager
+
+        result = analytics_manager.generate_report(
+            time_range=time_range,
+            include_insights=include_insights
+        )
+
+        return result
+    except Exception as e:
+        logger.error(f"Generate report error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/analytics/dashboard")
+async def get_dashboard_data(time_range: str = "last_week"):
+    """Get dashboard data for visualization"""
+    try:
+        from api.analytics.analytics_manager import analytics_manager
+
+        result = analytics_manager.get_dashboard_data(time_range=time_range)
+
+        return result
+    except Exception as e:
+        logger.error(f"Get dashboard data error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/analytics/user/{user_id}")
+async def get_user_analytics(user_id: str, time_range: str = "last_month"):
+    """Get analytics for specific user"""
+    try:
+        from api.analytics.analytics_manager import analytics_manager
+
+        result = analytics_manager.get_user_analytics(
+            user_id=user_id,
+            time_range=time_range
+        )
+
+        return result
+    except Exception as e:
+        logger.error(f"Get user analytics error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
