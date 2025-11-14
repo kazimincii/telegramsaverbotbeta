@@ -29,12 +29,13 @@ def get_telegram_service() -> TelegramService:
         # Get API credentials from environment or config
         api_id = int(os.getenv("TELEGRAM_API_ID", "0"))
         api_hash = os.getenv("TELEGRAM_API_HASH", "")
+        linkedin_api_key = os.getenv("LINKEDIN_API_KEY")  # Optional
 
         if not api_id or not api_hash:
             raise Exception("Telegram API credentials not configured")
 
         session_dir = Path(__file__).parent / ".telegram_sessions"
-        telegram_service = TelegramService(api_id, api_hash, session_dir)
+        telegram_service = TelegramService(api_id, api_hash, session_dir, linkedin_api_key)
 
     return telegram_service
 
@@ -148,14 +149,19 @@ def register_telegram_routes(app):
             raise HTTPException(status_code=500, detail=str(e))
 
     @app.get("/api/telegram/contacts")
-    async def telegram_get_contacts():
-        """Get user's contacts with AI profiles"""
+    async def telegram_get_contacts(analyze_with_ai: bool = True, ai_limit: int = 50):
+        """Get user's contacts with AI profiles
+
+        Args:
+            analyze_with_ai: Whether to run AI analysis on contacts (default: True)
+            ai_limit: Number of messages to analyze per contact (default: 50)
+        """
         try:
             service = get_telegram_service()
-            contacts = await service.get_contacts()
-
-            # TODO: Integrate with AI service to populate profession/sector data
-            # For now, return contacts with placeholder AI data
+            contacts = await service.get_contacts(
+                analyze_with_ai=analyze_with_ai,
+                ai_limit=ai_limit
+            )
 
             return {"ok": True, "contacts": contacts}
         except Exception as e:
@@ -163,26 +169,24 @@ def register_telegram_routes(app):
             raise HTTPException(status_code=500, detail=str(e))
 
     @app.get("/api/telegram/contact/{contact_id}")
-    async def telegram_get_contact(contact_id: int):
-        """Get detailed contact information with AI profile"""
+    async def telegram_get_contact(contact_id: int, ai_limit: int = 100):
+        """Get detailed contact information with AI profile
+
+        Args:
+            contact_id: Contact ID
+            ai_limit: Number of messages to analyze (default: 100)
+        """
         try:
             service = get_telegram_service()
-            contacts = await service.get_contacts()
+
+            # Get all contacts with AI analysis
+            contacts = await service.get_contacts(analyze_with_ai=True, ai_limit=ai_limit)
 
             # Find contact by ID
             contact = next((c for c in contacts if c["id"] == contact_id), None)
 
             if not contact:
                 raise HTTPException(status_code=404, detail="Contact not found")
-
-            # TODO: Load AI analysis data for this contact
-            # Placeholder data
-            contact.update({
-                "message_count": 0,
-                "last_activity": None,
-                "engagement_score": 0.0,
-                "ai_summary": "No analysis available yet."
-            })
 
             return {"ok": True, **contact}
         except HTTPException:

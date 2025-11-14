@@ -360,3 +360,62 @@
 .action-btn.secondary:hover {
   background: #e0e0e0;
 }
+
+/* Profile Link */
+.profile-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #2AABEE;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.profile-link:hover {
+  color: #229ED9;
+  text-decoration: underline;
+}
+
+/* Career Trajectory */
+.career-trajectory {
+  padding: 0;
+}
+
+.trajectory-badge {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.trajectory-badge.rising {
+  background: linear-gradient(135deg, #52c41a 0%, #73d13d 100%);
+  color: white;
+}
+
+.trajectory-badge.stable {
+  background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
+  color: white;
+}
+
+.trajectory-badge.transitioning {
+  background: linear-gradient(135deg, #faad14 0%, #ffc53d 100%);
+  color: white;
+}
+
+/* Topic and Interest Tags */
+.topic-tag {
+  background: linear-gradient(135deg, #722ed1 0%, #9254de 100%);
+  color: white;
+  border: none;
+}
+
+.interest-tag {
+  background: linear-gradient(135deg, #eb2f96 0%, #f759ab 100%);
+  color: white;
+  border: none;
+}

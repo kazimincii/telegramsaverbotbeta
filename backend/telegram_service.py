@@ -13,6 +13,7 @@ from datetime import datetime
 from cryptography.fernet import Fernet
 from telethon import TelegramClient, types as tl_types, functions, errors
 from telethon.sessions import StringSession
+from ai_contact_intelligence import get_ai_intelligence, ContactProfile
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +72,7 @@ class SessionManager:
 class TelegramService:
     """Service for managing Telegram client operations"""
 
-    def __init__(self, api_id: int, api_hash: str, session_dir: Path):
+    def __init__(self, api_id: int, api_hash: str, session_dir: Path, linkedin_api_key: Optional[str] = None):
         self.api_id = api_id
         self.api_hash = api_hash
         self.session_dir = session_dir
@@ -81,6 +82,9 @@ class TelegramService:
         self.client: Optional[TelegramClient] = None
         self.phone_code_hash: Optional[str] = None
         self._user_info: Optional[Dict] = None
+
+        # AI Contact Intelligence
+        self.ai_intelligence = get_ai_intelligence(linkedin_api_key)
 
     async def initialize(self) -> bool:
         """Initialize Telegram client with existing session if available"""
@@ -344,8 +348,37 @@ class TelegramService:
             logger.error(f"Error getting messages: {e}")
             raise Exception(f"Failed to get messages: {str(e)}")
 
-    async def get_contacts(self) -> List[Dict]:
-        """Get user's contacts"""
+    async def get_contact_messages(self, contact_id: int, limit: int = 50) -> tuple[List[str], List[datetime]]:
+        """Get messages from a contact for AI analysis"""
+        if not self.client or not await self.client.is_user_authorized():
+            raise Exception("Not authenticated")
+
+        try:
+            messages = await self.client.get_messages(contact_id, limit=limit)
+
+            message_texts = []
+            timestamps = []
+
+            for msg in messages:
+                if not msg or not msg.text:
+                    continue
+
+                message_texts.append(msg.text)
+                if msg.date:
+                    timestamps.append(msg.date)
+
+            return message_texts, timestamps
+        except Exception as e:
+            logger.error(f"Error getting messages for contact {contact_id}: {e}")
+            return [], []
+
+    async def get_contacts(self, analyze_with_ai: bool = True, ai_limit: int = 50) -> List[Dict]:
+        """Get user's contacts with optional AI analysis
+
+        Args:
+            analyze_with_ai: Whether to run AI analysis on contacts
+            ai_limit: Number of messages to analyze per contact
+        """
         if not self.client or not await self.client.is_user_authorized():
             raise Exception("Not authenticated")
 
@@ -359,15 +392,76 @@ class TelegramService:
                     "name": f"{contact.first_name or ''} {contact.last_name or ''}".strip(),
                     "username": contact.username,
                     "phone": contact.phone,
-                    # Placeholder for AI data - will be populated by AI service
-                    "ai_profession": None,
-                    "ai_sector": None,
-                    "confidence": 0.0,
-                    "evidence_keywords": []
                 }
+
+                # AI analysis
+                if analyze_with_ai:
+                    try:
+                        # Get messages from this contact
+                        messages, timestamps = await self.get_contact_messages(contact.id, limit=ai_limit)
+
+                        if messages:
+                            # Run AI analysis
+                            profile = await self.ai_intelligence.analyze_contact(
+                                contact_id=contact.id,
+                                name=contact_data["name"],
+                                username=contact.username,
+                                phone=contact.phone,
+                                messages=messages,
+                                message_timestamps=timestamps
+                            )
+
+                            # Add AI data to contact
+                            contact_data.update({
+                                "ai_profession": profile.profession,
+                                "ai_sector": profile.sector,
+                                "ai_company": profile.company,
+                                "ai_job_title": profile.job_title,
+                                "ai_seniority_level": profile.seniority_level,
+                                "ai_career_stage": profile.career_stage,
+                                "ai_estimated_experience_years": profile.estimated_experience_years,
+                                "ai_career_trajectory": profile.career_trajectory,
+                                "ai_linkedin_url": profile.linkedin_url,
+                                "confidence": profile.confidence,
+                                "evidence_keywords": profile.evidence_keywords,
+                                "message_count": profile.message_count,
+                                "last_activity": profile.last_activity.isoformat() if profile.last_activity else None,
+                                "engagement_score": profile.engagement_score,
+                                "avg_response_time_hours": profile.avg_response_time_hours,
+                                "message_frequency_per_week": profile.message_frequency_per_week,
+                                "top_topics": profile.top_topics,
+                                "interests": profile.interests,
+                            })
+                        else:
+                            # No messages - return basic data
+                            contact_data.update({
+                                "ai_profession": None,
+                                "ai_sector": None,
+                                "confidence": 0.0,
+                                "evidence_keywords": [],
+                                "message_count": 0,
+                            })
+                    except Exception as e:
+                        logger.error(f"AI analysis failed for contact {contact.id}: {e}")
+                        # Return basic data on AI failure
+                        contact_data.update({
+                            "ai_profession": None,
+                            "ai_sector": None,
+                            "confidence": 0.0,
+                            "evidence_keywords": [],
+                        })
+                else:
+                    # AI disabled - return basic data
+                    contact_data.update({
+                        "ai_profession": None,
+                        "ai_sector": None,
+                        "confidence": 0.0,
+                        "evidence_keywords": [],
+                    })
+
                 result.append(contact_data)
 
-            logger.info(f"Retrieved {len(result)} contacts")
+            logger.info(f"Retrieved {len(result)} contacts (AI analysis: {analyze_with_ai})")
             return result
         except Exception as e:
             logger.error(f"Error getting contacts: {e}")
