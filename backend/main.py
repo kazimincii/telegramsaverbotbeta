@@ -5162,3 +5162,384 @@ async def get_security_statistics():
     except Exception as e:
         logger.error(f"Get security statistics error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== Machine Learning Integration Endpoints =====
+
+class CreateModelRequest(BaseModel):
+    name: str
+    description: str
+    model_type: str
+    framework: str
+    user_id: str
+    input_shape: Optional[List[int]] = []
+    output_shape: Optional[List[int]] = []
+    num_parameters: Optional[int] = 0
+    model_size_mb: Optional[float] = 0.0
+    tags: Optional[List[str]] = []
+    metadata: Optional[Dict] = {}
+
+
+class UpdateModelRequest(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    status: Optional[str] = None
+    tags: Optional[List[str]] = None
+    metadata: Optional[Dict] = None
+    metrics: Optional[Dict] = None
+    is_deployed: Optional[bool] = None
+    endpoint_url: Optional[str] = None
+    deployment_config: Optional[Dict] = None
+
+
+class CreateTrainingJobRequest(BaseModel):
+    model_id: str
+    name: str
+    dataset_path: str
+    user_id: str
+    num_epochs: Optional[int] = 10
+    batch_size: Optional[int] = 32
+    learning_rate: Optional[float] = 0.001
+    optimizer: Optional[str] = "adam"
+    loss_function: Optional[str] = "categorical_crossentropy"
+    gpu_enabled: Optional[bool] = False
+    num_gpus: Optional[int] = 0
+    memory_mb: Optional[int] = 2048
+
+
+class PredictRequest(BaseModel):
+    model_id: str
+    input_data: Any
+    user_id: str
+    batch_size: Optional[int] = 1
+    confidence_threshold: Optional[float] = 0.5
+    max_results: Optional[int] = 5
+
+
+class BatchPredictRequest(BaseModel):
+    model_id: str
+    input_batch: List[Any]
+    user_id: str
+
+
+class CreateDatasetRequest(BaseModel):
+    name: str
+    description: str
+    dataset_type: str
+    user_id: str
+    num_samples: Optional[int] = 0
+    num_features: Optional[int] = 0
+    num_classes: Optional[int] = 0
+    size_mb: Optional[float] = 0.0
+    train_split: Optional[float] = 0.7
+    val_split: Optional[float] = 0.15
+    test_split: Optional[float] = 0.15
+    labels: Optional[List[str]] = []
+    preprocessing_steps: Optional[List[str]] = []
+
+
+class DeployModelRequest(BaseModel):
+    model_id: str
+    config: Dict
+
+
+class CreateAutoMLRequest(BaseModel):
+    name: str
+    task_type: str
+    metric_to_optimize: str
+    model_types: Optional[List[str]] = []
+    hyperparameters: Optional[Dict] = {}
+    max_trials: Optional[int] = 50
+    max_time_minutes: Optional[int] = 60
+    max_models: Optional[int] = 10
+
+
+@APP.post("/api/ml/models")
+async def create_ml_model(request: CreateModelRequest):
+    """Create a new ML model"""
+    try:
+        from api.ml.ml_manager import ml_manager
+        result = ml_manager.create_model(
+            name=request.name,
+            description=request.description,
+            model_type=request.model_type,
+            framework=request.framework,
+            user_id=request.user_id,
+            input_shape=request.input_shape,
+            output_shape=request.output_shape,
+            num_parameters=request.num_parameters,
+            model_size_mb=request.model_size_mb,
+            tags=request.tags,
+            metadata=request.metadata
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Create ML model error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/ml/models/{model_id}")
+async def get_ml_model(model_id: str):
+    """Get ML model by ID"""
+    try:
+        from api.ml.ml_manager import ml_manager
+        result = ml_manager.get_model(model_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get ML model error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/ml/models")
+async def list_ml_models(user_id: Optional[str] = None,
+                        model_type: Optional[str] = None,
+                        status: Optional[str] = None):
+    """List ML models"""
+    try:
+        from api.ml.ml_manager import ml_manager
+        result = ml_manager.list_models(user_id=user_id, model_type=model_type, status=status)
+        return result
+    except Exception as e:
+        logger.error(f"List ML models error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.put("/api/ml/models/{model_id}")
+async def update_ml_model(model_id: str, request: UpdateModelRequest):
+    """Update ML model"""
+    try:
+        from api.ml.ml_manager import ml_manager
+        updates = {k: v for k, v in request.dict().items() if v is not None}
+        result = ml_manager.update_model(model_id, **updates)
+        return result
+    except Exception as e:
+        logger.error(f"Update ML model error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.delete("/api/ml/models/{model_id}")
+async def delete_ml_model(model_id: str):
+    """Delete ML model"""
+    try:
+        from api.ml.ml_manager import ml_manager
+        result = ml_manager.delete_model(model_id)
+        return result
+    except Exception as e:
+        logger.error(f"Delete ML model error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/ml/training-jobs")
+async def create_training_job(request: CreateTrainingJobRequest):
+    """Create a training job"""
+    try:
+        from api.ml.ml_manager import ml_manager
+        result = ml_manager.create_training_job(
+            model_id=request.model_id,
+            name=request.name,
+            dataset_path=request.dataset_path,
+            user_id=request.user_id,
+            num_epochs=request.num_epochs,
+            batch_size=request.batch_size,
+            learning_rate=request.learning_rate,
+            optimizer=request.optimizer,
+            loss_function=request.loss_function,
+            gpu_enabled=request.gpu_enabled,
+            num_gpus=request.num_gpus,
+            memory_mb=request.memory_mb
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Create training job error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/ml/training-jobs/{job_id}/start")
+async def start_training_job(job_id: str):
+    """Start a training job"""
+    try:
+        from api.ml.ml_manager import ml_manager
+        result = ml_manager.start_training(job_id)
+        return result
+    except Exception as e:
+        logger.error(f"Start training job error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/ml/training-jobs/{job_id}/stop")
+async def stop_training_job(job_id: str):
+    """Stop a training job"""
+    try:
+        from api.ml.ml_manager import ml_manager
+        result = ml_manager.stop_training(job_id)
+        return result
+    except Exception as e:
+        logger.error(f"Stop training job error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/ml/training-jobs/{job_id}")
+async def get_training_job(job_id: str):
+    """Get training job details"""
+    try:
+        from api.ml.ml_manager import ml_manager
+        result = ml_manager.get_training_job(job_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get training job error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/ml/training-jobs")
+async def list_training_jobs(model_id: Optional[str] = None,
+                             status: Optional[str] = None):
+    """List training jobs"""
+    try:
+        from api.ml.ml_manager import ml_manager
+        result = ml_manager.list_training_jobs(model_id=model_id, status=status)
+        return result
+    except Exception as e:
+        logger.error(f"List training jobs error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/ml/predict")
+async def ml_predict(request: PredictRequest):
+    """Run model inference"""
+    try:
+        from api.ml.ml_manager import ml_manager
+        result = ml_manager.predict(
+            model_id=request.model_id,
+            input_data=request.input_data,
+            user_id=request.user_id,
+            batch_size=request.batch_size,
+            confidence_threshold=request.confidence_threshold,
+            max_results=request.max_results
+        )
+        return result
+    except Exception as e:
+        logger.error(f"ML predict error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/ml/predict/batch")
+async def ml_batch_predict(request: BatchPredictRequest):
+    """Run batch inference"""
+    try:
+        from api.ml.ml_manager import ml_manager
+        result = ml_manager.batch_predict(
+            model_id=request.model_id,
+            input_batch=request.input_batch,
+            user_id=request.user_id
+        )
+        return result
+    except Exception as e:
+        logger.error(f"ML batch predict error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/ml/datasets")
+async def create_dataset(request: CreateDatasetRequest):
+    """Create a dataset"""
+    try:
+        from api.ml.ml_manager import ml_manager
+        result = ml_manager.create_dataset(
+            name=request.name,
+            description=request.description,
+            dataset_type=request.dataset_type,
+            user_id=request.user_id,
+            num_samples=request.num_samples,
+            num_features=request.num_features,
+            num_classes=request.num_classes,
+            size_mb=request.size_mb,
+            train_split=request.train_split,
+            val_split=request.val_split,
+            test_split=request.test_split,
+            labels=request.labels,
+            preprocessing_steps=request.preprocessing_steps
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Create dataset error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/ml/datasets")
+async def list_datasets(user_id: Optional[str] = None):
+    """List datasets"""
+    try:
+        from api.ml.ml_manager import ml_manager
+        result = ml_manager.list_datasets(user_id=user_id)
+        return result
+    except Exception as e:
+        logger.error(f"List datasets error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/ml/deploy")
+async def deploy_model(request: DeployModelRequest):
+    """Deploy a model"""
+    try:
+        from api.ml.ml_manager import ml_manager
+        result = ml_manager.deploy_model(request.model_id, request.config)
+        return result
+    except Exception as e:
+        logger.error(f"Deploy model error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/ml/undeploy/{model_id}")
+async def undeploy_model(model_id: str):
+    """Undeploy a model"""
+    try:
+        from api.ml.ml_manager import ml_manager
+        result = ml_manager.undeploy_model(model_id)
+        return result
+    except Exception as e:
+        logger.error(f"Undeploy model error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/ml/automl")
+async def create_automl(request: CreateAutoMLRequest):
+    """Create AutoML configuration"""
+    try:
+        from api.ml.ml_manager import ml_manager
+        result = ml_manager.create_automl_config(
+            name=request.name,
+            task_type=request.task_type,
+            metric_to_optimize=request.metric_to_optimize,
+            model_types=request.model_types,
+            hyperparameters=request.hyperparameters,
+            max_trials=request.max_trials,
+            max_time_minutes=request.max_time_minutes,
+            max_models=request.max_models
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Create AutoML error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/ml/automl/{config_id}/start")
+async def start_automl(config_id: str):
+    """Start AutoML search"""
+    try:
+        from api.ml.ml_manager import ml_manager
+        result = ml_manager.start_automl(config_id)
+        return result
+    except Exception as e:
+        logger.error(f"Start AutoML error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/ml/statistics")
+async def get_ml_statistics():
+    """Get ML statistics"""
+    try:
+        from api.ml.ml_manager import ml_manager
+        result = ml_manager.get_statistics()
+        return result
+    except Exception as e:
+        logger.error(f"Get ML statistics error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

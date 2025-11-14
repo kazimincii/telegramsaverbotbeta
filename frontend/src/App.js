@@ -25,6 +25,7 @@ import PremiumManager from "./components/PremiumManager";
 import CloudStorageManager from "./components/CloudStorageManager";
 import RealtimeCollaboration from "./components/RealtimeCollaboration";
 import SecurityManager from "./components/SecurityManager";
+import MLManager from "./components/MLManager";
 import { AppProvider } from "./context/AppContext";
 import "./styles/modern.css";
 
@@ -84,7 +85,8 @@ export default function App(){
     { id: 'voice', label: 'Sesli Kontrol', icon: '🎤' },
     { id: 'premium', label: 'Premium', icon: '💎' },
     { id: 'security', label: 'Güvenlik & Şifreleme', icon: '🔐' },
-    { id: 'ai', label: 'AI Asistan', icon: '🤖' },
+    { id: 'ml', label: 'Machine Learning', icon: '🤖' },
+    { id: 'ai', label: 'AI Asistan', icon: '🦾' },
     { id: 'summary', label: 'İçerik Özetleme', icon: '📝' },
     { id: 'tagging', label: 'Otomatik Etiketleme', icon: '🏷️' },
     { id: 'advanced-search', label: 'Gelişmiş Arama', icon: '🔍' },
@@ -151,6 +153,7 @@ export default function App(){
               {activeView === 'voice' && <VoiceControl />}
               {activeView === 'premium' && <PremiumManager />}
               {activeView === 'security' && <SecurityManager />}
+              {activeView === 'ml' && <MLManager />}
               {activeView === 'ai' && <AIAssistant />}
               {activeView === 'summary' && <ContentSummary />}
               {activeView === 'tagging' && <TagManager />}
