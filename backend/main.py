@@ -6276,3 +6276,255 @@ async def export_dashboard(dashboard_id: str, format: str, user_id: str):
     except Exception as e:
         logger.error(f"Export dashboard error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== API GATEWAY ENDPOINTS ====================
+
+class RegisterServiceRequest(BaseModel):
+    name: str
+    description: str
+    base_url: str
+    version: str
+    instances: List[Dict]
+    health_check_url: Optional[str] = "/health"
+    metadata: Optional[Dict] = None
+    health_check_interval: Optional[int] = 30
+    session_affinity: Optional[bool] = False
+
+
+class CreateRouteRequest(BaseModel):
+    path: str
+    method: str
+    service_id: str
+    target_path: str
+    description: str
+    auth_required: Optional[bool] = False
+    rate_limit_id: Optional[str] = None
+    transform_request: Optional[bool] = False
+    transform_response: Optional[bool] = False
+    cache_enabled: Optional[bool] = False
+    cache_ttl: Optional[int] = 0
+    timeout: Optional[int] = 5000
+    retry_count: Optional[int] = 3
+    enabled: Optional[bool] = True
+
+
+class CreateRateLimitRequest(BaseModel):
+    name: str
+    description: str
+    max_requests: int
+    period: str
+    scope: str
+    enabled: Optional[bool] = True
+
+
+class ConfigureLoadBalancerRequest(BaseModel):
+    service_id: str
+    strategy: str
+    health_check_interval: Optional[int] = 30
+    session_affinity: Optional[bool] = False
+
+
+@APP.post("/api/gateway/services")
+async def register_service(request: RegisterServiceRequest):
+    """Register a new microservice"""
+    try:
+        from api.gateway.gateway_manager import gateway_manager
+        result = gateway_manager.register_service(
+            name=request.name,
+            description=request.description,
+            base_url=request.base_url,
+            version=request.version,
+            instances=request.instances,
+            health_check_url=request.health_check_url,
+            metadata=request.metadata or {},
+            health_check_interval=request.health_check_interval,
+            session_affinity=request.session_affinity
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Register service error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.delete("/api/gateway/services/{service_id}")
+async def deregister_service(service_id: str):
+    """Deregister a microservice"""
+    try:
+        from api.gateway.gateway_manager import gateway_manager
+        result = gateway_manager.deregister_service(service_id)
+        return result
+    except Exception as e:
+        logger.error(f"Deregister service error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/gateway/services/{service_id}")
+async def get_service(service_id: str):
+    """Get service details"""
+    try:
+        from api.gateway.gateway_manager import gateway_manager
+        result = gateway_manager.get_service(service_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get service error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/gateway/services")
+async def list_services(status: Optional[str] = None):
+    """List all registered services"""
+    try:
+        from api.gateway.gateway_manager import gateway_manager
+        result = gateway_manager.list_services(status_filter=status)
+        return result
+    except Exception as e:
+        logger.error(f"List services error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/gateway/routes")
+async def create_route(request: CreateRouteRequest):
+    """Create a new API route"""
+    try:
+        from api.gateway.gateway_manager import gateway_manager
+        result = gateway_manager.create_route(
+            path=request.path,
+            method=request.method,
+            service_id=request.service_id,
+            target_path=request.target_path,
+            description=request.description,
+            auth_required=request.auth_required,
+            rate_limit_id=request.rate_limit_id,
+            transform_request=request.transform_request,
+            transform_response=request.transform_response,
+            cache_enabled=request.cache_enabled,
+            cache_ttl=request.cache_ttl,
+            timeout=request.timeout,
+            retry_count=request.retry_count,
+            enabled=request.enabled
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Create route error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/gateway/routes")
+async def list_routes():
+    """List all routes"""
+    try:
+        from api.gateway.gateway_manager import gateway_manager
+        result = gateway_manager.list_routes()
+        return result
+    except Exception as e:
+        logger.error(f"List routes error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/gateway/rate-limits")
+async def create_rate_limit(request: CreateRateLimitRequest):
+    """Create a rate limit configuration"""
+    try:
+        from api.gateway.gateway_manager import gateway_manager
+        result = gateway_manager.create_rate_limit(
+            name=request.name,
+            description=request.description,
+            max_requests=request.max_requests,
+            period=request.period,
+            scope=request.scope,
+            enabled=request.enabled
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Create rate limit error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/gateway/rate-limits")
+async def list_rate_limits():
+    """List all rate limit configurations"""
+    try:
+        from api.gateway.gateway_manager import gateway_manager
+        result = gateway_manager.list_rate_limits()
+        return result
+    except Exception as e:
+        logger.error(f"List rate limits error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/gateway/rate-limits/{limit_id}/check")
+async def check_rate_limit(limit_id: str, identifier: str):
+    """Check if request is within rate limit"""
+    try:
+        from api.gateway.gateway_manager import gateway_manager
+        result = gateway_manager.check_rate_limit(limit_id, identifier)
+        return result
+    except Exception as e:
+        logger.error(f"Check rate limit error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/gateway/load-balancers")
+async def configure_load_balancer(request: ConfigureLoadBalancerRequest):
+    """Configure load balancer for a service"""
+    try:
+        from api.gateway.gateway_manager import gateway_manager
+        result = gateway_manager.configure_load_balancer(
+            service_id=request.service_id,
+            strategy=request.strategy,
+            health_check_interval=request.health_check_interval,
+            session_affinity=request.session_affinity
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Configure load balancer error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/gateway/services/{service_id}/next-instance")
+async def get_next_instance(service_id: str):
+    """Get next service instance using load balancing"""
+    try:
+        from api.gateway.gateway_manager import gateway_manager
+        result = gateway_manager.get_next_instance(service_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get next instance error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/gateway/services/{service_id}/health-check")
+async def service_health_check(service_id: str):
+    """Perform health check on service"""
+    try:
+        from api.gateway.gateway_manager import gateway_manager
+        result = gateway_manager.health_check(service_id)
+        return result
+    except Exception as e:
+        logger.error(f"Health check error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/gateway/documentation")
+async def get_api_documentation():
+    """Get complete API documentation"""
+    try:
+        from api.gateway.gateway_manager import gateway_manager
+        result = gateway_manager.get_api_documentation()
+        return result
+    except Exception as e:
+        logger.error(f"Get API documentation error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/gateway/stats")
+async def get_gateway_stats():
+    """Get gateway statistics"""
+    try:
+        from api.gateway.gateway_manager import gateway_manager
+        result = gateway_manager.get_gateway_stats()
+        return result
+    except Exception as e:
+        logger.error(f"Get gateway stats error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
