@@ -23,6 +23,7 @@ import OCRProcessor from "./components/OCRProcessor";
 import VoiceControl from "./components/VoiceControl";
 import PremiumManager from "./components/PremiumManager";
 import CloudStorageManager from "./components/CloudStorageManager";
+import RealtimeCollaboration from "./components/RealtimeCollaboration";
 import { AppProvider } from "./context/AppContext";
 import "./styles/modern.css";
 
@@ -75,6 +76,7 @@ export default function App(){
     { id: 'downloads', label: 'İndirme Yöneticisi', icon: '📥' },
     { id: 'media-player', label: 'Medya Oynatıcı', icon: '🎬' },
     { id: 'collaboration', label: 'İş Birliği', icon: '👥' },
+    { id: 'realtime', label: 'Gerçek Zamanlı Sohbet', icon: '💬' },
     { id: 'advanced-analytics', label: 'Gelişmiş Analitik', icon: '📈' },
     { id: 'automation', label: 'Otomasyon', icon: '⚙️' },
     { id: 'ocr', label: 'OCR & Belge İşleme', icon: '📄' },
@@ -140,6 +142,7 @@ export default function App(){
               {activeView === 'downloads' && <DownloadManager />}
               {activeView === 'media-player' && <MediaPlayer />}
               {activeView === 'collaboration' && <CollaborativeWorkspace />}
+              {activeView === 'realtime' && <RealtimeCollaboration />}
               {activeView === 'advanced-analytics' && <AdvancedAnalytics />}
               {activeView === 'automation' && <AutomationManager />}
               {activeView === 'ocr' && <OCRProcessor />}

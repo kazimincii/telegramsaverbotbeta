@@ -4519,3 +4519,302 @@ async def get_cloud_statistics(user_id: Optional[str] = None):
     except Exception as e:
         logger.error(f"Get cloud statistics error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# REAL-TIME COLLABORATION API ENDPOINTS
+# ============================================================================
+
+class UpdatePresenceRequest(BaseModel):
+    """Request model for updating presence"""
+    user_id: str
+    username: str
+    status: str
+    current_session: Optional[str] = None
+
+
+class CreateRoomRequest(BaseModel):
+    """Request model for creating room"""
+    name: str
+    description: str
+    room_type: str
+    created_by: str
+    members: Optional[List[str]] = None
+
+
+class SendMessageRequest(BaseModel):
+    """Request model for sending message"""
+    room_id: str
+    user_id: str
+    username: str
+    content: str
+    message_type: str = "text"
+    attachments: Optional[List[Dict[str, Any]]] = None
+    reply_to: Optional[str] = None
+    mentions: Optional[List[str]] = None
+
+
+class AddReactionRequest(BaseModel):
+    """Request model for adding reaction"""
+    message_id: str
+    user_id: str
+    emoji: str
+
+
+class CreateSessionRequest(BaseModel):
+    """Request model for creating session"""
+    name: str
+    resource_type: str
+    resource_id: str
+    created_by: str
+
+
+class UpdateCursorRequest(BaseModel):
+    """Request model for updating cursor"""
+    session_id: str
+    user_id: str
+    cursor_data: Dict[str, Any]
+
+
+@APP.post("/api/collaboration/presence")
+async def update_presence(request: UpdatePresenceRequest):
+    """Update user presence"""
+    try:
+        from api.collaboration.realtime_manager import realtime_manager
+        result = realtime_manager.update_presence(
+            user_id=request.user_id,
+            username=request.username,
+            status=request.status,
+            current_session=request.current_session
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Update presence error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/collaboration/presence")
+async def get_presence(user_id: Optional[str] = None):
+    """Get user presence"""
+    try:
+        from api.collaboration.realtime_manager import realtime_manager
+        result = realtime_manager.get_presence(user_id=user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get presence error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/collaboration/rooms/{room_id}/join")
+async def join_room(room_id: str, user_id: str):
+    """Join a chat room"""
+    try:
+        from api.collaboration.realtime_manager import realtime_manager
+        result = realtime_manager.join_room(user_id=user_id, room_id=room_id)
+        return result
+    except Exception as e:
+        logger.error(f"Join room error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/collaboration/rooms/{room_id}/leave")
+async def leave_room(room_id: str, user_id: str):
+    """Leave a chat room"""
+    try:
+        from api.collaboration.realtime_manager import realtime_manager
+        result = realtime_manager.leave_room(user_id=user_id, room_id=room_id)
+        return result
+    except Exception as e:
+        logger.error(f"Leave room error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/collaboration/rooms")
+async def create_room(request: CreateRoomRequest):
+    """Create a chat room"""
+    try:
+        from api.collaboration.realtime_manager import realtime_manager
+        result = realtime_manager.create_room(
+            name=request.name,
+            description=request.description,
+            room_type=request.room_type,
+            created_by=request.created_by,
+            members=request.members
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Create room error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/collaboration/rooms")
+async def get_rooms(user_id: Optional[str] = None):
+    """Get chat rooms"""
+    try:
+        from api.collaboration.realtime_manager import realtime_manager
+        result = realtime_manager.get_rooms(user_id=user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get rooms error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/collaboration/rooms/{room_id}/members")
+async def add_room_member(room_id: str, user_id: str):
+    """Add member to room"""
+    try:
+        from api.collaboration.realtime_manager import realtime_manager
+        result = realtime_manager.add_room_member(room_id=room_id, user_id=user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Add room member error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/collaboration/messages")
+async def send_message(request: SendMessageRequest):
+    """Send a chat message"""
+    try:
+        from api.collaboration.realtime_manager import realtime_manager
+        result = realtime_manager.send_message(
+            room_id=request.room_id,
+            user_id=request.user_id,
+            username=request.username,
+            content=request.content,
+            message_type=request.message_type,
+            attachments=request.attachments,
+            reply_to=request.reply_to,
+            mentions=request.mentions
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Send message error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/collaboration/messages")
+async def get_messages(room_id: str, limit: int = 50, before: Optional[str] = None):
+    """Get messages from a room"""
+    try:
+        from api.collaboration.realtime_manager import realtime_manager
+        result = realtime_manager.get_messages(
+            room_id=room_id,
+            limit=limit,
+            before=before
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Get messages error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/collaboration/messages/reactions")
+async def add_reaction(request: AddReactionRequest):
+    """Add reaction to message"""
+    try:
+        from api.collaboration.realtime_manager import realtime_manager
+        result = realtime_manager.add_reaction(
+            message_id=request.message_id,
+            user_id=request.user_id,
+            emoji=request.emoji
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Add reaction error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/collaboration/activities")
+async def get_activities(room_id: Optional[str] = None, limit: int = 50):
+    """Get activity feed"""
+    try:
+        from api.collaboration.realtime_manager import realtime_manager
+        result = realtime_manager.get_activities(room_id=room_id, limit=limit)
+        return result
+    except Exception as e:
+        logger.error(f"Get activities error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/collaboration/notifications")
+async def get_notifications(user_id: str, unread_only: bool = False):
+    """Get user notifications"""
+    try:
+        from api.collaboration.realtime_manager import realtime_manager
+        result = realtime_manager.get_notifications(
+            user_id=user_id,
+            unread_only=unread_only
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Get notifications error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.patch("/api/collaboration/notifications/{notification_id}/read")
+async def mark_notification_read(notification_id: str):
+    """Mark notification as read"""
+    try:
+        from api.collaboration.realtime_manager import realtime_manager
+        result = realtime_manager.mark_notification_read(notification_id=notification_id)
+        return result
+    except Exception as e:
+        logger.error(f"Mark notification read error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/collaboration/sessions")
+async def create_session(request: CreateSessionRequest):
+    """Create collaborative session"""
+    try:
+        from api.collaboration.realtime_manager import realtime_manager
+        result = realtime_manager.create_session(
+            name=request.name,
+            resource_type=request.resource_type,
+            resource_id=request.resource_id,
+            created_by=request.created_by
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Create session error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/collaboration/sessions/{session_id}/join")
+async def join_session(session_id: str, user_id: str):
+    """Join collaborative session"""
+    try:
+        from api.collaboration.realtime_manager import realtime_manager
+        result = realtime_manager.join_session(session_id=session_id, user_id=user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Join session error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/collaboration/sessions/cursor")
+async def update_cursor(request: UpdateCursorRequest):
+    """Update user cursor position"""
+    try:
+        from api.collaboration.realtime_manager import realtime_manager
+        result = realtime_manager.update_cursor(
+            session_id=request.session_id,
+            user_id=request.user_id,
+            cursor_data=request.cursor_data
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Update cursor error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/collaboration/statistics")
+async def get_collaboration_statistics():
+    """Get collaboration statistics"""
+    try:
+        from api.collaboration.realtime_manager import realtime_manager
+        result = realtime_manager.get_statistics()
+        return result
+    except Exception as e:
+        logger.error(f"Get collaboration statistics error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
