@@ -31,6 +31,7 @@ try:
     from .i18n_manager import I18nManager
     from .rbac_system import RBACManager, Permission, Role, User, Organization
     from .content_moderator import ContentModerator, ModerationAction, ContentCategory
+    from .telegram_api import register_telegram_routes
 except ImportError:
     import contacts
     from database import Database
@@ -47,6 +48,7 @@ except ImportError:
     from i18n_manager import I18nManager
     from rbac_system import RBACManager, Permission, Role, User, Organization
     from content_moderator import ContentModerator, ModerationAction, ContentCategory
+    from telegram_api import register_telegram_routes
 
 # Load environment variables
 load_dotenv(Path(__file__).resolve().parent / ".env")
@@ -6703,3 +6705,8 @@ async def get_performance_metrics():
     except Exception as e:
         logger.error(f"Get performance metrics error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# Register Telegram API routes
+register_telegram_routes(APP)
+

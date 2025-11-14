@@ -1,0 +1,71 @@
+.telegram-client {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #f0f2f5;
+}
+
+.sync-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px;
+  background: #2AABEE;
+  color: white;
+  font-size: 13px;
+  font-weight: 500;
+  z-index: 1000;
+}
+
+.sync-status-bar.error {
+  background: #ff4d4f;
+}
+
+.sync-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.telegram-client-layout {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  /* Hide AI profile panel on smaller screens */
+  .ai-profile-panel {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .telegram-client-layout {
+    flex-direction: column;
+  }
+
+  .telegram-sidebar {
+    width: 100%;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid #e0e0e0;
+  }
+
+  .messages-panel {
+    height: calc(100vh - 200px);
+  }
+}
