@@ -6,6 +6,7 @@ import WebhookManager from "./components/WebhookManager";
 import CloudSyncSettings from "./components/CloudSyncSettings";
 import VideoProcessor from "./components/VideoProcessor";
 import AnalyticsDashboard from "./components/AnalyticsDashboard";
+import AdvancedAnalytics from "./components/AdvancedAnalytics";
 import LanguageSelector, { LanguageProvider } from "./components/LanguageSelector";
 import EnterpriseManager from "./components/EnterpriseManager";
 import OfflineIndicator from "./components/OfflineIndicator";
@@ -17,6 +18,11 @@ import MultiDeviceSync from "./components/MultiDeviceSync";
 import MediaPlayer from "./components/MediaPlayer/MediaPlayer";
 import DownloadManager from "./components/DownloadManager";
 import CollaborativeWorkspace from "./components/CollaborativeWorkspace";
+import AutomationManager from "./components/AutomationManager";
+import OCRProcessor from "./components/OCRProcessor";
+import VoiceControl from "./components/VoiceControl";
+import PremiumManager from "./components/PremiumManager";
+import CloudStorageManager from "./components/CloudStorageManager";
 import { AppProvider } from "./context/AppContext";
 import "./styles/modern.css";
 
@@ -69,6 +75,11 @@ export default function App(){
     { id: 'downloads', label: 'İndirme Yöneticisi', icon: '📥' },
     { id: 'media-player', label: 'Medya Oynatıcı', icon: '🎬' },
     { id: 'collaboration', label: 'İş Birliği', icon: '👥' },
+    { id: 'advanced-analytics', label: 'Gelişmiş Analitik', icon: '📈' },
+    { id: 'automation', label: 'Otomasyon', icon: '⚙️' },
+    { id: 'ocr', label: 'OCR & Belge İşleme', icon: '📄' },
+    { id: 'voice', label: 'Sesli Kontrol', icon: '🎤' },
+    { id: 'premium', label: 'Premium', icon: '💎' },
     { id: 'ai', label: 'AI Asistan', icon: '🤖' },
     { id: 'summary', label: 'İçerik Özetleme', icon: '📝' },
     { id: 'tagging', label: 'Otomatik Etiketleme', icon: '🏷️' },
@@ -129,6 +140,11 @@ export default function App(){
               {activeView === 'downloads' && <DownloadManager />}
               {activeView === 'media-player' && <MediaPlayer />}
               {activeView === 'collaboration' && <CollaborativeWorkspace />}
+              {activeView === 'advanced-analytics' && <AdvancedAnalytics />}
+              {activeView === 'automation' && <AutomationManager />}
+              {activeView === 'ocr' && <OCRProcessor />}
+              {activeView === 'voice' && <VoiceControl />}
+              {activeView === 'premium' && <PremiumManager />}
               {activeView === 'ai' && <AIAssistant />}
               {activeView === 'summary' && <ContentSummary />}
               {activeView === 'tagging' && <TagManager />}
@@ -137,7 +153,7 @@ export default function App(){
               {activeView === 'analytics' && <AnalyticsDashboard />}
               {activeView === 'search' && <CLIPSearchPanel />}
               {activeView === 'webhook' && <WebhookManager />}
-              {activeView === 'cloud' && <CloudSyncSettings />}
+              {activeView === 'cloud' && <CloudStorageManager />}
               {activeView === 'video' && <VideoProcessor />}
               {activeView === 'enterprise' && <EnterpriseManager />}
             </div>

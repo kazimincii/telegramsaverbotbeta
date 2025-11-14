@@ -3548,10 +3548,10 @@ async def get_activity_feed(workspace_id: str, limit: int = 50):
     """Get workspace activity feed"""
     try:
         from api.collaboration.workspace_manager import get_workspace_manager
-        
+
         manager = get_workspace_manager()
         activities = manager.get_activity_feed(workspace_id, limit)
-        
+
         return {
             'success': True,
             'activities': activities,
@@ -3559,4 +3559,963 @@ async def get_activity_feed(workspace_id: str, limit: int = 50):
         }
     except Exception as e:
         logger.error(f"Get activity feed error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===================================
+# Advanced Analytics API Endpoints
+# ===================================
+
+class TrackEventRequest(BaseModel):
+    """Request model for tracking analytics event"""
+    metric_type: str
+    user_id: str
+    value: float = 1.0
+    metadata: Optional[dict] = None
+    tags: Optional[List[str]] = None
+
+
+@APP.post("/api/analytics/track")
+async def track_analytics_event(request: TrackEventRequest):
+    """Track a new analytics event"""
+    try:
+        from api.analytics.analytics_manager import analytics_manager
+
+        result = analytics_manager.track_event(
+            metric_type=request.metric_type,
+            user_id=request.user_id,
+            value=request.value,
+            metadata=request.metadata,
+            tags=request.tags
+        )
+
+        return result
+    except Exception as e:
+        logger.error(f"Track event error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/analytics/events")
+async def get_analytics_events(
+    time_range: Optional[str] = None,
+    metric_type: Optional[str] = None,
+    user_id: Optional[str] = None,
+    limit: int = 1000
+):
+    """Get filtered analytics events"""
+    try:
+        from api.analytics.analytics_manager import analytics_manager
+
+        result = analytics_manager.get_events(
+            time_range=time_range,
+            metric_type=metric_type,
+            user_id=user_id,
+            limit=limit
+        )
+
+        return result
+    except Exception as e:
+        logger.error(f"Get events error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/analytics/report")
+async def generate_analytics_report(
+    time_range: str = "last_week",
+    include_insights: bool = True
+):
+    """Generate comprehensive analytics report"""
+    try:
+        from api.analytics.analytics_manager import analytics_manager
+
+        result = analytics_manager.generate_report(
+            time_range=time_range,
+            include_insights=include_insights
+        )
+
+        return result
+    except Exception as e:
+        logger.error(f"Generate report error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/analytics/dashboard")
+async def get_dashboard_data(time_range: str = "last_week"):
+    """Get dashboard data for visualization"""
+    try:
+        from api.analytics.analytics_manager import analytics_manager
+
+        result = analytics_manager.get_dashboard_data(time_range=time_range)
+
+        return result
+    except Exception as e:
+        logger.error(f"Get dashboard data error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/analytics/user/{user_id}")
+async def get_user_analytics(user_id: str, time_range: str = "last_month"):
+    """Get analytics for specific user"""
+    try:
+        from api.analytics.analytics_manager import analytics_manager
+
+        result = analytics_manager.get_user_analytics(
+            user_id=user_id,
+            time_range=time_range
+        )
+
+        return result
+    except Exception as e:
+        logger.error(f"Get user analytics error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===================================
+# Automation & Scripting API Endpoints
+# ===================================
+
+class CreateRuleRequest(BaseModel):
+    """Request model for creating automation rule"""
+    name: str
+    description: str
+    trigger_type: str
+    trigger_config: dict
+    actions: List[dict]
+    conditions: Optional[List[dict]] = None
+
+
+class UpdateRuleRequest(BaseModel):
+    """Request model for updating automation rule"""
+    name: Optional[str] = None
+    description: Optional[str] = None
+    enabled: Optional[bool] = None
+    trigger_config: Optional[dict] = None
+    actions: Optional[List[dict]] = None
+    conditions: Optional[List[dict]] = None
+
+
+class SaveScriptRequest(BaseModel):
+    """Request model for saving script"""
+    name: str
+    content: str
+
+
+@APP.post("/api/automation/rule/create")
+async def create_automation_rule(request: CreateRuleRequest):
+    """Create a new automation rule"""
+    try:
+        from api.automation.automation_engine import automation_engine
+
+        result = automation_engine.create_rule(
+            name=request.name,
+            description=request.description,
+            trigger_type=request.trigger_type,
+            trigger_config=request.trigger_config,
+            actions=request.actions,
+            conditions=request.conditions
+        )
+
+        return result
+    except Exception as e:
+        logger.error(f"Create rule error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.put("/api/automation/rule/{rule_id}")
+async def update_automation_rule(rule_id: str, request: UpdateRuleRequest):
+    """Update an automation rule"""
+    try:
+        from api.automation.automation_engine import automation_engine
+
+        updates = {k: v for k, v in request.dict().items() if v is not None}
+        result = automation_engine.update_rule(rule_id, updates)
+
+        return result
+    except Exception as e:
+        logger.error(f"Update rule error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.delete("/api/automation/rule/{rule_id}")
+async def delete_automation_rule(rule_id: str):
+    """Delete an automation rule"""
+    try:
+        from api.automation.automation_engine import automation_engine
+
+        result = automation_engine.delete_rule(rule_id)
+
+        return result
+    except Exception as e:
+        logger.error(f"Delete rule error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/automation/rules")
+async def get_automation_rules(enabled_only: bool = False):
+    """Get all automation rules"""
+    try:
+        from api.automation.automation_engine import automation_engine
+
+        result = automation_engine.get_rules(enabled_only=enabled_only)
+
+        return result
+    except Exception as e:
+        logger.error(f"Get rules error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/automation/rule/{rule_id}")
+async def get_automation_rule(rule_id: str):
+    """Get a specific automation rule"""
+    try:
+        from api.automation.automation_engine import automation_engine
+
+        result = automation_engine.get_rule(rule_id)
+
+        return result
+    except Exception as e:
+        logger.error(f"Get rule error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/automation/rule/{rule_id}/execute")
+async def execute_automation_rule(rule_id: str):
+    """Execute an automation rule manually"""
+    try:
+        from api.automation.automation_engine import automation_engine
+
+        result = await automation_engine.execute_rule(rule_id, manual=True)
+
+        return result
+    except Exception as e:
+        logger.error(f"Execute rule error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/automation/logs")
+async def get_automation_logs(rule_id: Optional[str] = None, limit: int = 100):
+    """Get automation execution logs"""
+    try:
+        from api.automation.automation_engine import automation_engine
+
+        result = automation_engine.get_logs(rule_id=rule_id, limit=limit)
+
+        return result
+    except Exception as e:
+        logger.error(f"Get logs error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/automation/script/save")
+async def save_automation_script(request: SaveScriptRequest):
+    """Save a custom automation script"""
+    try:
+        from api.automation.automation_engine import automation_engine
+
+        result = automation_engine.save_script(
+            name=request.name,
+            content=request.content
+        )
+
+        return result
+    except Exception as e:
+        logger.error(f"Save script error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/automation/scripts")
+async def get_automation_scripts():
+    """Get list of saved scripts"""
+    try:
+        from api.automation.automation_engine import automation_engine
+
+        result = automation_engine.get_scripts()
+
+        return result
+    except Exception as e:
+        logger.error(f"Get scripts error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===================================
+# OCR & Document Processing API Endpoints
+# ===================================
+
+class ProcessDocumentRequest(BaseModel):
+    """Request model for document processing"""
+    file_path: str
+    language: str = "eng"
+    options: Optional[dict] = None
+
+
+class BatchProcessRequest(BaseModel):
+    """Request model for batch processing"""
+    file_paths: List[str]
+    language: str = "eng"
+    options: Optional[dict] = None
+
+
+@APP.post("/api/ocr/process")
+async def process_document(request: ProcessDocumentRequest):
+    """Process a document and extract text"""
+    try:
+        from api.ocr.ocr_processor import ocr_processor
+
+        result = ocr_processor.process_document(
+            file_path=request.file_path,
+            language=request.language,
+            options=request.options
+        )
+
+        return result
+    except Exception as e:
+        logger.error(f"Process document error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/ocr/batch")
+async def batch_process_documents(request: BatchProcessRequest):
+    """Process multiple documents in batch"""
+    try:
+        from api.ocr.ocr_processor import ocr_processor
+
+        result = ocr_processor.batch_process(
+            file_paths=request.file_paths,
+            language=request.language,
+            options=request.options
+        )
+
+        return result
+    except Exception as e:
+        logger.error(f"Batch process error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/ocr/analyze/{file_path:path}")
+async def analyze_document(file_path: str):
+    """Analyze document structure"""
+    try:
+        from api.ocr.ocr_processor import ocr_processor
+
+        result = ocr_processor.analyze_document(file_path)
+
+        return result
+    except Exception as e:
+        logger.error(f"Analyze document error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/ocr/results")
+async def get_ocr_results(limit: int = 100):
+    """Get all OCR results"""
+    try:
+        from api.ocr.ocr_processor import ocr_processor
+
+        result = ocr_processor.get_all_results(limit=limit)
+
+        return result
+    except Exception as e:
+        logger.error(f"Get OCR results error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/ocr/result/{result_id}")
+async def get_ocr_result(result_id: str):
+    """Get a specific OCR result"""
+    try:
+        from api.ocr.ocr_processor import ocr_processor
+
+        result = ocr_processor.get_result(result_id)
+
+        return result
+    except Exception as e:
+        logger.error(f"Get OCR result error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.delete("/api/ocr/result/{result_id}")
+async def delete_ocr_result(result_id: str):
+    """Delete an OCR result"""
+    try:
+        from api.ocr.ocr_processor import ocr_processor
+
+        result = ocr_processor.delete_result(result_id)
+
+        return result
+    except Exception as e:
+        logger.error(f"Delete OCR result error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/ocr/search")
+async def search_ocr_results(query: str, limit: int = 50):
+    """Search in OCR extracted text"""
+    try:
+        from api.ocr.ocr_processor import ocr_processor
+
+        result = ocr_processor.search_in_results(query=query, limit=limit)
+
+        return result
+    except Exception as e:
+        logger.error(f"Search OCR results error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/ocr/statistics")
+async def get_ocr_statistics():
+    """Get OCR processing statistics"""
+    try:
+        from api.ocr.ocr_processor import ocr_processor
+
+        result = ocr_processor.get_statistics()
+
+        return result
+    except Exception as e:
+        logger.error(f"Get OCR statistics error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===================================
+# Voice Control API Endpoints
+# ===================================
+
+class ProcessVoiceCommandRequest(BaseModel):
+    """Request model for processing voice command"""
+    text: str
+
+
+class TextToSpeechRequest(BaseModel):
+    """Request model for text-to-speech"""
+    text: str
+    language: str = "en"
+    voice: str = "female"
+    speed: float = 1.0
+
+
+@APP.post("/api/voice/command")
+async def process_voice_command(request: ProcessVoiceCommandRequest):
+    """Process a voice command from text"""
+    try:
+        from api.voice.voice_controller import voice_controller
+
+        result = voice_controller.process_voice_command(request.text)
+
+        return result
+    except Exception as e:
+        logger.error(f"Process voice command error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/voice/tts")
+async def text_to_speech(request: TextToSpeechRequest):
+    """Convert text to speech"""
+    try:
+        from api.voice.voice_controller import voice_controller
+
+        result = voice_controller.text_to_speech(
+            text=request.text,
+            language=request.language,
+            voice=request.voice,
+            speed=request.speed
+        )
+
+        return result
+    except Exception as e:
+        logger.error(f"Text to speech error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/voice/commands/available")
+async def get_available_commands():
+    """Get list of available voice commands"""
+    try:
+        from api.voice.voice_controller import voice_controller
+
+        result = voice_controller.get_available_commands()
+
+        return result
+    except Exception as e:
+        logger.error(f"Get available commands error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/voice/commands/history")
+async def get_command_history(limit: int = 100):
+    """Get voice command history"""
+    try:
+        from api.voice.voice_controller import voice_controller
+
+        result = voice_controller.get_command_history(limit=limit)
+
+        return result
+    except Exception as e:
+        logger.error(f"Get command history error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/voice/tts/history")
+async def get_tts_history(limit: int = 100):
+    """Get TTS request history"""
+    try:
+        from api.voice.voice_controller import voice_controller
+
+        result = voice_controller.get_tts_history(limit=limit)
+
+        return result
+    except Exception as e:
+        logger.error(f"Get TTS history error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/voice/statistics")
+async def get_voice_statistics():
+    """Get voice control statistics"""
+    try:
+        from api.voice.voice_controller import voice_controller
+
+        result = voice_controller.get_statistics()
+
+        return result
+    except Exception as e:
+        logger.error(f"Get voice statistics error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# TELEGRAM PREMIUM API ENDPOINTS
+# ============================================================================
+
+class CreateSubscriptionRequest(BaseModel):
+    """Request model for creating subscription"""
+    user_id: str
+    tier: str
+    duration_days: int = 30
+    payment_method: str = "credit_card"
+    auto_renew: bool = True
+
+
+class UpgradeSubscriptionRequest(BaseModel):
+    """Request model for upgrading subscription"""
+    user_id: str
+    new_tier: str
+
+
+class TranscribeVoiceRequest(BaseModel):
+    """Request model for voice transcription"""
+    file_path: str
+    language: str = "en-US"
+    user_id: Optional[str] = None
+
+
+class ValidateFileSizeRequest(BaseModel):
+    """Request model for file size validation"""
+    user_id: str
+    file_size_mb: int
+
+
+@APP.get("/api/premium/tiers")
+async def get_premium_tiers():
+    """Get all available premium tiers"""
+    try:
+        from api.premium.premium_manager import premium_manager
+        result = premium_manager.get_all_tiers()
+        return result
+    except Exception as e:
+        logger.error(f"Get premium tiers error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/premium/tiers/{tier}")
+async def get_tier_limits(tier: str):
+    """Get limits for a specific tier"""
+    try:
+        from api.premium.premium_manager import premium_manager
+        result = premium_manager.get_tier_limits(tier)
+        return result
+    except Exception as e:
+        logger.error(f"Get tier limits error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/premium/subscriptions")
+async def create_subscription(request: CreateSubscriptionRequest):
+    """Create a new premium subscription"""
+    try:
+        from api.premium.premium_manager import premium_manager
+        result = premium_manager.create_subscription(
+            user_id=request.user_id,
+            tier=request.tier,
+            duration_days=request.duration_days,
+            payment_method=request.payment_method,
+            auto_renew=request.auto_renew
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Create subscription error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/premium/subscriptions/{user_id}")
+async def get_user_subscription(user_id: str):
+    """Get user's current subscription"""
+    try:
+        from api.premium.premium_manager import premium_manager
+        result = premium_manager.get_user_subscription(user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get user subscription error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/premium/subscriptions/upgrade")
+async def upgrade_subscription(request: UpgradeSubscriptionRequest):
+    """Upgrade user's subscription to a higher tier"""
+    try:
+        from api.premium.premium_manager import premium_manager
+        result = premium_manager.upgrade_subscription(request.user_id, request.new_tier)
+        return result
+    except Exception as e:
+        logger.error(f"Upgrade subscription error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.delete("/api/premium/subscriptions/{user_id}")
+async def cancel_subscription(user_id: str):
+    """Cancel user's subscription"""
+    try:
+        from api.premium.premium_manager import premium_manager
+        result = premium_manager.cancel_subscription(user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Cancel subscription error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/premium/features/{user_id}/{feature}")
+async def check_feature_access(user_id: str, feature: str):
+    """Check if user has access to a specific feature"""
+    try:
+        from api.premium.premium_manager import premium_manager
+        result = premium_manager.check_feature_access(user_id, feature)
+        return result
+    except Exception as e:
+        logger.error(f"Check feature access error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/premium/transcribe")
+async def transcribe_voice_message(request: TranscribeVoiceRequest):
+    """Transcribe a voice message to text"""
+    try:
+        from api.premium.premium_manager import premium_manager
+        result = premium_manager.transcribe_voice_message(
+            file_path=request.file_path,
+            language=request.language,
+            user_id=request.user_id
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Transcribe voice message error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/premium/transcriptions/{transcription_id}")
+async def get_transcription(transcription_id: str):
+    """Get a transcription by ID"""
+    try:
+        from api.premium.premium_manager import premium_manager
+        result = premium_manager.get_transcription(transcription_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get transcription error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/premium/transcriptions")
+async def get_all_transcriptions(user_id: Optional[str] = None, limit: int = 50):
+    """Get all transcriptions"""
+    try:
+        from api.premium.premium_manager import premium_manager
+        result = premium_manager.get_all_transcriptions(user_id=user_id, limit=limit)
+        return result
+    except Exception as e:
+        logger.error(f"Get all transcriptions error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/premium/validate-file-size")
+async def validate_file_size(request: ValidateFileSizeRequest):
+    """Validate if user can download/upload a file of given size"""
+    try:
+        from api.premium.premium_manager import premium_manager
+        result = premium_manager.validate_file_size(request.user_id, request.file_size_mb)
+        return result
+    except Exception as e:
+        logger.error(f"Validate file size error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/premium/usage/{user_id}")
+async def get_usage_statistics(user_id: str):
+    """Get usage statistics for a user"""
+    try:
+        from api.premium.premium_manager import premium_manager
+        result = premium_manager.get_usage_statistics(user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get usage statistics error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/premium/statistics")
+async def get_premium_statistics():
+    """Get overall premium statistics"""
+    try:
+        from api.premium.premium_manager import premium_manager
+        result = premium_manager.get_premium_statistics()
+        return result
+    except Exception as e:
+        logger.error(f"Get premium statistics error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# CLOUD STORAGE API ENDPOINTS
+# ============================================================================
+
+class AddCloudAccountRequest(BaseModel):
+    """Request model for adding cloud account"""
+    user_id: str
+    provider: str
+    account_name: str
+    email: str
+    access_token: str
+    refresh_token: Optional[str] = None
+    storage_quota: int = 15 * 1024 * 1024 * 1024  # 15GB
+
+
+class UpdateCloudAccountRequest(BaseModel):
+    """Request model for updating cloud account"""
+    account_name: Optional[str] = None
+    sync_enabled: Optional[bool] = None
+    auto_upload: Optional[bool] = None
+    is_active: Optional[bool] = None
+
+
+class UploadFileRequest(BaseModel):
+    """Request model for uploading file"""
+    account_id: str
+    local_path: str
+    remote_path: str
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class DownloadFileRequest(BaseModel):
+    """Request model for downloading file"""
+    file_id: str
+    local_path: str
+
+
+class SyncFolderRequest(BaseModel):
+    """Request model for syncing folder"""
+    account_id: str
+    local_folder: str
+    remote_folder: str
+
+
+class ResolveConflictRequest(BaseModel):
+    """Request model for resolving conflict"""
+    conflict_id: str
+    resolution: str
+
+
+@APP.post("/api/cloud/accounts")
+async def add_cloud_account(request: AddCloudAccountRequest):
+    """Add a new cloud storage account"""
+    try:
+        from api.cloud.cloud_storage_manager import cloud_storage_manager
+        result = cloud_storage_manager.add_account(
+            user_id=request.user_id,
+            provider=request.provider,
+            account_name=request.account_name,
+            email=request.email,
+            access_token=request.access_token,
+            refresh_token=request.refresh_token,
+            storage_quota=request.storage_quota
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Add cloud account error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/cloud/accounts")
+async def get_cloud_accounts(user_id: Optional[str] = None):
+    """Get all cloud storage accounts"""
+    try:
+        from api.cloud.cloud_storage_manager import cloud_storage_manager
+        result = cloud_storage_manager.get_accounts(user_id=user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get cloud accounts error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/cloud/accounts/{account_id}")
+async def get_cloud_account(account_id: str):
+    """Get cloud storage account by ID"""
+    try:
+        from api.cloud.cloud_storage_manager import cloud_storage_manager
+        result = cloud_storage_manager.get_account(account_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get cloud account error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.patch("/api/cloud/accounts/{account_id}")
+async def update_cloud_account(account_id: str, request: UpdateCloudAccountRequest):
+    """Update cloud storage account settings"""
+    try:
+        from api.cloud.cloud_storage_manager import cloud_storage_manager
+        updates = {k: v for k, v in request.dict().items() if v is not None}
+        result = cloud_storage_manager.update_account(account_id, **updates)
+        return result
+    except Exception as e:
+        logger.error(f"Update cloud account error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.delete("/api/cloud/accounts/{account_id}")
+async def delete_cloud_account(account_id: str):
+    """Delete a cloud storage account"""
+    try:
+        from api.cloud.cloud_storage_manager import cloud_storage_manager
+        result = cloud_storage_manager.delete_account(account_id)
+        return result
+    except Exception as e:
+        logger.error(f"Delete cloud account error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/cloud/upload")
+async def upload_file_to_cloud(request: UploadFileRequest):
+    """Upload file to cloud storage"""
+    try:
+        from api.cloud.cloud_storage_manager import cloud_storage_manager
+        result = cloud_storage_manager.upload_file(
+            account_id=request.account_id,
+            local_path=request.local_path,
+            remote_path=request.remote_path,
+            metadata=request.metadata
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Upload file error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/cloud/download")
+async def download_file_from_cloud(request: DownloadFileRequest):
+    """Download file from cloud storage"""
+    try:
+        from api.cloud.cloud_storage_manager import cloud_storage_manager
+        result = cloud_storage_manager.download_file(
+            file_id=request.file_id,
+            local_path=request.local_path
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Download file error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/cloud/sync-folder")
+async def sync_folder(request: SyncFolderRequest):
+    """Synchronize an entire folder"""
+    try:
+        from api.cloud.cloud_storage_manager import cloud_storage_manager
+        result = cloud_storage_manager.sync_folder(
+            account_id=request.account_id,
+            local_folder=request.local_folder,
+            remote_folder=request.remote_folder
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Sync folder error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/cloud/files")
+async def get_cloud_files(
+    account_id: Optional[str] = None,
+    sync_status: Optional[str] = None
+):
+    """Get cloud files"""
+    try:
+        from api.cloud.cloud_storage_manager import cloud_storage_manager
+        result = cloud_storage_manager.get_files(
+            account_id=account_id,
+            sync_status=sync_status
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Get cloud files error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/cloud/tasks")
+async def get_sync_tasks(
+    account_id: Optional[str] = None,
+    status: Optional[str] = None
+):
+    """Get synchronization tasks"""
+    try:
+        from api.cloud.cloud_storage_manager import cloud_storage_manager
+        result = cloud_storage_manager.get_sync_tasks(
+            account_id=account_id,
+            status=status
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Get sync tasks error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/cloud/conflicts")
+async def detect_conflicts():
+    """Detect synchronization conflicts"""
+    try:
+        from api.cloud.cloud_storage_manager import cloud_storage_manager
+        result = cloud_storage_manager.detect_conflicts()
+        return result
+    except Exception as e:
+        logger.error(f"Detect conflicts error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/cloud/conflicts/resolve")
+async def resolve_conflict(request: ResolveConflictRequest):
+    """Resolve a synchronization conflict"""
+    try:
+        from api.cloud.cloud_storage_manager import cloud_storage_manager
+        result = cloud_storage_manager.resolve_conflict(
+            conflict_id=request.conflict_id,
+            resolution=request.resolution
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Resolve conflict error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/cloud/statistics")
+async def get_cloud_statistics(user_id: Optional[str] = None):
+    """Get cloud storage statistics"""
+    try:
+        from api.cloud.cloud_storage_manager import cloud_storage_manager
+        result = cloud_storage_manager.get_statistics(user_id=user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get cloud statistics error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
