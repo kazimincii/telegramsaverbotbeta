@@ -23,6 +23,9 @@ import OCRProcessor from "./components/OCRProcessor";
 import VoiceControl from "./components/VoiceControl";
 import PremiumManager from "./components/PremiumManager";
 import CloudStorageManager from "./components/CloudStorageManager";
+import RealtimeCollaboration from "./components/RealtimeCollaboration";
+import SecurityManager from "./components/SecurityManager";
+import MLManager from "./components/MLManager";
 import { AppProvider } from "./context/AppContext";
 import "./styles/modern.css";
 
@@ -75,12 +78,15 @@ export default function App(){
     { id: 'downloads', label: 'İndirme Yöneticisi', icon: '📥' },
     { id: 'media-player', label: 'Medya Oynatıcı', icon: '🎬' },
     { id: 'collaboration', label: 'İş Birliği', icon: '👥' },
+    { id: 'realtime', label: 'Gerçek Zamanlı Sohbet', icon: '💬' },
     { id: 'advanced-analytics', label: 'Gelişmiş Analitik', icon: '📈' },
     { id: 'automation', label: 'Otomasyon', icon: '⚙️' },
     { id: 'ocr', label: 'OCR & Belge İşleme', icon: '📄' },
     { id: 'voice', label: 'Sesli Kontrol', icon: '🎤' },
     { id: 'premium', label: 'Premium', icon: '💎' },
-    { id: 'ai', label: 'AI Asistan', icon: '🤖' },
+    { id: 'security', label: 'Güvenlik & Şifreleme', icon: '🔐' },
+    { id: 'ml', label: 'Machine Learning', icon: '🤖' },
+    { id: 'ai', label: 'AI Asistan', icon: '🦾' },
     { id: 'summary', label: 'İçerik Özetleme', icon: '📝' },
     { id: 'tagging', label: 'Otomatik Etiketleme', icon: '🏷️' },
     { id: 'advanced-search', label: 'Gelişmiş Arama', icon: '🔍' },
@@ -140,11 +146,14 @@ export default function App(){
               {activeView === 'downloads' && <DownloadManager />}
               {activeView === 'media-player' && <MediaPlayer />}
               {activeView === 'collaboration' && <CollaborativeWorkspace />}
+              {activeView === 'realtime' && <RealtimeCollaboration />}
               {activeView === 'advanced-analytics' && <AdvancedAnalytics />}
               {activeView === 'automation' && <AutomationManager />}
               {activeView === 'ocr' && <OCRProcessor />}
               {activeView === 'voice' && <VoiceControl />}
               {activeView === 'premium' && <PremiumManager />}
+              {activeView === 'security' && <SecurityManager />}
+              {activeView === 'ml' && <MLManager />}
               {activeView === 'ai' && <AIAssistant />}
               {activeView === 'summary' && <ContentSummary />}
               {activeView === 'tagging' && <TagManager />}

@@ -4519,3 +4519,1027 @@ async def get_cloud_statistics(user_id: Optional[str] = None):
     except Exception as e:
         logger.error(f"Get cloud statistics error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# REAL-TIME COLLABORATION API ENDPOINTS
+# ============================================================================
+
+class UpdatePresenceRequest(BaseModel):
+    """Request model for updating presence"""
+    user_id: str
+    username: str
+    status: str
+    current_session: Optional[str] = None
+
+
+class CreateRoomRequest(BaseModel):
+    """Request model for creating room"""
+    name: str
+    description: str
+    room_type: str
+    created_by: str
+    members: Optional[List[str]] = None
+
+
+class SendMessageRequest(BaseModel):
+    """Request model for sending message"""
+    room_id: str
+    user_id: str
+    username: str
+    content: str
+    message_type: str = "text"
+    attachments: Optional[List[Dict[str, Any]]] = None
+    reply_to: Optional[str] = None
+    mentions: Optional[List[str]] = None
+
+
+class AddReactionRequest(BaseModel):
+    """Request model for adding reaction"""
+    message_id: str
+    user_id: str
+    emoji: str
+
+
+class CreateSessionRequest(BaseModel):
+    """Request model for creating session"""
+    name: str
+    resource_type: str
+    resource_id: str
+    created_by: str
+
+
+class UpdateCursorRequest(BaseModel):
+    """Request model for updating cursor"""
+    session_id: str
+    user_id: str
+    cursor_data: Dict[str, Any]
+
+
+@APP.post("/api/collaboration/presence")
+async def update_presence(request: UpdatePresenceRequest):
+    """Update user presence"""
+    try:
+        from api.collaboration.realtime_manager import realtime_manager
+        result = realtime_manager.update_presence(
+            user_id=request.user_id,
+            username=request.username,
+            status=request.status,
+            current_session=request.current_session
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Update presence error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/collaboration/presence")
+async def get_presence(user_id: Optional[str] = None):
+    """Get user presence"""
+    try:
+        from api.collaboration.realtime_manager import realtime_manager
+        result = realtime_manager.get_presence(user_id=user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get presence error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/collaboration/rooms/{room_id}/join")
+async def join_room(room_id: str, user_id: str):
+    """Join a chat room"""
+    try:
+        from api.collaboration.realtime_manager import realtime_manager
+        result = realtime_manager.join_room(user_id=user_id, room_id=room_id)
+        return result
+    except Exception as e:
+        logger.error(f"Join room error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/collaboration/rooms/{room_id}/leave")
+async def leave_room(room_id: str, user_id: str):
+    """Leave a chat room"""
+    try:
+        from api.collaboration.realtime_manager import realtime_manager
+        result = realtime_manager.leave_room(user_id=user_id, room_id=room_id)
+        return result
+    except Exception as e:
+        logger.error(f"Leave room error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/collaboration/rooms")
+async def create_room(request: CreateRoomRequest):
+    """Create a chat room"""
+    try:
+        from api.collaboration.realtime_manager import realtime_manager
+        result = realtime_manager.create_room(
+            name=request.name,
+            description=request.description,
+            room_type=request.room_type,
+            created_by=request.created_by,
+            members=request.members
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Create room error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/collaboration/rooms")
+async def get_rooms(user_id: Optional[str] = None):
+    """Get chat rooms"""
+    try:
+        from api.collaboration.realtime_manager import realtime_manager
+        result = realtime_manager.get_rooms(user_id=user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get rooms error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/collaboration/rooms/{room_id}/members")
+async def add_room_member(room_id: str, user_id: str):
+    """Add member to room"""
+    try:
+        from api.collaboration.realtime_manager import realtime_manager
+        result = realtime_manager.add_room_member(room_id=room_id, user_id=user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Add room member error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/collaboration/messages")
+async def send_message(request: SendMessageRequest):
+    """Send a chat message"""
+    try:
+        from api.collaboration.realtime_manager import realtime_manager
+        result = realtime_manager.send_message(
+            room_id=request.room_id,
+            user_id=request.user_id,
+            username=request.username,
+            content=request.content,
+            message_type=request.message_type,
+            attachments=request.attachments,
+            reply_to=request.reply_to,
+            mentions=request.mentions
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Send message error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/collaboration/messages")
+async def get_messages(room_id: str, limit: int = 50, before: Optional[str] = None):
+    """Get messages from a room"""
+    try:
+        from api.collaboration.realtime_manager import realtime_manager
+        result = realtime_manager.get_messages(
+            room_id=room_id,
+            limit=limit,
+            before=before
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Get messages error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/collaboration/messages/reactions")
+async def add_reaction(request: AddReactionRequest):
+    """Add reaction to message"""
+    try:
+        from api.collaboration.realtime_manager import realtime_manager
+        result = realtime_manager.add_reaction(
+            message_id=request.message_id,
+            user_id=request.user_id,
+            emoji=request.emoji
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Add reaction error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/collaboration/activities")
+async def get_activities(room_id: Optional[str] = None, limit: int = 50):
+    """Get activity feed"""
+    try:
+        from api.collaboration.realtime_manager import realtime_manager
+        result = realtime_manager.get_activities(room_id=room_id, limit=limit)
+        return result
+    except Exception as e:
+        logger.error(f"Get activities error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/collaboration/notifications")
+async def get_notifications(user_id: str, unread_only: bool = False):
+    """Get user notifications"""
+    try:
+        from api.collaboration.realtime_manager import realtime_manager
+        result = realtime_manager.get_notifications(
+            user_id=user_id,
+            unread_only=unread_only
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Get notifications error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.patch("/api/collaboration/notifications/{notification_id}/read")
+async def mark_notification_read(notification_id: str):
+    """Mark notification as read"""
+    try:
+        from api.collaboration.realtime_manager import realtime_manager
+        result = realtime_manager.mark_notification_read(notification_id=notification_id)
+        return result
+    except Exception as e:
+        logger.error(f"Mark notification read error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/collaboration/sessions")
+async def create_session(request: CreateSessionRequest):
+    """Create collaborative session"""
+    try:
+        from api.collaboration.realtime_manager import realtime_manager
+        result = realtime_manager.create_session(
+            name=request.name,
+            resource_type=request.resource_type,
+            resource_id=request.resource_id,
+            created_by=request.created_by
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Create session error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/collaboration/sessions/{session_id}/join")
+async def join_session(session_id: str, user_id: str):
+    """Join collaborative session"""
+    try:
+        from api.collaboration.realtime_manager import realtime_manager
+        result = realtime_manager.join_session(session_id=session_id, user_id=user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Join session error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/collaboration/sessions/cursor")
+async def update_cursor(request: UpdateCursorRequest):
+    """Update user cursor position"""
+    try:
+        from api.collaboration.realtime_manager import realtime_manager
+        result = realtime_manager.update_cursor(
+            session_id=request.session_id,
+            user_id=request.user_id,
+            cursor_data=request.cursor_data
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Update cursor error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/collaboration/statistics")
+async def get_collaboration_statistics():
+    """Get collaboration statistics"""
+    try:
+        from api.collaboration.realtime_manager import realtime_manager
+        result = realtime_manager.get_statistics()
+        return result
+    except Exception as e:
+        logger.error(f"Get collaboration statistics error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# SECURITY & ENCRYPTION API ENDPOINTS
+# ============================================================================
+
+class EncryptDataRequest(BaseModel):
+    """Request model for encrypting data"""
+    plaintext: str
+    algorithm: str = "aes_256_gcm"
+
+
+class DecryptDataRequest(BaseModel):
+    """Request model for decrypting data"""
+    encrypted_data: Dict[str, Any]
+    key: str
+
+
+class HashPasswordRequest(BaseModel):
+    """Request model for hashing password"""
+    password: str
+
+
+class VerifyPasswordRequest(BaseModel):
+    """Request model for verifying password"""
+    password: str
+    hash_string: str
+
+
+class CreateAPIKeyRequest(BaseModel):
+    """Request model for creating API key"""
+    name: str
+    user_id: str
+    permissions: List[str]
+    rate_limit: int = 1000
+    expires_days: Optional[int] = None
+
+
+class ValidateAPIKeyRequest(BaseModel):
+    """Request model for validating API key"""
+    key: str
+
+
+class AssignRoleRequest(BaseModel):
+    """Request model for assigning role"""
+    user_id: str
+    username: str
+    role: str
+
+
+class CheckPermissionRequest(BaseModel):
+    """Request model for checking permission"""
+    user_id: str
+    permission: str
+
+
+class Enable2FARequest(BaseModel):
+    """Request model for enabling 2FA"""
+    user_id: str
+
+
+class Verify2FARequest(BaseModel):
+    """Request model for verifying 2FA token"""
+    user_id: str
+    token: str
+
+
+class CreateSessionRequest(BaseModel):
+    """Request model for creating session"""
+    user_id: str
+    ip_address: str
+    user_agent: str
+    duration_hours: int = 24
+
+
+class ValidateSessionRequest(BaseModel):
+    """Request model for validating session"""
+    token: str
+
+
+@APP.post("/api/security/encrypt")
+async def encrypt_data(request: EncryptDataRequest):
+    """Encrypt data"""
+    try:
+        from api.security.security_manager import security_manager
+        result = security_manager.encrypt_data(
+            plaintext=request.plaintext,
+            algorithm=request.algorithm
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Encrypt data error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/security/decrypt")
+async def decrypt_data(request: DecryptDataRequest):
+    """Decrypt data"""
+    try:
+        from api.security.security_manager import security_manager
+        result = security_manager.decrypt_data(
+            encrypted_data=request.encrypted_data,
+            key=request.key
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Decrypt data error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/security/password/hash")
+async def hash_password(request: HashPasswordRequest):
+    """Hash password"""
+    try:
+        from api.security.security_manager import security_manager
+        result = security_manager.hash_password(password=request.password)
+        return result
+    except Exception as e:
+        logger.error(f"Hash password error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/security/password/verify")
+async def verify_password(request: VerifyPasswordRequest):
+    """Verify password against hash"""
+    try:
+        from api.security.security_manager import security_manager
+        result = security_manager.verify_password(
+            password=request.password,
+            hash_string=request.hash_string
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Verify password error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/security/api-keys")
+async def create_api_key(request: CreateAPIKeyRequest):
+    """Create an API key"""
+    try:
+        from api.security.security_manager import security_manager
+        result = security_manager.create_api_key(
+            name=request.name,
+            user_id=request.user_id,
+            permissions=request.permissions,
+            rate_limit=request.rate_limit,
+            expires_days=request.expires_days
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Create API key error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/security/api-keys/validate")
+async def validate_api_key(request: ValidateAPIKeyRequest):
+    """Validate an API key"""
+    try:
+        from api.security.security_manager import security_manager
+        result = security_manager.validate_api_key(key=request.key)
+        return result
+    except Exception as e:
+        logger.error(f"Validate API key error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.delete("/api/security/api-keys/{key_id}")
+async def revoke_api_key(key_id: str, user_id: str):
+    """Revoke an API key"""
+    try:
+        from api.security.security_manager import security_manager
+        result = security_manager.revoke_api_key(key_id=key_id, user_id=user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Revoke API key error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/security/api-keys")
+async def get_api_keys(user_id: Optional[str] = None):
+    """Get API keys"""
+    try:
+        from api.security.security_manager import security_manager
+        result = security_manager.get_api_keys(user_id=user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get API keys error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/security/roles/assign")
+async def assign_role(request: AssignRoleRequest):
+    """Assign role to user"""
+    try:
+        from api.security.security_manager import security_manager
+        result = security_manager.assign_role(
+            user_id=request.user_id,
+            username=request.username,
+            role=request.role
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Assign role error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/security/permissions/check")
+async def check_permission(request: CheckPermissionRequest):
+    """Check if user has permission"""
+    try:
+        from api.security.security_manager import security_manager
+        result = security_manager.check_permission(
+            user_id=request.user_id,
+            permission=request.permission
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Check permission error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/security/roles/{user_id}")
+async def get_user_role(user_id: str):
+    """Get user role"""
+    try:
+        from api.security.security_manager import security_manager
+        result = security_manager.get_user_role(user_id=user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get user role error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/security/audit-logs")
+async def get_audit_logs(
+    user_id: Optional[str] = None,
+    action: Optional[str] = None,
+    limit: int = 100
+):
+    """Get audit logs"""
+    try:
+        from api.security.security_manager import security_manager
+        result = security_manager.get_audit_logs(
+            user_id=user_id,
+            action=action,
+            limit=limit
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Get audit logs error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/security/2fa/enable")
+async def enable_2fa(request: Enable2FARequest):
+    """Enable 2FA for user"""
+    try:
+        from api.security.security_manager import security_manager
+        result = security_manager.enable_2fa(user_id=request.user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Enable 2FA error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/security/2fa/verify")
+async def verify_2fa_token(request: Verify2FARequest):
+    """Verify 2FA token"""
+    try:
+        from api.security.security_manager import security_manager
+        result = security_manager.verify_2fa_token(
+            user_id=request.user_id,
+            token=request.token
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Verify 2FA token error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.delete("/api/security/2fa/{user_id}")
+async def disable_2fa(user_id: str):
+    """Disable 2FA for user"""
+    try:
+        from api.security.security_manager import security_manager
+        result = security_manager.disable_2fa(user_id=user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Disable 2FA error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/security/sessions")
+async def create_session(request: CreateSessionRequest):
+    """Create a user session"""
+    try:
+        from api.security.security_manager import security_manager
+        result = security_manager.create_session(
+            user_id=request.user_id,
+            ip_address=request.ip_address,
+            user_agent=request.user_agent,
+            duration_hours=request.duration_hours
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Create session error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/security/sessions/validate")
+async def validate_session(request: ValidateSessionRequest):
+    """Validate a session token"""
+    try:
+        from api.security.security_manager import security_manager
+        result = security_manager.validate_session(token=request.token)
+        return result
+    except Exception as e:
+        logger.error(f"Validate session error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.delete("/api/security/sessions/{session_id}")
+async def revoke_session(session_id: str):
+    """Revoke a session"""
+    try:
+        from api.security.security_manager import security_manager
+        result = security_manager.revoke_session(session_id=session_id)
+        return result
+    except Exception as e:
+        logger.error(f"Revoke session error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/security/statistics")
+async def get_security_statistics():
+    """Get security statistics"""
+    try:
+        from api.security.security_manager import security_manager
+        result = security_manager.get_statistics()
+        return result
+    except Exception as e:
+        logger.error(f"Get security statistics error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== Machine Learning Integration Endpoints =====
+
+class CreateModelRequest(BaseModel):
+    name: str
+    description: str
+    model_type: str
+    framework: str
+    user_id: str
+    input_shape: Optional[List[int]] = []
+    output_shape: Optional[List[int]] = []
+    num_parameters: Optional[int] = 0
+    model_size_mb: Optional[float] = 0.0
+    tags: Optional[List[str]] = []
+    metadata: Optional[Dict] = {}
+
+
+class UpdateModelRequest(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    status: Optional[str] = None
+    tags: Optional[List[str]] = None
+    metadata: Optional[Dict] = None
+    metrics: Optional[Dict] = None
+    is_deployed: Optional[bool] = None
+    endpoint_url: Optional[str] = None
+    deployment_config: Optional[Dict] = None
+
+
+class CreateTrainingJobRequest(BaseModel):
+    model_id: str
+    name: str
+    dataset_path: str
+    user_id: str
+    num_epochs: Optional[int] = 10
+    batch_size: Optional[int] = 32
+    learning_rate: Optional[float] = 0.001
+    optimizer: Optional[str] = "adam"
+    loss_function: Optional[str] = "categorical_crossentropy"
+    gpu_enabled: Optional[bool] = False
+    num_gpus: Optional[int] = 0
+    memory_mb: Optional[int] = 2048
+
+
+class PredictRequest(BaseModel):
+    model_id: str
+    input_data: Any
+    user_id: str
+    batch_size: Optional[int] = 1
+    confidence_threshold: Optional[float] = 0.5
+    max_results: Optional[int] = 5
+
+
+class BatchPredictRequest(BaseModel):
+    model_id: str
+    input_batch: List[Any]
+    user_id: str
+
+
+class CreateDatasetRequest(BaseModel):
+    name: str
+    description: str
+    dataset_type: str
+    user_id: str
+    num_samples: Optional[int] = 0
+    num_features: Optional[int] = 0
+    num_classes: Optional[int] = 0
+    size_mb: Optional[float] = 0.0
+    train_split: Optional[float] = 0.7
+    val_split: Optional[float] = 0.15
+    test_split: Optional[float] = 0.15
+    labels: Optional[List[str]] = []
+    preprocessing_steps: Optional[List[str]] = []
+
+
+class DeployModelRequest(BaseModel):
+    model_id: str
+    config: Dict
+
+
+class CreateAutoMLRequest(BaseModel):
+    name: str
+    task_type: str
+    metric_to_optimize: str
+    model_types: Optional[List[str]] = []
+    hyperparameters: Optional[Dict] = {}
+    max_trials: Optional[int] = 50
+    max_time_minutes: Optional[int] = 60
+    max_models: Optional[int] = 10
+
+
+@APP.post("/api/ml/models")
+async def create_ml_model(request: CreateModelRequest):
+    """Create a new ML model"""
+    try:
+        from api.ml.ml_manager import ml_manager
+        result = ml_manager.create_model(
+            name=request.name,
+            description=request.description,
+            model_type=request.model_type,
+            framework=request.framework,
+            user_id=request.user_id,
+            input_shape=request.input_shape,
+            output_shape=request.output_shape,
+            num_parameters=request.num_parameters,
+            model_size_mb=request.model_size_mb,
+            tags=request.tags,
+            metadata=request.metadata
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Create ML model error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/ml/models/{model_id}")
+async def get_ml_model(model_id: str):
+    """Get ML model by ID"""
+    try:
+        from api.ml.ml_manager import ml_manager
+        result = ml_manager.get_model(model_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get ML model error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/ml/models")
+async def list_ml_models(user_id: Optional[str] = None,
+                        model_type: Optional[str] = None,
+                        status: Optional[str] = None):
+    """List ML models"""
+    try:
+        from api.ml.ml_manager import ml_manager
+        result = ml_manager.list_models(user_id=user_id, model_type=model_type, status=status)
+        return result
+    except Exception as e:
+        logger.error(f"List ML models error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.put("/api/ml/models/{model_id}")
+async def update_ml_model(model_id: str, request: UpdateModelRequest):
+    """Update ML model"""
+    try:
+        from api.ml.ml_manager import ml_manager
+        updates = {k: v for k, v in request.dict().items() if v is not None}
+        result = ml_manager.update_model(model_id, **updates)
+        return result
+    except Exception as e:
+        logger.error(f"Update ML model error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.delete("/api/ml/models/{model_id}")
+async def delete_ml_model(model_id: str):
+    """Delete ML model"""
+    try:
+        from api.ml.ml_manager import ml_manager
+        result = ml_manager.delete_model(model_id)
+        return result
+    except Exception as e:
+        logger.error(f"Delete ML model error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/ml/training-jobs")
+async def create_training_job(request: CreateTrainingJobRequest):
+    """Create a training job"""
+    try:
+        from api.ml.ml_manager import ml_manager
+        result = ml_manager.create_training_job(
+            model_id=request.model_id,
+            name=request.name,
+            dataset_path=request.dataset_path,
+            user_id=request.user_id,
+            num_epochs=request.num_epochs,
+            batch_size=request.batch_size,
+            learning_rate=request.learning_rate,
+            optimizer=request.optimizer,
+            loss_function=request.loss_function,
+            gpu_enabled=request.gpu_enabled,
+            num_gpus=request.num_gpus,
+            memory_mb=request.memory_mb
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Create training job error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/ml/training-jobs/{job_id}/start")
+async def start_training_job(job_id: str):
+    """Start a training job"""
+    try:
+        from api.ml.ml_manager import ml_manager
+        result = ml_manager.start_training(job_id)
+        return result
+    except Exception as e:
+        logger.error(f"Start training job error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/ml/training-jobs/{job_id}/stop")
+async def stop_training_job(job_id: str):
+    """Stop a training job"""
+    try:
+        from api.ml.ml_manager import ml_manager
+        result = ml_manager.stop_training(job_id)
+        return result
+    except Exception as e:
+        logger.error(f"Stop training job error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/ml/training-jobs/{job_id}")
+async def get_training_job(job_id: str):
+    """Get training job details"""
+    try:
+        from api.ml.ml_manager import ml_manager
+        result = ml_manager.get_training_job(job_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get training job error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/ml/training-jobs")
+async def list_training_jobs(model_id: Optional[str] = None,
+                             status: Optional[str] = None):
+    """List training jobs"""
+    try:
+        from api.ml.ml_manager import ml_manager
+        result = ml_manager.list_training_jobs(model_id=model_id, status=status)
+        return result
+    except Exception as e:
+        logger.error(f"List training jobs error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/ml/predict")
+async def ml_predict(request: PredictRequest):
+    """Run model inference"""
+    try:
+        from api.ml.ml_manager import ml_manager
+        result = ml_manager.predict(
+            model_id=request.model_id,
+            input_data=request.input_data,
+            user_id=request.user_id,
+            batch_size=request.batch_size,
+            confidence_threshold=request.confidence_threshold,
+            max_results=request.max_results
+        )
+        return result
+    except Exception as e:
+        logger.error(f"ML predict error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/ml/predict/batch")
+async def ml_batch_predict(request: BatchPredictRequest):
+    """Run batch inference"""
+    try:
+        from api.ml.ml_manager import ml_manager
+        result = ml_manager.batch_predict(
+            model_id=request.model_id,
+            input_batch=request.input_batch,
+            user_id=request.user_id
+        )
+        return result
+    except Exception as e:
+        logger.error(f"ML batch predict error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/ml/datasets")
+async def create_dataset(request: CreateDatasetRequest):
+    """Create a dataset"""
+    try:
+        from api.ml.ml_manager import ml_manager
+        result = ml_manager.create_dataset(
+            name=request.name,
+            description=request.description,
+            dataset_type=request.dataset_type,
+            user_id=request.user_id,
+            num_samples=request.num_samples,
+            num_features=request.num_features,
+            num_classes=request.num_classes,
+            size_mb=request.size_mb,
+            train_split=request.train_split,
+            val_split=request.val_split,
+            test_split=request.test_split,
+            labels=request.labels,
+            preprocessing_steps=request.preprocessing_steps
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Create dataset error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/ml/datasets")
+async def list_datasets(user_id: Optional[str] = None):
+    """List datasets"""
+    try:
+        from api.ml.ml_manager import ml_manager
+        result = ml_manager.list_datasets(user_id=user_id)
+        return result
+    except Exception as e:
+        logger.error(f"List datasets error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/ml/deploy")
+async def deploy_model(request: DeployModelRequest):
+    """Deploy a model"""
+    try:
+        from api.ml.ml_manager import ml_manager
+        result = ml_manager.deploy_model(request.model_id, request.config)
+        return result
+    except Exception as e:
+        logger.error(f"Deploy model error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/ml/undeploy/{model_id}")
+async def undeploy_model(model_id: str):
+    """Undeploy a model"""
+    try:
+        from api.ml.ml_manager import ml_manager
+        result = ml_manager.undeploy_model(model_id)
+        return result
+    except Exception as e:
+        logger.error(f"Undeploy model error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/ml/automl")
+async def create_automl(request: CreateAutoMLRequest):
+    """Create AutoML configuration"""
+    try:
+        from api.ml.ml_manager import ml_manager
+        result = ml_manager.create_automl_config(
+            name=request.name,
+            task_type=request.task_type,
+            metric_to_optimize=request.metric_to_optimize,
+            model_types=request.model_types,
+            hyperparameters=request.hyperparameters,
+            max_trials=request.max_trials,
+            max_time_minutes=request.max_time_minutes,
+            max_models=request.max_models
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Create AutoML error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/ml/automl/{config_id}/start")
+async def start_automl(config_id: str):
+    """Start AutoML search"""
+    try:
+        from api.ml.ml_manager import ml_manager
+        result = ml_manager.start_automl(config_id)
+        return result
+    except Exception as e:
+        logger.error(f"Start AutoML error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/ml/statistics")
+async def get_ml_statistics():
+    """Get ML statistics"""
+    try:
+        from api.ml.ml_manager import ml_manager
+        result = ml_manager.get_statistics()
+        return result
+    except Exception as e:
+        logger.error(f"Get ML statistics error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
