@@ -6,7 +6,11 @@ import logging
 import json
 from pathlib import Path
 from typing import Optional, Dict, Any, List
-import requests
+
+try:  # pragma: no cover - optional dependency guard
+    import requests
+except ModuleNotFoundError:  # pragma: no cover - handled gracefully at runtime
+    requests = None  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +25,9 @@ class IPFSStorage:
 
     def _check_connection(self) -> bool:
         """Check if IPFS daemon is running."""
+        if requests is None:
+            logger.warning("requests library is not installed; IPFS support disabled")
+            return False
         try:
             response = requests.get(f"{self.ipfs_api_url}/api/v0/version", timeout=2)
             if response.status_code == 200:
@@ -40,6 +47,9 @@ class IPFSStorage:
         """
         if not self.available:
             logger.error("IPFS daemon not available")
+            return None
+        if requests is None:
+            logger.error("requests library is required for IPFS uploads")
             return None
 
         try:
@@ -84,6 +94,9 @@ class IPFSStorage:
         if not self.available:
             logger.error("IPFS daemon not available")
             return None
+        if requests is None:
+            logger.error("requests library is required for IPFS downloads")
+            return None
 
         try:
             response = requests.post(
@@ -113,6 +126,9 @@ class IPFSStorage:
         Pin file to local IPFS node (prevent garbage collection).
         """
         try:
+            if requests is None:
+                logger.error("requests library is required to pin files")
+                return False
             response = requests.post(
                 f"{self.ipfs_api_url}/api/v0/pin/add",
                 params={'arg': cid}
@@ -128,6 +144,9 @@ class IPFSStorage:
         """
         Unpin file from local IPFS node.
         """
+        if requests is None:
+            logger.error("requests library is required to unpin files")
+            return False
         try:
             response = requests.post(
                 f"{self.ipfs_api_url}/api/v0/pin/rm",
@@ -144,6 +163,9 @@ class IPFSStorage:
         """
         Get metadata about a file stored on IPFS.
         """
+        if requests is None:
+            logger.error("requests library is required to query IPFS metadata")
+            return None
         try:
             response = requests.post(
                 f"{self.ipfs_api_url}/api/v0/object/stat",
@@ -160,6 +182,9 @@ class IPFSStorage:
         List all pinned CIDs on local node.
         """
         try:
+            if requests is None:
+                logger.error("requests library is required to list IPFS pins")
+                return []
             response = requests.post(f"{self.ipfs_api_url}/api/v0/pin/ls")
             if response.status_code == 200:
                 data = response.json()

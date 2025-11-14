@@ -7,7 +7,11 @@ import json
 import asyncio
 from pathlib import Path
 from typing import List, Dict, Any, Optional
-import aiohttp
+
+try:  # pragma: no cover - simple import guard
+    import aiohttp
+except ModuleNotFoundError:  # pragma: no cover - handled at runtime
+    aiohttp = None  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +79,13 @@ class WebhookManager:
 
     async def _send_webhook(self, webhook: Dict, event: str, data: Dict):
         """Send webhook HTTP POST request."""
+        if aiohttp is None:
+            logger.warning(
+                "aiohttp is not installed; skipping webhook '%s' delivery",
+                webhook.get("name", webhook.get("id", "unknown")),
+            )
+            return
+
         try:
             payload = {
                 "event": event,

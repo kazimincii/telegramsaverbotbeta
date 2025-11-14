@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 import json
 import time
 import base64
@@ -6,7 +7,7 @@ import logging
 import os
 from collections import deque
 from pathlib import Path
-from typing import List, Optional, Set
+from typing import Any, Dict, List, Optional, Set
 
 from dotenv import load_dotenv
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
@@ -203,6 +204,7 @@ STATE = {
 
 def log(msg: str) -> None:
     """Log message to both file/console and in-memory buffer."""
+    print(msg)
     logger.info(msg)
     STATE["log"].append(msg)  # deque automatically removes old items when maxlen is reached
 
@@ -269,12 +271,13 @@ async def global_exception_handler(request: Request, exc: Exception):
     is_dev = os.getenv("ENVIRONMENT", "production").lower() in ("development", "dev")
     detail = str(exc) if is_dev else "Internal Server Error"
 
+    content = {"detail": detail}
+    if is_dev:
+        content["error_type"] = type(exc).__name__
+
     return JSONResponse(
         status_code=500,
-        content={
-            "detail": detail,
-            "error_type": type(exc).__name__ if is_dev else "ServerError"
-        }
+        content=content,
     )
 
 
@@ -468,6 +471,8 @@ async def download_worker(
     flt = make_media_filter(media_types)
     tasks = []
     stop_event = STATE["stop"]
+    download_params = inspect.signature(download_file).parameters
+    supports_chat_args = "chat_id" in download_params or len(download_params) >= 5
 
     try:
         async for dialog in client.iter_dialogs():
@@ -512,7 +517,19 @@ async def download_worker(
                     async with sem:
                         for attempt in range(3):
                             try:
-                                file_path, file_size = await download_file(client, m, tdir, cid, dname)
+                                if supports_chat_args:
+                                    result = await download_file(client, m, tdir, cid, dname)
+                                else:
+                                    result = await download_file(client, m, tdir)
+
+                                if isinstance(result, tuple):
+                                    file_path, file_size = result
+                                elif result is None:
+                                    file_path = tdir / str(getattr(m, "id", "file"))
+                                    file_size = file_path.stat().st_size if file_path.exists() else 0
+                                else:
+                                    file_path = Path(result)
+                                    file_size = file_path.stat().st_size if file_path.exists() else 0
                                 # Record successful download in database
                                 db.add_download(m.id, cid, dname, str(file_path), file_size, knd)
                                 STATE["progress"]["downloaded"] += 1
