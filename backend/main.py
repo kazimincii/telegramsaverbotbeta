@@ -4818,3 +4818,347 @@ async def get_collaboration_statistics():
     except Exception as e:
         logger.error(f"Get collaboration statistics error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# SECURITY & ENCRYPTION API ENDPOINTS
+# ============================================================================
+
+class EncryptDataRequest(BaseModel):
+    """Request model for encrypting data"""
+    plaintext: str
+    algorithm: str = "aes_256_gcm"
+
+
+class DecryptDataRequest(BaseModel):
+    """Request model for decrypting data"""
+    encrypted_data: Dict[str, Any]
+    key: str
+
+
+class HashPasswordRequest(BaseModel):
+    """Request model for hashing password"""
+    password: str
+
+
+class VerifyPasswordRequest(BaseModel):
+    """Request model for verifying password"""
+    password: str
+    hash_string: str
+
+
+class CreateAPIKeyRequest(BaseModel):
+    """Request model for creating API key"""
+    name: str
+    user_id: str
+    permissions: List[str]
+    rate_limit: int = 1000
+    expires_days: Optional[int] = None
+
+
+class ValidateAPIKeyRequest(BaseModel):
+    """Request model for validating API key"""
+    key: str
+
+
+class AssignRoleRequest(BaseModel):
+    """Request model for assigning role"""
+    user_id: str
+    username: str
+    role: str
+
+
+class CheckPermissionRequest(BaseModel):
+    """Request model for checking permission"""
+    user_id: str
+    permission: str
+
+
+class Enable2FARequest(BaseModel):
+    """Request model for enabling 2FA"""
+    user_id: str
+
+
+class Verify2FARequest(BaseModel):
+    """Request model for verifying 2FA token"""
+    user_id: str
+    token: str
+
+
+class CreateSessionRequest(BaseModel):
+    """Request model for creating session"""
+    user_id: str
+    ip_address: str
+    user_agent: str
+    duration_hours: int = 24
+
+
+class ValidateSessionRequest(BaseModel):
+    """Request model for validating session"""
+    token: str
+
+
+@APP.post("/api/security/encrypt")
+async def encrypt_data(request: EncryptDataRequest):
+    """Encrypt data"""
+    try:
+        from api.security.security_manager import security_manager
+        result = security_manager.encrypt_data(
+            plaintext=request.plaintext,
+            algorithm=request.algorithm
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Encrypt data error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/security/decrypt")
+async def decrypt_data(request: DecryptDataRequest):
+    """Decrypt data"""
+    try:
+        from api.security.security_manager import security_manager
+        result = security_manager.decrypt_data(
+            encrypted_data=request.encrypted_data,
+            key=request.key
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Decrypt data error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/security/password/hash")
+async def hash_password(request: HashPasswordRequest):
+    """Hash password"""
+    try:
+        from api.security.security_manager import security_manager
+        result = security_manager.hash_password(password=request.password)
+        return result
+    except Exception as e:
+        logger.error(f"Hash password error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/security/password/verify")
+async def verify_password(request: VerifyPasswordRequest):
+    """Verify password against hash"""
+    try:
+        from api.security.security_manager import security_manager
+        result = security_manager.verify_password(
+            password=request.password,
+            hash_string=request.hash_string
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Verify password error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/security/api-keys")
+async def create_api_key(request: CreateAPIKeyRequest):
+    """Create an API key"""
+    try:
+        from api.security.security_manager import security_manager
+        result = security_manager.create_api_key(
+            name=request.name,
+            user_id=request.user_id,
+            permissions=request.permissions,
+            rate_limit=request.rate_limit,
+            expires_days=request.expires_days
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Create API key error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/security/api-keys/validate")
+async def validate_api_key(request: ValidateAPIKeyRequest):
+    """Validate an API key"""
+    try:
+        from api.security.security_manager import security_manager
+        result = security_manager.validate_api_key(key=request.key)
+        return result
+    except Exception as e:
+        logger.error(f"Validate API key error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.delete("/api/security/api-keys/{key_id}")
+async def revoke_api_key(key_id: str, user_id: str):
+    """Revoke an API key"""
+    try:
+        from api.security.security_manager import security_manager
+        result = security_manager.revoke_api_key(key_id=key_id, user_id=user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Revoke API key error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/security/api-keys")
+async def get_api_keys(user_id: Optional[str] = None):
+    """Get API keys"""
+    try:
+        from api.security.security_manager import security_manager
+        result = security_manager.get_api_keys(user_id=user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get API keys error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/security/roles/assign")
+async def assign_role(request: AssignRoleRequest):
+    """Assign role to user"""
+    try:
+        from api.security.security_manager import security_manager
+        result = security_manager.assign_role(
+            user_id=request.user_id,
+            username=request.username,
+            role=request.role
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Assign role error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/security/permissions/check")
+async def check_permission(request: CheckPermissionRequest):
+    """Check if user has permission"""
+    try:
+        from api.security.security_manager import security_manager
+        result = security_manager.check_permission(
+            user_id=request.user_id,
+            permission=request.permission
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Check permission error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/security/roles/{user_id}")
+async def get_user_role(user_id: str):
+    """Get user role"""
+    try:
+        from api.security.security_manager import security_manager
+        result = security_manager.get_user_role(user_id=user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get user role error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/security/audit-logs")
+async def get_audit_logs(
+    user_id: Optional[str] = None,
+    action: Optional[str] = None,
+    limit: int = 100
+):
+    """Get audit logs"""
+    try:
+        from api.security.security_manager import security_manager
+        result = security_manager.get_audit_logs(
+            user_id=user_id,
+            action=action,
+            limit=limit
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Get audit logs error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/security/2fa/enable")
+async def enable_2fa(request: Enable2FARequest):
+    """Enable 2FA for user"""
+    try:
+        from api.security.security_manager import security_manager
+        result = security_manager.enable_2fa(user_id=request.user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Enable 2FA error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/security/2fa/verify")
+async def verify_2fa_token(request: Verify2FARequest):
+    """Verify 2FA token"""
+    try:
+        from api.security.security_manager import security_manager
+        result = security_manager.verify_2fa_token(
+            user_id=request.user_id,
+            token=request.token
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Verify 2FA token error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.delete("/api/security/2fa/{user_id}")
+async def disable_2fa(user_id: str):
+    """Disable 2FA for user"""
+    try:
+        from api.security.security_manager import security_manager
+        result = security_manager.disable_2fa(user_id=user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Disable 2FA error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/security/sessions")
+async def create_session(request: CreateSessionRequest):
+    """Create a user session"""
+    try:
+        from api.security.security_manager import security_manager
+        result = security_manager.create_session(
+            user_id=request.user_id,
+            ip_address=request.ip_address,
+            user_agent=request.user_agent,
+            duration_hours=request.duration_hours
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Create session error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/security/sessions/validate")
+async def validate_session(request: ValidateSessionRequest):
+    """Validate a session token"""
+    try:
+        from api.security.security_manager import security_manager
+        result = security_manager.validate_session(token=request.token)
+        return result
+    except Exception as e:
+        logger.error(f"Validate session error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.delete("/api/security/sessions/{session_id}")
+async def revoke_session(session_id: str):
+    """Revoke a session"""
+    try:
+        from api.security.security_manager import security_manager
+        result = security_manager.revoke_session(session_id=session_id)
+        return result
+    except Exception as e:
+        logger.error(f"Revoke session error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/security/statistics")
+async def get_security_statistics():
+    """Get security statistics"""
+    try:
+        from api.security.security_manager import security_manager
+        result = security_manager.get_statistics()
+        return result
+    except Exception as e:
+        logger.error(f"Get security statistics error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

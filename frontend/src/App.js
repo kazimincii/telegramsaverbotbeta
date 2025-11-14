@@ -24,6 +24,7 @@ import VoiceControl from "./components/VoiceControl";
 import PremiumManager from "./components/PremiumManager";
 import CloudStorageManager from "./components/CloudStorageManager";
 import RealtimeCollaboration from "./components/RealtimeCollaboration";
+import SecurityManager from "./components/SecurityManager";
 import { AppProvider } from "./context/AppContext";
 import "./styles/modern.css";
 
@@ -82,6 +83,7 @@ export default function App(){
     { id: 'ocr', label: 'OCR & Belge İşleme', icon: '📄' },
     { id: 'voice', label: 'Sesli Kontrol', icon: '🎤' },
     { id: 'premium', label: 'Premium', icon: '💎' },
+    { id: 'security', label: 'Güvenlik & Şifreleme', icon: '🔐' },
     { id: 'ai', label: 'AI Asistan', icon: '🤖' },
     { id: 'summary', label: 'İçerik Özetleme', icon: '📝' },
     { id: 'tagging', label: 'Otomatik Etiketleme', icon: '🏷️' },
@@ -148,6 +150,7 @@ export default function App(){
               {activeView === 'ocr' && <OCRProcessor />}
               {activeView === 'voice' && <VoiceControl />}
               {activeView === 'premium' && <PremiumManager />}
+              {activeView === 'security' && <SecurityManager />}
               {activeView === 'ai' && <AIAssistant />}
               {activeView === 'summary' && <ContentSummary />}
               {activeView === 'tagging' && <TagManager />}
