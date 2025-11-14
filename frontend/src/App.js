@@ -22,6 +22,7 @@ import AutomationManager from "./components/AutomationManager";
 import OCRProcessor from "./components/OCRProcessor";
 import VoiceControl from "./components/VoiceControl";
 import PremiumManager from "./components/PremiumManager";
+import CloudStorageManager from "./components/CloudStorageManager";
 import { AppProvider } from "./context/AppContext";
 import "./styles/modern.css";
 
@@ -152,7 +153,7 @@ export default function App(){
               {activeView === 'analytics' && <AnalyticsDashboard />}
               {activeView === 'search' && <CLIPSearchPanel />}
               {activeView === 'webhook' && <WebhookManager />}
-              {activeView === 'cloud' && <CloudSyncSettings />}
+              {activeView === 'cloud' && <CloudStorageManager />}
               {activeView === 'video' && <VideoProcessor />}
               {activeView === 'enterprise' && <EnterpriseManager />}
             </div>

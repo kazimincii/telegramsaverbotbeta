@@ -4277,3 +4277,245 @@ async def get_premium_statistics():
     except Exception as e:
         logger.error(f"Get premium statistics error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# CLOUD STORAGE API ENDPOINTS
+# ============================================================================
+
+class AddCloudAccountRequest(BaseModel):
+    """Request model for adding cloud account"""
+    user_id: str
+    provider: str
+    account_name: str
+    email: str
+    access_token: str
+    refresh_token: Optional[str] = None
+    storage_quota: int = 15 * 1024 * 1024 * 1024  # 15GB
+
+
+class UpdateCloudAccountRequest(BaseModel):
+    """Request model for updating cloud account"""
+    account_name: Optional[str] = None
+    sync_enabled: Optional[bool] = None
+    auto_upload: Optional[bool] = None
+    is_active: Optional[bool] = None
+
+
+class UploadFileRequest(BaseModel):
+    """Request model for uploading file"""
+    account_id: str
+    local_path: str
+    remote_path: str
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class DownloadFileRequest(BaseModel):
+    """Request model for downloading file"""
+    file_id: str
+    local_path: str
+
+
+class SyncFolderRequest(BaseModel):
+    """Request model for syncing folder"""
+    account_id: str
+    local_folder: str
+    remote_folder: str
+
+
+class ResolveConflictRequest(BaseModel):
+    """Request model for resolving conflict"""
+    conflict_id: str
+    resolution: str
+
+
+@APP.post("/api/cloud/accounts")
+async def add_cloud_account(request: AddCloudAccountRequest):
+    """Add a new cloud storage account"""
+    try:
+        from api.cloud.cloud_storage_manager import cloud_storage_manager
+        result = cloud_storage_manager.add_account(
+            user_id=request.user_id,
+            provider=request.provider,
+            account_name=request.account_name,
+            email=request.email,
+            access_token=request.access_token,
+            refresh_token=request.refresh_token,
+            storage_quota=request.storage_quota
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Add cloud account error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/cloud/accounts")
+async def get_cloud_accounts(user_id: Optional[str] = None):
+    """Get all cloud storage accounts"""
+    try:
+        from api.cloud.cloud_storage_manager import cloud_storage_manager
+        result = cloud_storage_manager.get_accounts(user_id=user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get cloud accounts error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/cloud/accounts/{account_id}")
+async def get_cloud_account(account_id: str):
+    """Get cloud storage account by ID"""
+    try:
+        from api.cloud.cloud_storage_manager import cloud_storage_manager
+        result = cloud_storage_manager.get_account(account_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get cloud account error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.patch("/api/cloud/accounts/{account_id}")
+async def update_cloud_account(account_id: str, request: UpdateCloudAccountRequest):
+    """Update cloud storage account settings"""
+    try:
+        from api.cloud.cloud_storage_manager import cloud_storage_manager
+        updates = {k: v for k, v in request.dict().items() if v is not None}
+        result = cloud_storage_manager.update_account(account_id, **updates)
+        return result
+    except Exception as e:
+        logger.error(f"Update cloud account error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.delete("/api/cloud/accounts/{account_id}")
+async def delete_cloud_account(account_id: str):
+    """Delete a cloud storage account"""
+    try:
+        from api.cloud.cloud_storage_manager import cloud_storage_manager
+        result = cloud_storage_manager.delete_account(account_id)
+        return result
+    except Exception as e:
+        logger.error(f"Delete cloud account error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/cloud/upload")
+async def upload_file_to_cloud(request: UploadFileRequest):
+    """Upload file to cloud storage"""
+    try:
+        from api.cloud.cloud_storage_manager import cloud_storage_manager
+        result = cloud_storage_manager.upload_file(
+            account_id=request.account_id,
+            local_path=request.local_path,
+            remote_path=request.remote_path,
+            metadata=request.metadata
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Upload file error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/cloud/download")
+async def download_file_from_cloud(request: DownloadFileRequest):
+    """Download file from cloud storage"""
+    try:
+        from api.cloud.cloud_storage_manager import cloud_storage_manager
+        result = cloud_storage_manager.download_file(
+            file_id=request.file_id,
+            local_path=request.local_path
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Download file error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/cloud/sync-folder")
+async def sync_folder(request: SyncFolderRequest):
+    """Synchronize an entire folder"""
+    try:
+        from api.cloud.cloud_storage_manager import cloud_storage_manager
+        result = cloud_storage_manager.sync_folder(
+            account_id=request.account_id,
+            local_folder=request.local_folder,
+            remote_folder=request.remote_folder
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Sync folder error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/cloud/files")
+async def get_cloud_files(
+    account_id: Optional[str] = None,
+    sync_status: Optional[str] = None
+):
+    """Get cloud files"""
+    try:
+        from api.cloud.cloud_storage_manager import cloud_storage_manager
+        result = cloud_storage_manager.get_files(
+            account_id=account_id,
+            sync_status=sync_status
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Get cloud files error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/cloud/tasks")
+async def get_sync_tasks(
+    account_id: Optional[str] = None,
+    status: Optional[str] = None
+):
+    """Get synchronization tasks"""
+    try:
+        from api.cloud.cloud_storage_manager import cloud_storage_manager
+        result = cloud_storage_manager.get_sync_tasks(
+            account_id=account_id,
+            status=status
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Get sync tasks error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/cloud/conflicts")
+async def detect_conflicts():
+    """Detect synchronization conflicts"""
+    try:
+        from api.cloud.cloud_storage_manager import cloud_storage_manager
+        result = cloud_storage_manager.detect_conflicts()
+        return result
+    except Exception as e:
+        logger.error(f"Detect conflicts error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/cloud/conflicts/resolve")
+async def resolve_conflict(request: ResolveConflictRequest):
+    """Resolve a synchronization conflict"""
+    try:
+        from api.cloud.cloud_storage_manager import cloud_storage_manager
+        result = cloud_storage_manager.resolve_conflict(
+            conflict_id=request.conflict_id,
+            resolution=request.resolution
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Resolve conflict error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/cloud/statistics")
+async def get_cloud_statistics(user_id: Optional[str] = None):
+    """Get cloud storage statistics"""
+    try:
+        from api.cloud.cloud_storage_manager import cloud_storage_manager
+        result = cloud_storage_manager.get_statistics(user_id=user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get cloud statistics error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
