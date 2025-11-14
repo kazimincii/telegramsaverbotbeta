@@ -5543,3 +5543,212 @@ async def get_ml_statistics():
     except Exception as e:
         logger.error(f"Get ML statistics error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== Plugin System & Extensions Endpoints =====
+
+class InstallPluginRequest(BaseModel):
+    manifest: Dict
+    user_id: str
+    config: Optional[Dict] = {}
+
+
+class UpdatePluginRequest(BaseModel):
+    manifest: Dict
+    user_id: str
+
+
+class ConfigurePluginRequest(BaseModel):
+    config: Dict
+    user_id: str
+
+
+class RegisterHookRequest(BaseModel):
+    plugin_id: str
+    hook_name: str
+    priority: Optional[int] = 100
+
+
+class ExecuteHookRequest(BaseModel):
+    hook_name: str
+    data: Dict
+
+
+@APP.post("/api/plugins/install")
+async def install_plugin(request: InstallPluginRequest):
+    """Install a plugin"""
+    try:
+        from api.plugins.plugin_manager import plugin_manager
+        result = plugin_manager.install_plugin(
+            manifest=request.manifest,
+            user_id=request.user_id,
+            config=request.config
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Install plugin error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/plugins/{plugin_id}/uninstall")
+async def uninstall_plugin(plugin_id: str, user_id: str):
+    """Uninstall a plugin"""
+    try:
+        from api.plugins.plugin_manager import plugin_manager
+        result = plugin_manager.uninstall_plugin(plugin_id, user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Uninstall plugin error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/plugins/{plugin_id}/enable")
+async def enable_plugin(plugin_id: str, user_id: str):
+    """Enable a plugin"""
+    try:
+        from api.plugins.plugin_manager import plugin_manager
+        result = plugin_manager.enable_plugin(plugin_id, user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Enable plugin error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/plugins/{plugin_id}/disable")
+async def disable_plugin(plugin_id: str, user_id: str):
+    """Disable a plugin"""
+    try:
+        from api.plugins.plugin_manager import plugin_manager
+        result = plugin_manager.disable_plugin(plugin_id, user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Disable plugin error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.put("/api/plugins/{plugin_id}")
+async def update_plugin(plugin_id: str, request: UpdatePluginRequest):
+    """Update a plugin"""
+    try:
+        from api.plugins.plugin_manager import plugin_manager
+        result = plugin_manager.update_plugin(plugin_id, request.manifest, request.user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Update plugin error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/plugins/{plugin_id}/configure")
+async def configure_plugin(plugin_id: str, request: ConfigurePluginRequest):
+    """Configure a plugin"""
+    try:
+        from api.plugins.plugin_manager import plugin_manager
+        result = plugin_manager.configure_plugin(plugin_id, request.config, request.user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Configure plugin error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/plugins/{plugin_id}")
+async def get_plugin(plugin_id: str):
+    """Get plugin details"""
+    try:
+        from api.plugins.plugin_manager import plugin_manager
+        result = plugin_manager.get_plugin(plugin_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get plugin error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/plugins")
+async def list_plugins(category: Optional[str] = None,
+                      status: Optional[str] = None,
+                      enabled: Optional[bool] = None):
+    """List plugins"""
+    try:
+        from api.plugins.plugin_manager import plugin_manager
+        result = plugin_manager.list_plugins(category=category, status=status, enabled=enabled)
+        return result
+    except Exception as e:
+        logger.error(f"List plugins error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/plugins/hooks/register")
+async def register_hook(request: RegisterHookRequest):
+    """Register plugin to a hook"""
+    try:
+        from api.plugins.plugin_manager import plugin_manager
+        result = plugin_manager.register_hook(
+            plugin_id=request.plugin_id,
+            hook_name=request.hook_name,
+            priority=request.priority
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Register hook error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/plugins/hooks/unregister")
+async def unregister_hook(plugin_id: str, hook_name: str):
+    """Unregister plugin from a hook"""
+    try:
+        from api.plugins.plugin_manager import plugin_manager
+        result = plugin_manager.unregister_hook(plugin_id, hook_name)
+        return result
+    except Exception as e:
+        logger.error(f"Unregister hook error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/plugins/hooks")
+async def list_hooks():
+    """List all available hooks"""
+    try:
+        from api.plugins.plugin_manager import plugin_manager
+        result = plugin_manager.list_hooks()
+        return result
+    except Exception as e:
+        logger.error(f"List hooks error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/plugins/hooks/execute")
+async def execute_hook(request: ExecuteHookRequest):
+    """Execute a hook"""
+    try:
+        from api.plugins.plugin_manager import plugin_manager
+        result = plugin_manager.execute_hook(request.hook_name, request.data)
+        return result
+    except Exception as e:
+        logger.error(f"Execute hook error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/plugins/marketplace")
+async def browse_marketplace(category: Optional[str] = None,
+                            featured: Optional[bool] = None,
+                            query: Optional[str] = None):
+    """Browse plugin marketplace"""
+    try:
+        from api.plugins.plugin_manager import plugin_manager
+        result = plugin_manager.browse_marketplace(category=category, featured=featured, query=query)
+        return result
+    except Exception as e:
+        logger.error(f"Browse marketplace error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/plugins/statistics")
+async def get_plugin_statistics():
+    """Get plugin statistics"""
+    try:
+        from api.plugins.plugin_manager import plugin_manager
+        result = plugin_manager.get_statistics()
+        return result
+    except Exception as e:
+        logger.error(f"Get plugin statistics error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
