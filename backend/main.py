@@ -3668,3 +3668,170 @@ async def get_user_analytics(user_id: str, time_range: str = "last_month"):
     except Exception as e:
         logger.error(f"Get user analytics error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===================================
+# Automation & Scripting API Endpoints
+# ===================================
+
+class CreateRuleRequest(BaseModel):
+    """Request model for creating automation rule"""
+    name: str
+    description: str
+    trigger_type: str
+    trigger_config: dict
+    actions: List[dict]
+    conditions: Optional[List[dict]] = None
+
+
+class UpdateRuleRequest(BaseModel):
+    """Request model for updating automation rule"""
+    name: Optional[str] = None
+    description: Optional[str] = None
+    enabled: Optional[bool] = None
+    trigger_config: Optional[dict] = None
+    actions: Optional[List[dict]] = None
+    conditions: Optional[List[dict]] = None
+
+
+class SaveScriptRequest(BaseModel):
+    """Request model for saving script"""
+    name: str
+    content: str
+
+
+@APP.post("/api/automation/rule/create")
+async def create_automation_rule(request: CreateRuleRequest):
+    """Create a new automation rule"""
+    try:
+        from api.automation.automation_engine import automation_engine
+
+        result = automation_engine.create_rule(
+            name=request.name,
+            description=request.description,
+            trigger_type=request.trigger_type,
+            trigger_config=request.trigger_config,
+            actions=request.actions,
+            conditions=request.conditions
+        )
+
+        return result
+    except Exception as e:
+        logger.error(f"Create rule error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.put("/api/automation/rule/{rule_id}")
+async def update_automation_rule(rule_id: str, request: UpdateRuleRequest):
+    """Update an automation rule"""
+    try:
+        from api.automation.automation_engine import automation_engine
+
+        updates = {k: v for k, v in request.dict().items() if v is not None}
+        result = automation_engine.update_rule(rule_id, updates)
+
+        return result
+    except Exception as e:
+        logger.error(f"Update rule error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.delete("/api/automation/rule/{rule_id}")
+async def delete_automation_rule(rule_id: str):
+    """Delete an automation rule"""
+    try:
+        from api.automation.automation_engine import automation_engine
+
+        result = automation_engine.delete_rule(rule_id)
+
+        return result
+    except Exception as e:
+        logger.error(f"Delete rule error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/automation/rules")
+async def get_automation_rules(enabled_only: bool = False):
+    """Get all automation rules"""
+    try:
+        from api.automation.automation_engine import automation_engine
+
+        result = automation_engine.get_rules(enabled_only=enabled_only)
+
+        return result
+    except Exception as e:
+        logger.error(f"Get rules error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/automation/rule/{rule_id}")
+async def get_automation_rule(rule_id: str):
+    """Get a specific automation rule"""
+    try:
+        from api.automation.automation_engine import automation_engine
+
+        result = automation_engine.get_rule(rule_id)
+
+        return result
+    except Exception as e:
+        logger.error(f"Get rule error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/automation/rule/{rule_id}/execute")
+async def execute_automation_rule(rule_id: str):
+    """Execute an automation rule manually"""
+    try:
+        from api.automation.automation_engine import automation_engine
+
+        result = await automation_engine.execute_rule(rule_id, manual=True)
+
+        return result
+    except Exception as e:
+        logger.error(f"Execute rule error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/automation/logs")
+async def get_automation_logs(rule_id: Optional[str] = None, limit: int = 100):
+    """Get automation execution logs"""
+    try:
+        from api.automation.automation_engine import automation_engine
+
+        result = automation_engine.get_logs(rule_id=rule_id, limit=limit)
+
+        return result
+    except Exception as e:
+        logger.error(f"Get logs error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/automation/script/save")
+async def save_automation_script(request: SaveScriptRequest):
+    """Save a custom automation script"""
+    try:
+        from api.automation.automation_engine import automation_engine
+
+        result = automation_engine.save_script(
+            name=request.name,
+            content=request.content
+        )
+
+        return result
+    except Exception as e:
+        logger.error(f"Save script error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/automation/scripts")
+async def get_automation_scripts():
+    """Get list of saved scripts"""
+    try:
+        from api.automation.automation_engine import automation_engine
+
+        result = automation_engine.get_scripts()
+
+        return result
+    except Exception as e:
+        logger.error(f"Get scripts error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

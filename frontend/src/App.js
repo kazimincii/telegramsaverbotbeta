@@ -18,6 +18,7 @@ import MultiDeviceSync from "./components/MultiDeviceSync";
 import MediaPlayer from "./components/MediaPlayer/MediaPlayer";
 import DownloadManager from "./components/DownloadManager";
 import CollaborativeWorkspace from "./components/CollaborativeWorkspace";
+import AutomationManager from "./components/AutomationManager";
 import { AppProvider } from "./context/AppContext";
 import "./styles/modern.css";
 
@@ -71,6 +72,7 @@ export default function App(){
     { id: 'media-player', label: 'Medya Oynatıcı', icon: '🎬' },
     { id: 'collaboration', label: 'İş Birliği', icon: '👥' },
     { id: 'advanced-analytics', label: 'Gelişmiş Analitik', icon: '📈' },
+    { id: 'automation', label: 'Otomasyon', icon: '⚙️' },
     { id: 'ai', label: 'AI Asistan', icon: '🤖' },
     { id: 'summary', label: 'İçerik Özetleme', icon: '📝' },
     { id: 'tagging', label: 'Otomatik Etiketleme', icon: '🏷️' },
@@ -132,6 +134,7 @@ export default function App(){
               {activeView === 'media-player' && <MediaPlayer />}
               {activeView === 'collaboration' && <CollaborativeWorkspace />}
               {activeView === 'advanced-analytics' && <AdvancedAnalytics />}
+              {activeView === 'automation' && <AutomationManager />}
               {activeView === 'ai' && <AIAssistant />}
               {activeView === 'summary' && <ContentSummary />}
               {activeView === 'tagging' && <TagManager />}
