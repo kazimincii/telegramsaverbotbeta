@@ -104,6 +104,20 @@ const AIProfilePanel = ({ selectedContact, onUpdateProfile }) => {
         </div>
 
         <div className="profile-field">
+          <label>Job Title</label>
+          <div className="profile-value">
+            {selectedContact.ai_job_title || 'Not detected'}
+          </div>
+        </div>
+
+        <div className="profile-field">
+          <label>Company</label>
+          <div className="profile-value">
+            {selectedContact.ai_company || 'Not detected'}
+          </div>
+        </div>
+
+        <div className="profile-field">
           <label>Sector</label>
           {isEditing ? (
             <input
@@ -121,6 +135,13 @@ const AIProfilePanel = ({ selectedContact, onUpdateProfile }) => {
         </div>
 
         <div className="profile-field">
+          <label>Seniority Level</label>
+          <div className="profile-value">
+            {selectedContact.ai_seniority_level || 'Unknown'}
+          </div>
+        </div>
+
+        <div className="profile-field">
           <label>Confidence</label>
           <div className="confidence-container">
             <div className="confidence-bar">
@@ -134,7 +155,55 @@ const AIProfilePanel = ({ selectedContact, onUpdateProfile }) => {
             </span>
           </div>
         </div>
+
+        {selectedContact.ai_linkedin_url && (
+          <div className="profile-field">
+            <label>LinkedIn</label>
+            <a
+              href={selectedContact.ai_linkedin_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="profile-link"
+            >
+              View Profile →
+            </a>
+          </div>
+        )}
       </div>
+
+      {/* Career Path Analysis */}
+      {selectedContact.ai_career_stage && (
+        <div className="profile-section">
+          <h3>Career Path Analysis</h3>
+
+          <div className="profile-field">
+            <label>Career Stage</label>
+            <div className="profile-value">
+              {selectedContact.ai_career_stage}
+            </div>
+          </div>
+
+          {selectedContact.ai_estimated_experience_years && (
+            <div className="profile-field">
+              <label>Estimated Experience</label>
+              <div className="profile-value">
+                {selectedContact.ai_estimated_experience_years} years
+              </div>
+            </div>
+          )}
+
+          {selectedContact.ai_career_trajectory && (
+            <div className="profile-field">
+              <label>Career Trajectory</label>
+              <div className="profile-value career-trajectory">
+                <span className={`trajectory-badge ${selectedContact.ai_career_trajectory.toLowerCase()}`}>
+                  {selectedContact.ai_career_trajectory}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Evidence Keywords */}
       {selectedContact.evidence_keywords && selectedContact.evidence_keywords.length > 0 && (
@@ -198,8 +267,70 @@ const AIProfilePanel = ({ selectedContact, onUpdateProfile }) => {
               </div>
             </div>
           </div>
+
+          {selectedContact.avg_response_time_hours && (
+            <div className="stat-item">
+              <div className="stat-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" strokeWidth="2"/>
+                </svg>
+              </div>
+              <div className="stat-info">
+                <div className="stat-label">Avg Response Time</div>
+                <div className="stat-value">
+                  {selectedContact.avg_response_time_hours < 1
+                    ? `${Math.round(selectedContact.avg_response_time_hours * 60)}m`
+                    : `${Math.round(selectedContact.avg_response_time_hours)}h`}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {selectedContact.message_frequency_per_week && (
+            <div className="stat-item">
+              <div className="stat-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" stroke="currentColor" strokeWidth="2"/>
+                </svg>
+              </div>
+              <div className="stat-info">
+                <div className="stat-label">Messages/Week</div>
+                <div className="stat-value">
+                  {selectedContact.message_frequency_per_week.toFixed(1)}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Top Topics */}
+      {selectedContact.top_topics && selectedContact.top_topics.length > 0 && (
+        <div className="profile-section">
+          <h3>Top Topics</h3>
+          <div className="keywords-list">
+            {selectedContact.top_topics.map((topic, index) => (
+              <span key={index} className="keyword-tag topic-tag">
+                {topic}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Interests */}
+      {selectedContact.interests && selectedContact.interests.length > 0 && (
+        <div className="profile-section">
+          <h3>Interests</h3>
+          <div className="keywords-list">
+            {selectedContact.interests.map((interest, index) => (
+              <span key={index} className="keyword-tag interest-tag">
+                {interest}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* AI Summary */}
       {selectedContact.ai_summary && (

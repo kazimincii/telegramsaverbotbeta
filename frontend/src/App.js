@@ -41,6 +41,7 @@ export default function App(){
   const [theme, setTheme] = useState('light');
   const [telegramLoggedIn, setTelegramLoggedIn] = useState(false);
   const [telegramUser, setTelegramUser] = useState(null);
+  const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
 
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light';
@@ -88,10 +89,24 @@ export default function App(){
     setActiveView('telegram-client');
   };
 
-  const handleTelegramLogout = () => {
-    setTelegramLoggedIn(false);
-    setTelegramUser(null);
-    setActiveView('control');
+  const handleTelegramLogout = async () => {
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/telegram/logout`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Failed to logout from Telegram backend:', errorText);
+      }
+    } catch (error) {
+      console.error('Error logging out from Telegram backend:', error);
+    } finally {
+      setTelegramLoggedIn(false);
+      setTelegramUser(null);
+      setActiveView('control');
+    }
   };
 
   const menuItems = [
