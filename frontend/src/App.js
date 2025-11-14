@@ -21,6 +21,7 @@ import CollaborativeWorkspace from "./components/CollaborativeWorkspace";
 import AutomationManager from "./components/AutomationManager";
 import OCRProcessor from "./components/OCRProcessor";
 import VoiceControl from "./components/VoiceControl";
+import PremiumManager from "./components/PremiumManager";
 import { AppProvider } from "./context/AppContext";
 import "./styles/modern.css";
 
@@ -77,6 +78,7 @@ export default function App(){
     { id: 'automation', label: 'Otomasyon', icon: '⚙️' },
     { id: 'ocr', label: 'OCR & Belge İşleme', icon: '📄' },
     { id: 'voice', label: 'Sesli Kontrol', icon: '🎤' },
+    { id: 'premium', label: 'Premium', icon: '💎' },
     { id: 'ai', label: 'AI Asistan', icon: '🤖' },
     { id: 'summary', label: 'İçerik Özetleme', icon: '📝' },
     { id: 'tagging', label: 'Otomatik Etiketleme', icon: '🏷️' },
@@ -141,6 +143,7 @@ export default function App(){
               {activeView === 'automation' && <AutomationManager />}
               {activeView === 'ocr' && <OCRProcessor />}
               {activeView === 'voice' && <VoiceControl />}
+              {activeView === 'premium' && <PremiumManager />}
               {activeView === 'ai' && <AIAssistant />}
               {activeView === 'summary' && <ContentSummary />}
               {activeView === 'tagging' && <TagManager />}

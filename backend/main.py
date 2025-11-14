@@ -4079,3 +4079,201 @@ async def get_voice_statistics():
     except Exception as e:
         logger.error(f"Get voice statistics error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# TELEGRAM PREMIUM API ENDPOINTS
+# ============================================================================
+
+class CreateSubscriptionRequest(BaseModel):
+    """Request model for creating subscription"""
+    user_id: str
+    tier: str
+    duration_days: int = 30
+    payment_method: str = "credit_card"
+    auto_renew: bool = True
+
+
+class UpgradeSubscriptionRequest(BaseModel):
+    """Request model for upgrading subscription"""
+    user_id: str
+    new_tier: str
+
+
+class TranscribeVoiceRequest(BaseModel):
+    """Request model for voice transcription"""
+    file_path: str
+    language: str = "en-US"
+    user_id: Optional[str] = None
+
+
+class ValidateFileSizeRequest(BaseModel):
+    """Request model for file size validation"""
+    user_id: str
+    file_size_mb: int
+
+
+@APP.get("/api/premium/tiers")
+async def get_premium_tiers():
+    """Get all available premium tiers"""
+    try:
+        from api.premium.premium_manager import premium_manager
+        result = premium_manager.get_all_tiers()
+        return result
+    except Exception as e:
+        logger.error(f"Get premium tiers error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/premium/tiers/{tier}")
+async def get_tier_limits(tier: str):
+    """Get limits for a specific tier"""
+    try:
+        from api.premium.premium_manager import premium_manager
+        result = premium_manager.get_tier_limits(tier)
+        return result
+    except Exception as e:
+        logger.error(f"Get tier limits error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/premium/subscriptions")
+async def create_subscription(request: CreateSubscriptionRequest):
+    """Create a new premium subscription"""
+    try:
+        from api.premium.premium_manager import premium_manager
+        result = premium_manager.create_subscription(
+            user_id=request.user_id,
+            tier=request.tier,
+            duration_days=request.duration_days,
+            payment_method=request.payment_method,
+            auto_renew=request.auto_renew
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Create subscription error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/premium/subscriptions/{user_id}")
+async def get_user_subscription(user_id: str):
+    """Get user's current subscription"""
+    try:
+        from api.premium.premium_manager import premium_manager
+        result = premium_manager.get_user_subscription(user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get user subscription error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/premium/subscriptions/upgrade")
+async def upgrade_subscription(request: UpgradeSubscriptionRequest):
+    """Upgrade user's subscription to a higher tier"""
+    try:
+        from api.premium.premium_manager import premium_manager
+        result = premium_manager.upgrade_subscription(request.user_id, request.new_tier)
+        return result
+    except Exception as e:
+        logger.error(f"Upgrade subscription error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.delete("/api/premium/subscriptions/{user_id}")
+async def cancel_subscription(user_id: str):
+    """Cancel user's subscription"""
+    try:
+        from api.premium.premium_manager import premium_manager
+        result = premium_manager.cancel_subscription(user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Cancel subscription error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/premium/features/{user_id}/{feature}")
+async def check_feature_access(user_id: str, feature: str):
+    """Check if user has access to a specific feature"""
+    try:
+        from api.premium.premium_manager import premium_manager
+        result = premium_manager.check_feature_access(user_id, feature)
+        return result
+    except Exception as e:
+        logger.error(f"Check feature access error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/premium/transcribe")
+async def transcribe_voice_message(request: TranscribeVoiceRequest):
+    """Transcribe a voice message to text"""
+    try:
+        from api.premium.premium_manager import premium_manager
+        result = premium_manager.transcribe_voice_message(
+            file_path=request.file_path,
+            language=request.language,
+            user_id=request.user_id
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Transcribe voice message error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/premium/transcriptions/{transcription_id}")
+async def get_transcription(transcription_id: str):
+    """Get a transcription by ID"""
+    try:
+        from api.premium.premium_manager import premium_manager
+        result = premium_manager.get_transcription(transcription_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get transcription error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/premium/transcriptions")
+async def get_all_transcriptions(user_id: Optional[str] = None, limit: int = 50):
+    """Get all transcriptions"""
+    try:
+        from api.premium.premium_manager import premium_manager
+        result = premium_manager.get_all_transcriptions(user_id=user_id, limit=limit)
+        return result
+    except Exception as e:
+        logger.error(f"Get all transcriptions error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/premium/validate-file-size")
+async def validate_file_size(request: ValidateFileSizeRequest):
+    """Validate if user can download/upload a file of given size"""
+    try:
+        from api.premium.premium_manager import premium_manager
+        result = premium_manager.validate_file_size(request.user_id, request.file_size_mb)
+        return result
+    except Exception as e:
+        logger.error(f"Validate file size error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/premium/usage/{user_id}")
+async def get_usage_statistics(user_id: str):
+    """Get usage statistics for a user"""
+    try:
+        from api.premium.premium_manager import premium_manager
+        result = premium_manager.get_usage_statistics(user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get usage statistics error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/premium/statistics")
+async def get_premium_statistics():
+    """Get overall premium statistics"""
+    try:
+        from api.premium.premium_manager import premium_manager
+        result = premium_manager.get_premium_statistics()
+        return result
+    except Exception as e:
+        logger.error(f"Get premium statistics error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
