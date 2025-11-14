@@ -16,40 +16,53 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from telethon import TelegramClient, types as tl_types
-try:
-    from . import contacts
-    from .database import Database
-    from .account_manager import AccountManager
-    from .cloud_sync import CloudSyncConfig, CloudSyncManager
-    from .ai_classifier import AIClassifierConfig, AIClassificationManager
-    from .scheduler import TaskScheduler, ScheduledTask, ScheduleType
-    from .clip_classifier import CLIPClassifier
-    from .duplicate_detector import DuplicateDetector
-    from .webhook_manager import WebhookManager, WEBHOOK_EVENTS
-    from .video_processor import VideoProcessor
-    from .ipfs_storage import IPFSStorage
-    from .plugin_system import PluginManager, PluginHook
-    from .i18n_manager import I18nManager
-    from .rbac_system import RBACManager, Permission, Role, User, Organization
-    from .content_moderator import ContentModerator, ModerationAction, ContentCategory
-    from .telegram_api import register_telegram_routes
-except ImportError:
-    import contacts
-    from database import Database
-    from account_manager import AccountManager
-    from cloud_sync import CloudSyncConfig, CloudSyncManager
-    from ai_classifier import AIClassifierConfig, AIClassificationManager
-    from scheduler import TaskScheduler, ScheduledTask, ScheduleType
-    from clip_classifier import CLIPClassifier
-    from duplicate_detector import DuplicateDetector
-    from webhook_manager import WebhookManager, WEBHOOK_EVENTS
-    from video_processor import VideoProcessor
-    from ipfs_storage import IPFSStorage
-    from plugin_system import PluginManager, PluginHook
-    from i18n_manager import I18nManager
-    from rbac_system import RBACManager, Permission, Role, User, Organization
-    from content_moderator import ContentModerator, ModerationAction, ContentCategory
-    from telegram_api import register_telegram_routes
+
+if __package__:
+    from . import contacts  # type: ignore
+    from .database import Database  # type: ignore
+    from .account_manager import AccountManager  # type: ignore
+    from .cloud_sync import CloudSyncConfig, CloudSyncManager  # type: ignore
+    from .ai_classifier import AIClassifierConfig, AIClassificationManager  # type: ignore
+    from .scheduler import TaskScheduler, ScheduledTask, ScheduleType  # type: ignore
+    from .clip_classifier import CLIPClassifier  # type: ignore
+    from .duplicate_detector import DuplicateDetector  # type: ignore
+    from .webhook_manager import WebhookManager, WEBHOOK_EVENTS  # type: ignore
+    from .video_processor import VideoProcessor  # type: ignore
+    from .ipfs_storage import IPFSStorage  # type: ignore
+    from .plugin_system import PluginManager, PluginHook  # type: ignore
+    from .i18n_manager import I18nManager  # type: ignore
+    from .rbac_system import RBACManager, Permission, Role, User, Organization  # type: ignore
+    from .content_moderator import ContentModerator, ModerationAction, ContentCategory  # type: ignore
+    try:
+        from .telegram_api import register_telegram_routes  # type: ignore
+    except Exception as exc:  # pragma: no cover - depends on optional deps
+        def register_telegram_routes(app, _exc=exc):
+            logging.getLogger(__name__).warning(
+                "Telegram API routes not available: %s", _exc
+            )
+else:
+    import contacts  # type: ignore
+    from database import Database  # type: ignore
+    from account_manager import AccountManager  # type: ignore
+    from cloud_sync import CloudSyncConfig, CloudSyncManager  # type: ignore
+    from ai_classifier import AIClassifierConfig, AIClassificationManager  # type: ignore
+    from scheduler import TaskScheduler, ScheduledTask, ScheduleType  # type: ignore
+    from clip_classifier import CLIPClassifier  # type: ignore
+    from duplicate_detector import DuplicateDetector  # type: ignore
+    from webhook_manager import WebhookManager, WEBHOOK_EVENTS  # type: ignore
+    from video_processor import VideoProcessor  # type: ignore
+    from ipfs_storage import IPFSStorage  # type: ignore
+    from plugin_system import PluginManager, PluginHook  # type: ignore
+    from i18n_manager import I18nManager  # type: ignore
+    from rbac_system import RBACManager, Permission, Role, User, Organization  # type: ignore
+    from content_moderator import ContentModerator, ModerationAction, ContentCategory  # type: ignore
+    try:
+        from telegram_api import register_telegram_routes  # type: ignore
+    except Exception as exc:  # pragma: no cover - depends on optional deps
+        def register_telegram_routes(app, _exc=exc):
+            logging.getLogger(__name__).warning(
+                "Telegram API routes not available: %s", _exc
+            )
 
 # Load environment variables
 load_dotenv(Path(__file__).resolve().parent / ".env")
@@ -270,7 +283,11 @@ async def global_exception_handler(request: Request, exc: Exception):
     # In development, show detailed error; in production, hide sensitive info
     is_dev = os.getenv("ENVIRONMENT", "production").lower() in ("development", "dev")
     detail = str(exc) if is_dev else "Internal Server Error"
+    content = {"detail": detail}
+    if is_dev:
+        content["error_type"] = type(exc).__name__
 
+codex/test-and-fix-all-databases
     content = {"detail": detail}
     if is_dev:
         content["error_type"] = type(exc).__name__
@@ -279,6 +296,9 @@ async def global_exception_handler(request: Request, exc: Exception):
         status_code=500,
         content=content,
     )
+
+    return JSONResponse(status_code=500, content=content)
+main
 
 
 def load_cfg() -> Config:
@@ -517,6 +537,7 @@ async def download_worker(
                     async with sem:
                         for attempt in range(3):
                             try:
+codex/test-and-fix-all-databases
                                 if supports_chat_args:
                                     result = await download_file(client, m, tdir, cid, dname)
                                 else:
@@ -532,10 +553,36 @@ async def download_worker(
                                     file_size = file_path.stat().st_size if file_path.exists() else 0
                                 # Record successful download in database
                                 db.add_download(m.id, cid, dname, str(file_path), file_size, knd)
+
+                                result = await download_file(client, m, tdir)
+                                file_path: Optional[Path]
+                                file_size: int
+                                if isinstance(result, tuple):
+                                    file_path, file_size = result
+                                elif result is None:
+                                    file_path, file_size = None, 0
+                                else:
+                                    file_path, file_size = Path(result), 0
+
+                                # Record successful download in database when we
+                                # have a concrete file path.  Test doubles may
+                                # return ``None`` so we guard against it.
+                                if file_path is not None:
+                                    db.add_download(
+                                        m.id,
+                                        cid,
+                                        dname,
+                                        str(file_path),
+                                        file_size,
+                                        knd,
+                                    )
+main
                                 STATE["progress"]["downloaded"] += 1
-                                db.update_session_progress(session_id,
+                                db.update_session_progress(
+                                    session_id,
                                     STATE["progress"]["downloaded"],
-                                    STATE["progress"]["skipped"])
+                                    STATE["progress"]["skipped"],
+                                )
                                 # Broadcast progress to WebSocket clients
                                 await broadcast_progress()
                                 return True
