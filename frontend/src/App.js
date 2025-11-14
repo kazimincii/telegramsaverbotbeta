@@ -29,6 +29,8 @@ import MLManager from "./components/MLManager";
 import PluginManager from "./components/PluginManager";
 import MediaProcessor from "./components/MediaProcessor";
 import BIManager from "./components/BIManager";
+import GatewayManager from "./components/GatewayManager";
+import OptimizationManager from "./components/OptimizationManager";
 import { AppProvider } from "./context/AppContext";
 import "./styles/modern.css";
 
@@ -92,6 +94,8 @@ export default function App(){
     { id: 'plugins', label: 'Pluginler', icon: '🔌' },
     { id: 'media-processing', label: 'Gelişmiş Medya İşleme', icon: '🎬' },
     { id: 'bi', label: 'Business Intelligence', icon: '📊' },
+    { id: 'gateway', label: 'API Gateway', icon: '🌐' },
+    { id: 'optimization', label: 'Performans Optimizasyon', icon: '⚡' },
     { id: 'ai', label: 'AI Asistan', icon: '🦾' },
     { id: 'summary', label: 'İçerik Özetleme', icon: '📝' },
     { id: 'tagging', label: 'Otomatik Etiketleme', icon: '🏷️' },
@@ -163,6 +167,8 @@ export default function App(){
               {activeView === 'plugins' && <PluginManager />}
               {activeView === 'media-processing' && <MediaProcessor />}
               {activeView === 'bi' && <BIManager />}
+              {activeView === 'gateway' && <GatewayManager />}
+              {activeView === 'optimization' && <OptimizationManager />}
               {activeView === 'ai' && <AIAssistant />}
               {activeView === 'summary' && <ContentSummary />}
               {activeView === 'tagging' && <TagManager />}
