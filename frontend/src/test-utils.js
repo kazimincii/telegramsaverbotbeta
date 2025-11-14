@@ -93,7 +93,16 @@ const screen = { getByText, getByLabelText, getByRole, findByText };
 const fireEvent = {
   click(node) {
     act(() => {
-      node.click();
+      let target = node;
+      if (target.tagName !== 'BUTTON' && target.querySelector) {
+        const descendant = target.querySelector('button, [role="button"]');
+        if (descendant) target = descendant;
+      }
+      if (target.tagName !== 'BUTTON' && target.closest) {
+        target = target.closest('button, [role="button"]') || target;
+      }
+      const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+      target.dispatchEvent(event);
     });
   },
   change(node, { target }) {
