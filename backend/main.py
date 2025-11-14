@@ -3973,3 +3973,109 @@ async def get_ocr_statistics():
     except Exception as e:
         logger.error(f"Get OCR statistics error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===================================
+# Voice Control API Endpoints
+# ===================================
+
+class ProcessVoiceCommandRequest(BaseModel):
+    """Request model for processing voice command"""
+    text: str
+
+
+class TextToSpeechRequest(BaseModel):
+    """Request model for text-to-speech"""
+    text: str
+    language: str = "en"
+    voice: str = "female"
+    speed: float = 1.0
+
+
+@APP.post("/api/voice/command")
+async def process_voice_command(request: ProcessVoiceCommandRequest):
+    """Process a voice command from text"""
+    try:
+        from api.voice.voice_controller import voice_controller
+
+        result = voice_controller.process_voice_command(request.text)
+
+        return result
+    except Exception as e:
+        logger.error(f"Process voice command error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/voice/tts")
+async def text_to_speech(request: TextToSpeechRequest):
+    """Convert text to speech"""
+    try:
+        from api.voice.voice_controller import voice_controller
+
+        result = voice_controller.text_to_speech(
+            text=request.text,
+            language=request.language,
+            voice=request.voice,
+            speed=request.speed
+        )
+
+        return result
+    except Exception as e:
+        logger.error(f"Text to speech error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/voice/commands/available")
+async def get_available_commands():
+    """Get list of available voice commands"""
+    try:
+        from api.voice.voice_controller import voice_controller
+
+        result = voice_controller.get_available_commands()
+
+        return result
+    except Exception as e:
+        logger.error(f"Get available commands error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/voice/commands/history")
+async def get_command_history(limit: int = 100):
+    """Get voice command history"""
+    try:
+        from api.voice.voice_controller import voice_controller
+
+        result = voice_controller.get_command_history(limit=limit)
+
+        return result
+    except Exception as e:
+        logger.error(f"Get command history error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/voice/tts/history")
+async def get_tts_history(limit: int = 100):
+    """Get TTS request history"""
+    try:
+        from api.voice.voice_controller import voice_controller
+
+        result = voice_controller.get_tts_history(limit=limit)
+
+        return result
+    except Exception as e:
+        logger.error(f"Get TTS history error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/voice/statistics")
+async def get_voice_statistics():
+    """Get voice control statistics"""
+    try:
+        from api.voice.voice_controller import voice_controller
+
+        result = voice_controller.get_statistics()
+
+        return result
+    except Exception as e:
+        logger.error(f"Get voice statistics error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
