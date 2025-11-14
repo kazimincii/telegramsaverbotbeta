@@ -5543,3 +5543,1163 @@ async def get_ml_statistics():
     except Exception as e:
         logger.error(f"Get ML statistics error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== Plugin System & Extensions Endpoints =====
+
+class InstallPluginRequest(BaseModel):
+    manifest: Dict
+    user_id: str
+    config: Optional[Dict] = {}
+
+
+class UpdatePluginRequest(BaseModel):
+    manifest: Dict
+    user_id: str
+
+
+class ConfigurePluginRequest(BaseModel):
+    config: Dict
+    user_id: str
+
+
+class RegisterHookRequest(BaseModel):
+    plugin_id: str
+    hook_name: str
+    priority: Optional[int] = 100
+
+
+class ExecuteHookRequest(BaseModel):
+    hook_name: str
+    data: Dict
+
+
+@APP.post("/api/plugins/install")
+async def install_plugin(request: InstallPluginRequest):
+    """Install a plugin"""
+    try:
+        from api.plugins.plugin_manager import plugin_manager
+        result = plugin_manager.install_plugin(
+            manifest=request.manifest,
+            user_id=request.user_id,
+            config=request.config
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Install plugin error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/plugins/{plugin_id}/uninstall")
+async def uninstall_plugin(plugin_id: str, user_id: str):
+    """Uninstall a plugin"""
+    try:
+        from api.plugins.plugin_manager import plugin_manager
+        result = plugin_manager.uninstall_plugin(plugin_id, user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Uninstall plugin error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/plugins/{plugin_id}/enable")
+async def enable_plugin(plugin_id: str, user_id: str):
+    """Enable a plugin"""
+    try:
+        from api.plugins.plugin_manager import plugin_manager
+        result = plugin_manager.enable_plugin(plugin_id, user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Enable plugin error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/plugins/{plugin_id}/disable")
+async def disable_plugin(plugin_id: str, user_id: str):
+    """Disable a plugin"""
+    try:
+        from api.plugins.plugin_manager import plugin_manager
+        result = plugin_manager.disable_plugin(plugin_id, user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Disable plugin error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.put("/api/plugins/{plugin_id}")
+async def update_plugin(plugin_id: str, request: UpdatePluginRequest):
+    """Update a plugin"""
+    try:
+        from api.plugins.plugin_manager import plugin_manager
+        result = plugin_manager.update_plugin(plugin_id, request.manifest, request.user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Update plugin error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/plugins/{plugin_id}/configure")
+async def configure_plugin(plugin_id: str, request: ConfigurePluginRequest):
+    """Configure a plugin"""
+    try:
+        from api.plugins.plugin_manager import plugin_manager
+        result = plugin_manager.configure_plugin(plugin_id, request.config, request.user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Configure plugin error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/plugins/{plugin_id}")
+async def get_plugin(plugin_id: str):
+    """Get plugin details"""
+    try:
+        from api.plugins.plugin_manager import plugin_manager
+        result = plugin_manager.get_plugin(plugin_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get plugin error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/plugins")
+async def list_plugins(category: Optional[str] = None,
+                      status: Optional[str] = None,
+                      enabled: Optional[bool] = None):
+    """List plugins"""
+    try:
+        from api.plugins.plugin_manager import plugin_manager
+        result = plugin_manager.list_plugins(category=category, status=status, enabled=enabled)
+        return result
+    except Exception as e:
+        logger.error(f"List plugins error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/plugins/hooks/register")
+async def register_hook(request: RegisterHookRequest):
+    """Register plugin to a hook"""
+    try:
+        from api.plugins.plugin_manager import plugin_manager
+        result = plugin_manager.register_hook(
+            plugin_id=request.plugin_id,
+            hook_name=request.hook_name,
+            priority=request.priority
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Register hook error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/plugins/hooks/unregister")
+async def unregister_hook(plugin_id: str, hook_name: str):
+    """Unregister plugin from a hook"""
+    try:
+        from api.plugins.plugin_manager import plugin_manager
+        result = plugin_manager.unregister_hook(plugin_id, hook_name)
+        return result
+    except Exception as e:
+        logger.error(f"Unregister hook error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/plugins/hooks")
+async def list_hooks():
+    """List all available hooks"""
+    try:
+        from api.plugins.plugin_manager import plugin_manager
+        result = plugin_manager.list_hooks()
+        return result
+    except Exception as e:
+        logger.error(f"List hooks error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/plugins/hooks/execute")
+async def execute_hook(request: ExecuteHookRequest):
+    """Execute a hook"""
+    try:
+        from api.plugins.plugin_manager import plugin_manager
+        result = plugin_manager.execute_hook(request.hook_name, request.data)
+        return result
+    except Exception as e:
+        logger.error(f"Execute hook error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/plugins/marketplace")
+async def browse_marketplace(category: Optional[str] = None,
+                            featured: Optional[bool] = None,
+                            query: Optional[str] = None):
+    """Browse plugin marketplace"""
+    try:
+        from api.plugins.plugin_manager import plugin_manager
+        result = plugin_manager.browse_marketplace(category=category, featured=featured, query=query)
+        return result
+    except Exception as e:
+        logger.error(f"Browse marketplace error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/plugins/statistics")
+async def get_plugin_statistics():
+    """Get plugin statistics"""
+    try:
+        from api.plugins.plugin_manager import plugin_manager
+        result = plugin_manager.get_statistics()
+        return result
+    except Exception as e:
+        logger.error(f"Get plugin statistics error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== Advanced Media Processing Endpoints =====
+
+class TranscodeVideoRequest(BaseModel):
+    input_file: str
+    profile_id: str
+    user_id: str
+    input_size_mb: Optional[float] = 100.0
+
+
+class GenerateThumbnailRequest(BaseModel):
+    video_file: str
+    timestamp: float
+    user_id: str
+
+
+class OptimizeImageRequest(BaseModel):
+    input_file: str
+    optimization_id: str
+    user_id: str
+
+
+class CreateImageOptimizationRequest(BaseModel):
+    name: str
+    format: str
+    quality: int
+    max_width: Optional[int] = 1920
+    max_height: Optional[int] = 1080
+    strip_metadata: Optional[bool] = True
+    progressive: Optional[bool] = True
+
+
+class ConvertAudioRequest(BaseModel):
+    input_file: str
+    codec: str
+    bitrate: int
+    user_id: str
+
+
+class CreateBatchOperationRequest(BaseModel):
+    name: str
+    media_type: str
+    files: List[str]
+    operation: str
+    settings: Dict
+    user_id: str
+
+
+@APP.post("/api/media/video/transcode")
+async def transcode_video(request: TranscodeVideoRequest):
+    """Transcode video"""
+    try:
+        from api.media_processing.media_processor import media_processor
+        result = media_processor.transcode_video(
+            input_file=request.input_file,
+            profile_id=request.profile_id,
+            user_id=request.user_id,
+            input_size_mb=request.input_size_mb
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Transcode video error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/media/video/thumbnail")
+async def generate_thumbnail(request: GenerateThumbnailRequest):
+    """Generate video thumbnail"""
+    try:
+        from api.media_processing.media_processor import media_processor
+        result = media_processor.generate_thumbnail(
+            video_file=request.video_file,
+            timestamp=request.timestamp,
+            user_id=request.user_id
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Generate thumbnail error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/media/image/optimize")
+async def optimize_image(request: OptimizeImageRequest):
+    """Optimize image"""
+    try:
+        from api.media_processing.media_processor import media_processor
+        result = media_processor.optimize_image(
+            input_file=request.input_file,
+            optimization_id=request.optimization_id,
+            user_id=request.user_id
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Optimize image error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/media/image/optimizations")
+async def create_image_optimization(request: CreateImageOptimizationRequest):
+    """Create image optimization profile"""
+    try:
+        from api.media_processing.media_processor import media_processor
+        result = media_processor.create_image_optimization(
+            name=request.name,
+            format=request.format,
+            quality=request.quality,
+            max_width=request.max_width,
+            max_height=request.max_height,
+            strip_metadata=request.strip_metadata,
+            progressive=request.progressive
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Create image optimization error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/media/image/optimizations")
+async def list_image_optimizations():
+    """List image optimization profiles"""
+    try:
+        from api.media_processing.media_processor import media_processor
+        result = media_processor.list_image_optimizations()
+        return result
+    except Exception as e:
+        logger.error(f"List image optimizations error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/media/audio/convert")
+async def convert_audio(request: ConvertAudioRequest):
+    """Convert audio format"""
+    try:
+        from api.media_processing.media_processor import media_processor
+        result = media_processor.convert_audio(
+            input_file=request.input_file,
+            codec=request.codec,
+            bitrate=request.bitrate,
+            user_id=request.user_id
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Convert audio error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/media/batch")
+async def create_batch_operation(request: CreateBatchOperationRequest):
+    """Create batch processing operation"""
+    try:
+        from api.media_processing.media_processor import media_processor
+        result = media_processor.create_batch_operation(
+            name=request.name,
+            media_type=request.media_type,
+            files=request.files,
+            operation=request.operation,
+            settings=request.settings,
+            user_id=request.user_id
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Create batch operation error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/media/batch/{batch_id}/start")
+async def start_batch_operation(batch_id: str):
+    """Start batch operation"""
+    try:
+        from api.media_processing.media_processor import media_processor
+        result = media_processor.start_batch_operation(batch_id)
+        return result
+    except Exception as e:
+        logger.error(f"Start batch operation error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/media/jobs/{job_id}")
+async def get_processing_job(job_id: str):
+    """Get processing job details"""
+    try:
+        from api.media_processing.media_processor import media_processor
+        result = media_processor.get_job(job_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get processing job error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/media/jobs")
+async def list_processing_jobs(media_type: Optional[str] = None,
+                              status: Optional[str] = None):
+    """List processing jobs"""
+    try:
+        from api.media_processing.media_processor import media_processor
+        result = media_processor.list_jobs(media_type=media_type, status=status)
+        return result
+    except Exception as e:
+        logger.error(f"List processing jobs error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/media/jobs/{job_id}/cancel")
+async def cancel_processing_job(job_id: str):
+    """Cancel processing job"""
+    try:
+        from api.media_processing.media_processor import media_processor
+        result = media_processor.cancel_job(job_id)
+        return result
+    except Exception as e:
+        logger.error(f"Cancel processing job error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/media/video/profiles")
+async def list_video_profiles():
+    """List video encoding profiles"""
+    try:
+        from api.media_processing.media_processor import media_processor
+        result = media_processor.list_video_profiles()
+        return result
+    except Exception as e:
+        logger.error(f"List video profiles error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/media/statistics")
+async def get_media_statistics():
+    """Get media processing statistics"""
+    try:
+        from api.media_processing.media_processor import media_processor
+        result = media_processor.get_statistics()
+        return result
+    except Exception as e:
+        logger.error(f"Get media statistics error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== BUSINESS INTELLIGENCE ENDPOINTS ====================
+
+class CreateDashboardRequest(BaseModel):
+    name: str
+    description: str
+    user_id: str
+    widgets: Optional[List[Dict]] = None
+    layout: Optional[Dict] = None
+    filters: Optional[Dict] = None
+    refresh_interval: Optional[int] = 300
+    is_public: Optional[bool] = False
+    tags: Optional[List[str]] = None
+
+
+class UpdateDashboardRequest(BaseModel):
+    dashboard_id: str
+    user_id: str
+    name: Optional[str] = None
+    description: Optional[str] = None
+    widgets: Optional[List[Dict]] = None
+    layout: Optional[Dict] = None
+    filters: Optional[Dict] = None
+    refresh_interval: Optional[int] = None
+    is_public: Optional[bool] = None
+    tags: Optional[List[str]] = None
+
+
+class CreateKPIRequest(BaseModel):
+    name: str
+    description: str
+    metric: str
+    kpi_type: str
+    user_id: str
+    target_value: Optional[float] = None
+    current_value: Optional[float] = 0.0
+    previous_value: Optional[float] = None
+    unit: Optional[str] = ""
+    time_range: Optional[str] = "this_month"
+
+
+class UpdateKPIRequest(BaseModel):
+    kpi_id: str
+    name: Optional[str] = None
+    description: Optional[str] = None
+    target_value: Optional[float] = None
+    current_value: Optional[float] = None
+    unit: Optional[str] = None
+    time_range: Optional[str] = None
+
+
+class CreateReportRequest(BaseModel):
+    name: str
+    description: str
+    user_id: str
+    template: str
+    data_sources: List[str]
+    filters: Optional[Dict] = None
+    columns: Optional[List[Dict]] = None
+    sorting: Optional[Dict] = None
+    grouping: Optional[List[str]] = None
+    aggregations: Optional[Dict] = None
+    charts: Optional[List[Dict]] = None
+    schedule: Optional[Dict] = None
+    recipients: Optional[List[str]] = None
+    format: Optional[str] = "pdf"
+
+
+class QueryDataRequest(BaseModel):
+    name: str
+    filters: Dict
+    user_id: str
+    sql: Optional[str] = None
+
+
+@APP.post("/api/bi/dashboards")
+async def create_dashboard(request: CreateDashboardRequest):
+    """Create a new BI dashboard"""
+    try:
+        from api.bi.bi_manager import bi_manager
+        result = bi_manager.create_dashboard(
+            name=request.name,
+            description=request.description,
+            user_id=request.user_id,
+            widgets=request.widgets,
+            layout=request.layout,
+            filters=request.filters,
+            refresh_interval=request.refresh_interval,
+            is_public=request.is_public,
+            tags=request.tags
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Create dashboard error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/bi/dashboards/{dashboard_id}")
+async def get_dashboard(dashboard_id: str, user_id: str):
+    """Get dashboard by ID"""
+    try:
+        from api.bi.bi_manager import bi_manager
+        result = bi_manager.get_dashboard(dashboard_id, user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get dashboard error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/bi/dashboards")
+async def list_dashboards(user_id: str, include_public: bool = True):
+    """List all dashboards for a user"""
+    try:
+        from api.bi.bi_manager import bi_manager
+        result = bi_manager.list_dashboards(user_id, include_public)
+        return result
+    except Exception as e:
+        logger.error(f"List dashboards error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.put("/api/bi/dashboards/{dashboard_id}")
+async def update_dashboard(dashboard_id: str, request: UpdateDashboardRequest):
+    """Update dashboard configuration"""
+    try:
+        from api.bi.bi_manager import bi_manager
+        updates = {k: v for k, v in request.dict().items()
+                  if v is not None and k not in ['dashboard_id', 'user_id']}
+        result = bi_manager.update_dashboard(dashboard_id, request.user_id, **updates)
+        return result
+    except Exception as e:
+        logger.error(f"Update dashboard error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.delete("/api/bi/dashboards/{dashboard_id}")
+async def delete_dashboard(dashboard_id: str, user_id: str):
+    """Delete a dashboard"""
+    try:
+        from api.bi.bi_manager import bi_manager
+        result = bi_manager.delete_dashboard(dashboard_id, user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Delete dashboard error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/bi/kpis")
+async def create_kpi(request: CreateKPIRequest):
+    """Create a new KPI"""
+    try:
+        from api.bi.bi_manager import bi_manager
+        result = bi_manager.create_kpi(
+            name=request.name,
+            description=request.description,
+            metric=request.metric,
+            kpi_type=request.kpi_type,
+            user_id=request.user_id,
+            target_value=request.target_value,
+            current_value=request.current_value,
+            previous_value=request.previous_value,
+            unit=request.unit,
+            time_range=request.time_range
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Create KPI error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/bi/kpis/{kpi_id}")
+async def get_kpi(kpi_id: str):
+    """Get KPI by ID"""
+    try:
+        from api.bi.bi_manager import bi_manager
+        result = bi_manager.get_kpi(kpi_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get KPI error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/bi/kpis")
+async def list_kpis(user_id: str):
+    """List all KPIs for a user"""
+    try:
+        from api.bi.bi_manager import bi_manager
+        result = bi_manager.list_kpis(user_id)
+        return result
+    except Exception as e:
+        logger.error(f"List KPIs error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.put("/api/bi/kpis/{kpi_id}")
+async def update_kpi(kpi_id: str, request: UpdateKPIRequest):
+    """Update KPI values"""
+    try:
+        from api.bi.bi_manager import bi_manager
+        updates = {k: v for k, v in request.dict().items()
+                  if v is not None and k != 'kpi_id'}
+        result = bi_manager.update_kpi(kpi_id, **updates)
+        return result
+    except Exception as e:
+        logger.error(f"Update KPI error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/bi/reports")
+async def create_report(request: CreateReportRequest):
+    """Create a custom report"""
+    try:
+        from api.bi.bi_manager import bi_manager
+        result = bi_manager.create_report(
+            name=request.name,
+            description=request.description,
+            user_id=request.user_id,
+            template=request.template,
+            data_sources=request.data_sources,
+            filters=request.filters,
+            columns=request.columns,
+            sorting=request.sorting,
+            grouping=request.grouping,
+            aggregations=request.aggregations,
+            charts=request.charts,
+            schedule=request.schedule,
+            recipients=request.recipients,
+            format=request.format
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Create report error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/bi/reports/{report_id}/generate")
+async def generate_report(report_id: str, user_id: str):
+    """Generate a report"""
+    try:
+        from api.bi.bi_manager import bi_manager
+        result = bi_manager.generate_report(report_id, user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Generate report error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/bi/query")
+async def query_data(request: QueryDataRequest):
+    """Execute a data query"""
+    try:
+        from api.bi.bi_manager import bi_manager
+        result = bi_manager.query_data(
+            name=request.name,
+            filters=request.filters,
+            user_id=request.user_id,
+            sql=request.sql
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Query data error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/bi/metrics/{metric_type}")
+async def get_metrics(metric_type: str, time_range: str, user_id: str):
+    """Get aggregated metrics"""
+    try:
+        from api.bi.bi_manager import bi_manager
+        result = bi_manager.get_metrics(metric_type, time_range, user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get metrics error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/bi/dashboards/{dashboard_id}/export")
+async def export_dashboard(dashboard_id: str, format: str, user_id: str):
+    """Export dashboard to file"""
+    try:
+        from api.bi.bi_manager import bi_manager
+        result = bi_manager.export_dashboard(dashboard_id, format, user_id)
+        return result
+    except Exception as e:
+        logger.error(f"Export dashboard error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== API GATEWAY ENDPOINTS ====================
+
+class RegisterServiceRequest(BaseModel):
+    name: str
+    description: str
+    base_url: str
+    version: str
+    instances: List[Dict]
+    health_check_url: Optional[str] = "/health"
+    metadata: Optional[Dict] = None
+    health_check_interval: Optional[int] = 30
+    session_affinity: Optional[bool] = False
+
+
+class CreateRouteRequest(BaseModel):
+    path: str
+    method: str
+    service_id: str
+    target_path: str
+    description: str
+    auth_required: Optional[bool] = False
+    rate_limit_id: Optional[str] = None
+    transform_request: Optional[bool] = False
+    transform_response: Optional[bool] = False
+    cache_enabled: Optional[bool] = False
+    cache_ttl: Optional[int] = 0
+    timeout: Optional[int] = 5000
+    retry_count: Optional[int] = 3
+    enabled: Optional[bool] = True
+
+
+class CreateRateLimitRequest(BaseModel):
+    name: str
+    description: str
+    max_requests: int
+    period: str
+    scope: str
+    enabled: Optional[bool] = True
+
+
+class ConfigureLoadBalancerRequest(BaseModel):
+    service_id: str
+    strategy: str
+    health_check_interval: Optional[int] = 30
+    session_affinity: Optional[bool] = False
+
+
+@APP.post("/api/gateway/services")
+async def register_service(request: RegisterServiceRequest):
+    """Register a new microservice"""
+    try:
+        from api.gateway.gateway_manager import gateway_manager
+        result = gateway_manager.register_service(
+            name=request.name,
+            description=request.description,
+            base_url=request.base_url,
+            version=request.version,
+            instances=request.instances,
+            health_check_url=request.health_check_url,
+            metadata=request.metadata or {},
+            health_check_interval=request.health_check_interval,
+            session_affinity=request.session_affinity
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Register service error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.delete("/api/gateway/services/{service_id}")
+async def deregister_service(service_id: str):
+    """Deregister a microservice"""
+    try:
+        from api.gateway.gateway_manager import gateway_manager
+        result = gateway_manager.deregister_service(service_id)
+        return result
+    except Exception as e:
+        logger.error(f"Deregister service error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/gateway/services/{service_id}")
+async def get_service(service_id: str):
+    """Get service details"""
+    try:
+        from api.gateway.gateway_manager import gateway_manager
+        result = gateway_manager.get_service(service_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get service error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/gateway/services")
+async def list_services(status: Optional[str] = None):
+    """List all registered services"""
+    try:
+        from api.gateway.gateway_manager import gateway_manager
+        result = gateway_manager.list_services(status_filter=status)
+        return result
+    except Exception as e:
+        logger.error(f"List services error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/gateway/routes")
+async def create_route(request: CreateRouteRequest):
+    """Create a new API route"""
+    try:
+        from api.gateway.gateway_manager import gateway_manager
+        result = gateway_manager.create_route(
+            path=request.path,
+            method=request.method,
+            service_id=request.service_id,
+            target_path=request.target_path,
+            description=request.description,
+            auth_required=request.auth_required,
+            rate_limit_id=request.rate_limit_id,
+            transform_request=request.transform_request,
+            transform_response=request.transform_response,
+            cache_enabled=request.cache_enabled,
+            cache_ttl=request.cache_ttl,
+            timeout=request.timeout,
+            retry_count=request.retry_count,
+            enabled=request.enabled
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Create route error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/gateway/routes")
+async def list_routes():
+    """List all routes"""
+    try:
+        from api.gateway.gateway_manager import gateway_manager
+        result = gateway_manager.list_routes()
+        return result
+    except Exception as e:
+        logger.error(f"List routes error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/gateway/rate-limits")
+async def create_rate_limit(request: CreateRateLimitRequest):
+    """Create a rate limit configuration"""
+    try:
+        from api.gateway.gateway_manager import gateway_manager
+        result = gateway_manager.create_rate_limit(
+            name=request.name,
+            description=request.description,
+            max_requests=request.max_requests,
+            period=request.period,
+            scope=request.scope,
+            enabled=request.enabled
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Create rate limit error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/gateway/rate-limits")
+async def list_rate_limits():
+    """List all rate limit configurations"""
+    try:
+        from api.gateway.gateway_manager import gateway_manager
+        result = gateway_manager.list_rate_limits()
+        return result
+    except Exception as e:
+        logger.error(f"List rate limits error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/gateway/rate-limits/{limit_id}/check")
+async def check_rate_limit(limit_id: str, identifier: str):
+    """Check if request is within rate limit"""
+    try:
+        from api.gateway.gateway_manager import gateway_manager
+        result = gateway_manager.check_rate_limit(limit_id, identifier)
+        return result
+    except Exception as e:
+        logger.error(f"Check rate limit error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/gateway/load-balancers")
+async def configure_load_balancer(request: ConfigureLoadBalancerRequest):
+    """Configure load balancer for a service"""
+    try:
+        from api.gateway.gateway_manager import gateway_manager
+        result = gateway_manager.configure_load_balancer(
+            service_id=request.service_id,
+            strategy=request.strategy,
+            health_check_interval=request.health_check_interval,
+            session_affinity=request.session_affinity
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Configure load balancer error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/gateway/services/{service_id}/next-instance")
+async def get_next_instance(service_id: str):
+    """Get next service instance using load balancing"""
+    try:
+        from api.gateway.gateway_manager import gateway_manager
+        result = gateway_manager.get_next_instance(service_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get next instance error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/gateway/services/{service_id}/health-check")
+async def service_health_check(service_id: str):
+    """Perform health check on service"""
+    try:
+        from api.gateway.gateway_manager import gateway_manager
+        result = gateway_manager.health_check(service_id)
+        return result
+    except Exception as e:
+        logger.error(f"Health check error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/gateway/documentation")
+async def get_api_documentation():
+    """Get complete API documentation"""
+    try:
+        from api.gateway.gateway_manager import gateway_manager
+        result = gateway_manager.get_api_documentation()
+        return result
+    except Exception as e:
+        logger.error(f"Get API documentation error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/gateway/stats")
+async def get_gateway_stats():
+    """Get gateway statistics"""
+    try:
+        from api.gateway.gateway_manager import gateway_manager
+        result = gateway_manager.get_gateway_stats()
+        return result
+    except Exception as e:
+        logger.error(f"Get gateway stats error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== PERFORMANCE OPTIMIZATION ENDPOINTS ====================
+
+class CreateCacheRequest(BaseModel):
+    name: str
+    max_size_mb: int
+    strategy: str
+    default_ttl: int
+    enabled: Optional[bool] = True
+
+
+class SetCacheRequest(BaseModel):
+    cache_id: str
+    key: str
+    value: Any
+    ttl: Optional[int] = None
+    tags: Optional[List[str]] = None
+
+
+class OptimizeQueryRequest(BaseModel):
+    query: str
+    table: str
+
+
+class CompressAssetRequest(BaseModel):
+    file_path: str
+    compression_type: str
+
+
+class ConfigureLazyLoadRequest(BaseModel):
+    resource_type: str
+    threshold: int
+    placeholder: str
+    enabled: Optional[bool] = True
+
+
+@APP.post("/api/optimization/caches")
+async def create_cache(request: CreateCacheRequest):
+    """Create a new cache configuration"""
+    try:
+        from api.optimization.performance_optimizer import performance_optimizer
+        result = performance_optimizer.create_cache(
+            name=request.name,
+            max_size_mb=request.max_size_mb,
+            strategy=request.strategy,
+            default_ttl=request.default_ttl,
+            enabled=request.enabled
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Create cache error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/optimization/caches/set")
+async def set_cache(request: SetCacheRequest):
+    """Set a cache entry"""
+    try:
+        from api.optimization.performance_optimizer import performance_optimizer
+        result = performance_optimizer.set_cache(
+            cache_id=request.cache_id,
+            key=request.key,
+            value=request.value,
+            ttl=request.ttl,
+            tags=request.tags
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Set cache error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/optimization/caches/{cache_id}/get")
+async def get_cache(cache_id: str, key: str):
+    """Get a cache entry"""
+    try:
+        from api.optimization.performance_optimizer import performance_optimizer
+        result = performance_optimizer.get_cache(cache_id, key)
+        return result
+    except Exception as e:
+        logger.error(f"Get cache error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/optimization/caches/{cache_id}/invalidate")
+async def invalidate_cache(cache_id: str, key: Optional[str] = None, tags: Optional[List[str]] = None):
+    """Invalidate cache entries"""
+    try:
+        from api.optimization.performance_optimizer import performance_optimizer
+        result = performance_optimizer.invalidate_cache(cache_id, key, tags)
+        return result
+    except Exception as e:
+        logger.error(f"Invalidate cache error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/optimization/caches/{cache_id}/stats")
+async def get_cache_stats(cache_id: str):
+    """Get cache statistics"""
+    try:
+        from api.optimization.performance_optimizer import performance_optimizer
+        result = performance_optimizer.get_cache_stats(cache_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get cache stats error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/optimization/caches")
+async def list_caches():
+    """List all cache configurations"""
+    try:
+        from api.optimization.performance_optimizer import performance_optimizer
+        result = performance_optimizer.list_caches()
+        return result
+    except Exception as e:
+        logger.error(f"List caches error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/optimization/query")
+async def optimize_query(request: OptimizeQueryRequest):
+    """Optimize a database query"""
+    try:
+        from api.optimization.performance_optimizer import performance_optimizer
+        result = performance_optimizer.optimize_query(request.query, request.table)
+        return result
+    except Exception as e:
+        logger.error(f"Optimize query error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/optimization/compress")
+async def compress_asset(request: CompressAssetRequest):
+    """Compress an asset"""
+    try:
+        from api.optimization.performance_optimizer import performance_optimizer
+        result = performance_optimizer.compress_asset(
+            file_path=request.file_path,
+            compression_type=request.compression_type
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Compress asset error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/optimization/lazy-load")
+async def configure_lazy_load(request: ConfigureLazyLoadRequest):
+    """Configure lazy loading"""
+    try:
+        from api.optimization.performance_optimizer import performance_optimizer
+        result = performance_optimizer.configure_lazy_load(
+            resource_type=request.resource_type,
+            threshold=request.threshold,
+            placeholder=request.placeholder,
+            enabled=request.enabled
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Configure lazy load error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/optimization/metrics")
+async def get_performance_metrics():
+    """Get overall performance metrics"""
+    try:
+        from api.optimization.performance_optimizer import performance_optimizer
+        result = performance_optimizer.get_performance_metrics()
+        return result
+    except Exception as e:
+        logger.error(f"Get performance metrics error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
