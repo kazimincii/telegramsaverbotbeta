@@ -75,10 +75,17 @@ class Database:
         """Check if a file has already been downloaded."""
         cursor = self.conn.cursor()
         cursor.execute(
-            'SELECT 1 FROM downloads WHERE message_id = ? AND chat_id = ? AND status = "completed"',
+            'SELECT file_path FROM downloads WHERE message_id = ? AND chat_id = ? AND status = "completed"',
             (message_id, chat_id)
         )
-        return cursor.fetchone() is not None
+        row = cursor.fetchone()
+        if not row:
+            return False
+        try:
+            file_path = Path(row["file_path"])
+        except Exception:
+            return False
+        return file_path.exists()
 
     def add_download(self, message_id: int, chat_id: int, chat_name: str,
                      file_path: str, file_size: int = 0, media_type: str = 'unknown') -> bool:

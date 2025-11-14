@@ -11,6 +11,10 @@ from pathlib import Path
 from typing import Optional, Dict, List
 from datetime import datetime
 from cryptography.fernet import Fernet
+claude/read-update-02-features-01JucK48rzc1Q7a7k5E3LpiE
+
+from cryptography.hazmat.primitives import hashes
+main
 from telethon import TelegramClient, types as tl_types, functions, errors
 from telethon.sessions import StringSession
 from ai_contact_intelligence import get_ai_intelligence, ContactProfile
