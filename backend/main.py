@@ -6528,3 +6528,178 @@ async def get_gateway_stats():
     except Exception as e:
         logger.error(f"Get gateway stats error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== PERFORMANCE OPTIMIZATION ENDPOINTS ====================
+
+class CreateCacheRequest(BaseModel):
+    name: str
+    max_size_mb: int
+    strategy: str
+    default_ttl: int
+    enabled: Optional[bool] = True
+
+
+class SetCacheRequest(BaseModel):
+    cache_id: str
+    key: str
+    value: Any
+    ttl: Optional[int] = None
+    tags: Optional[List[str]] = None
+
+
+class OptimizeQueryRequest(BaseModel):
+    query: str
+    table: str
+
+
+class CompressAssetRequest(BaseModel):
+    file_path: str
+    compression_type: str
+
+
+class ConfigureLazyLoadRequest(BaseModel):
+    resource_type: str
+    threshold: int
+    placeholder: str
+    enabled: Optional[bool] = True
+
+
+@APP.post("/api/optimization/caches")
+async def create_cache(request: CreateCacheRequest):
+    """Create a new cache configuration"""
+    try:
+        from api.optimization.performance_optimizer import performance_optimizer
+        result = performance_optimizer.create_cache(
+            name=request.name,
+            max_size_mb=request.max_size_mb,
+            strategy=request.strategy,
+            default_ttl=request.default_ttl,
+            enabled=request.enabled
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Create cache error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/optimization/caches/set")
+async def set_cache(request: SetCacheRequest):
+    """Set a cache entry"""
+    try:
+        from api.optimization.performance_optimizer import performance_optimizer
+        result = performance_optimizer.set_cache(
+            cache_id=request.cache_id,
+            key=request.key,
+            value=request.value,
+            ttl=request.ttl,
+            tags=request.tags
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Set cache error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/optimization/caches/{cache_id}/get")
+async def get_cache(cache_id: str, key: str):
+    """Get a cache entry"""
+    try:
+        from api.optimization.performance_optimizer import performance_optimizer
+        result = performance_optimizer.get_cache(cache_id, key)
+        return result
+    except Exception as e:
+        logger.error(f"Get cache error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/optimization/caches/{cache_id}/invalidate")
+async def invalidate_cache(cache_id: str, key: Optional[str] = None, tags: Optional[List[str]] = None):
+    """Invalidate cache entries"""
+    try:
+        from api.optimization.performance_optimizer import performance_optimizer
+        result = performance_optimizer.invalidate_cache(cache_id, key, tags)
+        return result
+    except Exception as e:
+        logger.error(f"Invalidate cache error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/optimization/caches/{cache_id}/stats")
+async def get_cache_stats(cache_id: str):
+    """Get cache statistics"""
+    try:
+        from api.optimization.performance_optimizer import performance_optimizer
+        result = performance_optimizer.get_cache_stats(cache_id)
+        return result
+    except Exception as e:
+        logger.error(f"Get cache stats error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/optimization/caches")
+async def list_caches():
+    """List all cache configurations"""
+    try:
+        from api.optimization.performance_optimizer import performance_optimizer
+        result = performance_optimizer.list_caches()
+        return result
+    except Exception as e:
+        logger.error(f"List caches error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/optimization/query")
+async def optimize_query(request: OptimizeQueryRequest):
+    """Optimize a database query"""
+    try:
+        from api.optimization.performance_optimizer import performance_optimizer
+        result = performance_optimizer.optimize_query(request.query, request.table)
+        return result
+    except Exception as e:
+        logger.error(f"Optimize query error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/optimization/compress")
+async def compress_asset(request: CompressAssetRequest):
+    """Compress an asset"""
+    try:
+        from api.optimization.performance_optimizer import performance_optimizer
+        result = performance_optimizer.compress_asset(
+            file_path=request.file_path,
+            compression_type=request.compression_type
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Compress asset error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/api/optimization/lazy-load")
+async def configure_lazy_load(request: ConfigureLazyLoadRequest):
+    """Configure lazy loading"""
+    try:
+        from api.optimization.performance_optimizer import performance_optimizer
+        result = performance_optimizer.configure_lazy_load(
+            resource_type=request.resource_type,
+            threshold=request.threshold,
+            placeholder=request.placeholder,
+            enabled=request.enabled
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Configure lazy load error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.get("/api/optimization/metrics")
+async def get_performance_metrics():
+    """Get overall performance metrics"""
+    try:
+        from api.optimization.performance_optimizer import performance_optimizer
+        result = performance_optimizer.get_performance_metrics()
+        return result
+    except Exception as e:
+        logger.error(f"Get performance metrics error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
