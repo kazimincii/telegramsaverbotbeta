@@ -31,12 +31,16 @@ import MediaProcessor from "./components/MediaProcessor";
 import BIManager from "./components/BIManager";
 import GatewayManager from "./components/GatewayManager";
 import OptimizationManager from "./components/OptimizationManager";
+import TelegramLogin from "./components/TelegramLogin/TelegramLogin";
+import TelegramClient from "./components/TelegramClient/TelegramClient";
 import { AppProvider } from "./context/AppContext";
 import "./styles/modern.css";
 
 export default function App(){
   const [activeView, setActiveView] = useState('control');
   const [theme, setTheme] = useState('light');
+  const [telegramLoggedIn, setTelegramLoggedIn] = useState(false);
+  const [telegramUser, setTelegramUser] = useState(null);
 
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light';
@@ -78,7 +82,20 @@ export default function App(){
     }
   }, []);
 
+  const handleTelegramLoginSuccess = (data) => {
+    setTelegramLoggedIn(true);
+    setTelegramUser(data.user);
+    setActiveView('telegram-client');
+  };
+
+  const handleTelegramLogout = () => {
+    setTelegramLoggedIn(false);
+    setTelegramUser(null);
+    setActiveView('control');
+  };
+
   const menuItems = [
+    { id: 'telegram-client', label: 'Telegram AI Client', icon: '✈️' },
     { id: 'control', label: 'Kontrol Paneli', icon: '🎛️' },
     { id: 'downloads', label: 'İndirme Yöneticisi', icon: '📥' },
     { id: 'media-player', label: 'Medya Oynatıcı', icon: '🎬' },
@@ -152,6 +169,18 @@ export default function App(){
           {/* Main Content */}
           <div className="main-content">
             <div className="content-wrapper">
+              {activeView === 'telegram-client' && (
+                telegramLoggedIn ? (
+                  <TelegramClient
+                    user={telegramUser}
+                    onLogout={handleTelegramLogout}
+                  />
+                ) : (
+                  <TelegramLogin
+                    onLoginSuccess={handleTelegramLoginSuccess}
+                  />
+                )
+              )}
               {activeView === 'control' && <ControlPanel />}
               {activeView === 'downloads' && <DownloadManager />}
               {activeView === 'media-player' && <MediaPlayer />}
